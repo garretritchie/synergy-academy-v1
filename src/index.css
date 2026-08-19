@@ -51,11 +51,11 @@
 
 @layer components {
   .btn {
-    @apply inline-flex min-h-10 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold leading-5 transition-[background-color,border-color,color,box-shadow,transform] duration-150 focus-visible:ring-2 focus-visible:ring-offset-2 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold leading-5 transition-[background-color,border-color,color,box-shadow,transform] duration-150 focus-visible:ring-2 focus-visible:ring-offset-2 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .btn-primary {
-    @apply btn bg-brand-600 text-white hover:bg-brand-700 focus:ring-brand-500 shadow-soft;
+    @apply btn border border-brand-700/20 bg-brand-600 text-white shadow-sm hover:bg-brand-700 hover:shadow-soft focus:ring-brand-500;
   }
 
   .btn-secondary {
@@ -71,11 +71,11 @@
   }
 
   .card {
-    @apply rounded-xl border border-ink-100 bg-white shadow-soft;
+    @apply rounded-xl border border-ink-200/80 bg-white shadow-soft;
   }
 
   .card-elevated {
-    @apply rounded-xl border border-ink-100 bg-white shadow-card;
+    @apply rounded-xl border border-ink-200/80 bg-white shadow-card;
   }
 
   .input {
@@ -111,19 +111,19 @@
   }
 
   .sidebar-link {
-    @apply flex min-h-10 items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-white/75 transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-white/80 focus-visible:ring-offset-navy;
+    @apply flex min-h-10 items-center gap-2.5 rounded-md px-3 py-2 text-[13px] font-medium text-white/75 transition-colors hover:bg-white/[0.08] hover:text-white focus-visible:ring-white/80 focus-visible:ring-offset-navy;
   }
 
   .sidebar-link-active {
-    @apply bg-white/15 font-semibold text-white shadow-[inset_3px_0_0_rgba(255,255,255,0.9)] hover:bg-white/20 hover:text-white;
+    @apply bg-white/[0.12] font-semibold text-white shadow-[inset_2px_0_0_rgba(255,255,255,0.92)] hover:bg-white/[0.16] hover:text-white;
   }
 
   .premium-surface {
-    @apply rounded-xl border border-ink-100 bg-white shadow-soft;
+    @apply rounded-xl border border-ink-200/80 bg-white shadow-soft;
   }
 
   .page-section {
-    @apply rounded-xl border border-ink-100 bg-white shadow-soft;
+    @apply rounded-xl border border-ink-200/80 bg-white shadow-soft;
   }
 }
 
@@ -178,5 +178,13 @@
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+  }
+}
+
+@media (pointer: coarse) {
+  .btn,
+  .input,
+  .sidebar-link {
+    min-height: 44px;
   }
 }

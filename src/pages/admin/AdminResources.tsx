@@ -1,6 +1,7 @@
 /* The course resource loader is reused after mutations. */
 /* eslint-disable react-hooks/exhaustive-deps */
 import { useEffect, useState, type FormEvent } from "react";
+import { useSearchParams } from "react-router-dom";
 import { ExternalLink, FolderOpen, Trash2 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -13,8 +14,11 @@ import type { Course, Lesson, Module, Resource } from "@/types";
 type ModuleWithLessons = Module & { lessons: Lesson[] };
 
 export function AdminResources() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [courses, setCourses] = useState<Course[]>([]);
-  const [courseId, setCourseId] = useState("");
+  const [courseId, setCourseId] = useState(
+    () => searchParams.get("course") ?? "",
+  );
   const [rows, setRows] = useState<Resource[]>([]);
   const [modules, setModules] = useState<ModuleWithLessons[]>([]);
   const [open, setOpen] = useState(false);
@@ -40,7 +44,7 @@ export function AdminResources() {
         .order("title");
       const list = (data ?? []) as Course[];
       setCourses(list);
-      setCourseId(list[0]?.id ?? "");
+      setCourseId((current) => current || list[0]?.id || "");
     })();
   }, []);
   const load = async () => {
@@ -159,7 +163,11 @@ export function AdminResources() {
             <select
               className="input max-w-2xl"
               value={courseId}
-              onChange={(event) => setCourseId(event.target.value)}
+              onChange={(event) => {
+                const nextCourseId = event.target.value;
+                setCourseId(nextCourseId);
+                setSearchParams(nextCourseId ? { course: nextCourseId } : {});
+              }}
             >
               {courses.map((course) => (
                 <option key={course.id} value={course.id}>

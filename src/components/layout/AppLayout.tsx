@@ -91,7 +91,7 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
       <button
         type="button"
         onClick={() => setUserMenuOpen((open) => !open)}
-        className={`flex min-h-10 items-center rounded-lg border border-transparent transition-colors hover:border-ink-200 hover:bg-ink-50 ${
+        className={`flex min-h-11 items-center rounded-lg border border-transparent transition-colors hover:border-ink-200 hover:bg-ink-50 ${
           compact ? "p-1" : "gap-3 px-2 py-1.5"
         }`}
         aria-expanded={userMenuOpen}
@@ -184,25 +184,25 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
     <div className="flex h-[100dvh] min-h-[100dvh] overflow-hidden bg-canvas">
       {/* Desktop Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-60 transform border-r border-white/10 bg-[linear-gradient(160deg,#0a1628_0%,#0b3f82_58%,#0066ff_135%)] text-white shadow-[8px_0_30px_rgba(7,22,42,0.12)] transition-transform duration-300 lg:static lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 w-60 transform border-r border-white/[0.08] bg-[linear-gradient(165deg,#08172b_0%,#0a3264_68%,#0b58ad_135%)] text-white shadow-[8px_0_30px_rgba(7,22,42,0.1)] transition-transform duration-300 lg:static lg:translate-x-0 ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <div className="flex h-full flex-col">
           {/* Logo */}
-          <div className="flex h-20 items-center border-b border-white/10 px-5">
+          <div className="flex h-[4.5rem] items-center border-b border-white/[0.08] px-5">
             <img
               src="/brand/synergy-bahamas-logo-white.png"
               alt="Synergy Bahamas"
-              className="h-auto w-32"
+              className="h-auto w-[7.75rem]"
             />
           </div>
 
           {/* Nav */}
-          <nav className="scrollbar-thin flex-1 overflow-y-auto px-3 py-3">
+          <nav className="scrollbar-thin flex-1 overflow-y-auto px-3 py-4">
             {navSections.map((section, i) => (
               <div key={i} className="mb-4">
-                <p className="mb-1 px-3 text-xs font-semibold uppercase tracking-[0.1em] text-white/50">
+                <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/48">
                   {section.label}
                 </p>
                 <div className="space-y-0.5">
@@ -246,10 +246,10 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
       {/* Main content area */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Mobile top bar */}
-        <header className="flex h-16 items-center justify-between border-b border-ink-200/80 bg-white px-4 shadow-sm lg:hidden">
+        <header className="flex h-[3.75rem] items-center justify-between border-b border-ink-200/80 bg-white/95 px-4 backdrop-blur-sm lg:hidden">
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
-            className="rounded-lg p-2 text-ink-600 hover:bg-ink-100"
+            className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-600 hover:bg-ink-100"
             aria-label={mobileOpen ? "Close navigation" : "Open navigation"}
           >
             {mobileOpen ? <X size={20} /> : <Menu size={20} />}
@@ -259,14 +259,14 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
         </header>
 
         {/* Desktop top bar */}
-        <header className="hidden h-16 shrink-0 items-center justify-between border-b border-ink-200/80 bg-white px-7 shadow-sm lg:flex">
+        <header className="hidden h-[3.75rem] shrink-0 items-center justify-between border-b border-ink-200/80 bg-white/95 px-7 backdrop-blur-sm lg:flex">
           <AcademyBrandMark />
           {accountMenu()}
         </header>
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto scrollbar-thin">
-          <div className="mx-auto max-w-[1400px] px-4 py-5 sm:px-6 lg:px-7 lg:py-7">
+          <div className="mx-auto max-w-[1400px] px-4 py-5 sm:px-6 lg:px-7 lg:py-6">
             {children}
           </div>
         </main>

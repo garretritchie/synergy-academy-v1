@@ -6,6 +6,7 @@ import {
   type FormEvent,
 } from "react";
 import { CalendarDays, Layers, Pencil, UserPlus } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Alert, SubmitButton, TableSkeleton } from "@/components/ui/Feedback";
@@ -39,12 +40,17 @@ const empty = {
 
 export function AdminCohorts() {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const requestedCourseId = searchParams.get("course") ?? "";
   const [rows, setRows] = useState<CohortRow[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [instructors, setInstructors] = useState<Profile[]>([]);
-  const [form, setForm] = useState(empty);
+  const [form, setForm] = useState(() => ({
+    ...empty,
+    course_id: requestedCourseId,
+  }));
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(Boolean(requestedCourseId));
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");

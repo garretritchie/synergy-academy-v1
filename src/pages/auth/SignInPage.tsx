@@ -64,7 +64,6 @@ export function SignInPage() {
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 overflow-hidden"
         >
-          <div className="absolute -right-56 top-24 h-[34rem] w-[34rem] rounded-full border border-brand-500/15" />
           <div className="absolute bottom-0 left-0 h-1 w-32 bg-accent-400" />
           <div className="absolute bottom-0 left-32 h-1 w-48 bg-brand-500" />
         </div>
@@ -211,10 +210,10 @@ export function SignInPage() {
 
           {demoMode && (
             <section
-              className="mt-5 overflow-hidden rounded-lg border border-brand-200 bg-brand-50/60"
+              className="mt-5 overflow-hidden rounded-lg border border-ink-200 bg-ink-50/70"
               aria-labelledby="demo-access-title"
             >
-              <div className="flex items-start gap-2.5 border-b border-brand-200 px-3.5 py-3">
+              <div className="flex items-start gap-2.5 border-b border-ink-200 bg-white/60 px-3.5 py-3">
                 <KeyRound
                   size={16}
                   aria-hidden="true"
@@ -233,7 +232,7 @@ export function SignInPage() {
                 </div>
               </div>
 
-              <div className="divide-y divide-brand-100">
+              <div className="divide-y divide-ink-200">
                 {demoAccounts.map((account) => (
                   <div
                     key={account.role}
@@ -255,7 +254,7 @@ export function SignInPage() {
                       onClick={() =>
                         fillDemoAccount(account.email, account.password)
                       }
-                      className="min-h-10 rounded-md border border-brand-200 bg-white px-3 py-1.5 text-xs font-semibold text-brand-700 transition-colors hover:border-brand-300 hover:bg-brand-50 focus-visible:ring-brand-400"
+                      className="min-h-10 rounded-md border border-ink-200 bg-white px-3 py-1.5 text-xs font-semibold text-brand-700 shadow-sm transition-colors hover:border-brand-300 hover:bg-brand-50 focus-visible:ring-brand-400"
                       aria-label={`Use ${account.role.toLowerCase()} credentials`}
                     >
                       Use account

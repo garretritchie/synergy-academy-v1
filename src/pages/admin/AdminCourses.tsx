@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   BookOpen,
   CheckCircle2,
@@ -65,6 +66,7 @@ const emptyForm: CourseForm = {
 
 export function AdminCourses() {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
   const [courses, setCourses] = useState<CourseRow[]>([]);
   const [categories, setCategories] = useState<CourseCategory[]>([]);
   const [categoryIds, setCategoryIds] = useState<string[]>([]);
@@ -105,7 +107,7 @@ export function AdminCourses() {
 
   const setValue = <K extends keyof CourseForm>(key: K, value: CourseForm[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
-  const startEdit = (course: CourseRow) => {
+  const startEdit = useCallback((course: CourseRow) => {
     setEditingId(course.id);
     setForm({
       title: course.title,
@@ -131,7 +133,16 @@ export function AdminCourses() {
     setIntroFile(null);
     setOpen(true);
     setError("");
-  };
+  }, []);
+
+  useEffect(() => {
+    const requestedCourseId = searchParams.get("edit");
+    if (!requestedCourseId || editingId || open) return;
+    const requestedCourse = courses.find(
+      (course) => course.id === requestedCourseId,
+    );
+    if (requestedCourse) startEdit(requestedCourse);
+  }, [courses, editingId, open, searchParams, startEdit]);
   const reset = () => {
     setEditingId(null);
     setForm(emptyForm);
@@ -269,7 +280,7 @@ export function AdminCourses() {
   return (
     <AppLayout>
       <PageHeader
-        title="Courses"
+        title="Course Catalog"
         subtitle="Build reusable curriculum for cohort, individual, or organization access."
       />
       <div className="mt-6 space-y-5">

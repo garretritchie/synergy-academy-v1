@@ -5,6 +5,7 @@ import {
   useState,
   type FormEvent,
 } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   BookOpen,
   ChevronDown,
@@ -38,8 +39,11 @@ type ModuleTree = Module & {
   lessons: Array<Lesson & { lesson_blocks: LessonBlock[] }>;
 };
 export function AdminAcademic() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [courses, setCourses] = useState<Course[]>([]);
-  const [courseId, setCourseId] = useState("");
+  const [courseId, setCourseId] = useState(
+    () => searchParams.get("course") ?? "",
+  );
   const [modules, setModules] = useState<ModuleTree[]>([]);
   const [expanded, setExpanded] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -463,7 +467,11 @@ export function AdminAcademic() {
             <select
               className="input max-w-xl"
               value={courseId}
-              onChange={(event) => setCourseId(event.target.value)}
+              onChange={(event) => {
+                const nextCourseId = event.target.value;
+                setCourseId(nextCourseId);
+                setSearchParams(nextCourseId ? { course: nextCourseId } : {});
+              }}
             >
               <option value="">Select a course</option>
               {courses.map((item) => (

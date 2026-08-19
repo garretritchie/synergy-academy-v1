@@ -55,6 +55,10 @@ const AdminAccess = lazyNamed(
   () => import("@/pages/admin/AdminAccess"),
   "AdminAccess",
 );
+const AdminCourseStudio = lazyNamed(
+  () => import("@/pages/admin/AdminCourseStudio"),
+  "AdminCourseStudio",
+);
 const PublicCourses = lazyNamed(
   () => import("@/pages/public/PublicCourses"),
   "PublicCourses",
@@ -382,6 +386,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={["administrator"]}>
             <AdminDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/course-studio"
+        element={
+          <ProtectedRoute allowedRoles={["administrator"]}>
+            <AdminCourseStudio />
           </ProtectedRoute>
         }
       />

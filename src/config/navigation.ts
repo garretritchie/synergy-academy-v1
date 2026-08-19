@@ -22,6 +22,7 @@ import {
   ClipboardCheck,
   Clock3,
   Building2,
+  WandSparkles,
 } from "lucide-react";
 
 export interface NavItem {
@@ -100,13 +101,23 @@ export const adminNav: NavSection[] = [
     items: [{ label: "Dashboard", path: "/admin", icon: LayoutDashboard }],
   },
   {
-    label: "Academic",
+    label: "Courses & delivery",
     items: [
-      { label: "Courses", path: "/admin/courses", icon: BookOpen },
+      {
+        label: "Course Studio",
+        path: "/admin/course-studio",
+        icon: WandSparkles,
+      },
+      { label: "Course Catalog", path: "/admin/courses", icon: BookOpen },
       { label: "Categories", path: "/admin/categories", icon: FolderTree },
       { label: "Cohorts", path: "/admin/cohorts", icon: Layers },
       { label: "Enrolments", path: "/admin/enrolments", icon: ScrollText },
       { label: "Organizations", path: "/admin/access", icon: Building2 },
+    ],
+  },
+  {
+    label: "Advanced course tools",
+    items: [
       {
         label: "Curriculum Builder",
         path: "/admin/academic",

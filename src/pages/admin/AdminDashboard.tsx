@@ -8,6 +8,7 @@ import {
   FolderTree,
   ArrowRight,
   TrendingUp,
+  WandSparkles,
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -46,7 +47,13 @@ export function AdminDashboard() {
   }, []);
   const quickLinks = [
     {
-      label: "Courses",
+      label: "Course Studio",
+      path: "/admin/course-studio",
+      icon: WandSparkles,
+      desc: "Guided course creation and readiness",
+    },
+    {
+      label: "Course Catalog",
       path: "/admin/courses",
       icon: BookOpen,
       desc: "Create and manage courses",
@@ -133,11 +140,19 @@ export function AdminDashboard() {
           <p className="mt-1 text-xs leading-5 text-ink-500">
             Build the academic structure in this order before enrolling learners.
           </p>
-          <ol className="mt-5 space-y-3">
-            {quickLinks.slice(0, 4).map((link, index) => (
+          <ol className="mt-4 divide-y divide-ink-100">
+            {quickLinks
+              .filter((link) =>
+                [
+                  "/admin/course-studio",
+                  "/admin/cohorts",
+                  "/admin/enrolments",
+                ].includes(link.path),
+              )
+              .map((link, index) => (
               <li key={link.path}>
-                <Link to={link.path} className="group flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-brand-50">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-50 text-xs font-bold text-brand-700 group-hover:bg-brand-600 group-hover:text-white">
+                <Link to={link.path} className="group -mx-2 flex items-center gap-3 rounded-md px-2 py-3 hover:bg-brand-50/60">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-md border border-brand-200 bg-brand-50 text-xs font-bold text-brand-700 group-hover:border-brand-600 group-hover:bg-brand-600 group-hover:text-white">
                     {index + 1}
                   </span>
                   <span className="min-w-0 flex-1">
@@ -147,27 +162,27 @@ export function AdminDashboard() {
                   <ArrowRight size={15} className="text-ink-300 group-hover:text-brand-700" />
                 </Link>
               </li>
-            ))}
+              ))}
           </ol>
         </section>
 
         <section className="page-section p-5">
           <h2 className="font-display text-sm font-semibold text-ink-950">
-            Administration
+            Workspace shortcuts
           </h2>
           <p className="mt-1 text-xs leading-5 text-ink-500">
             Open the most common management areas.
           </p>
-          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          <div className="mt-3 grid sm:grid-cols-2 sm:gap-x-5">
           {quickLinks.map((link) => {
             const Icon = link.icon;
             return (
               <Link
                 key={link.path}
                 to={link.path}
-                className="group flex items-center gap-3 rounded-lg border border-ink-100 bg-ink-50/60 p-3 transition hover:border-brand-200 hover:bg-brand-50"
+                className="group flex items-center gap-3 border-b border-ink-100 px-1 py-3.5 transition hover:bg-brand-50/50"
               >
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white text-brand-700 shadow-sm">
+                <div className="flex h-8 w-8 items-center justify-center rounded-md border border-ink-200 bg-white text-brand-700">
                   <Icon size={17} />
                 </div>
                 <div className="flex-1">

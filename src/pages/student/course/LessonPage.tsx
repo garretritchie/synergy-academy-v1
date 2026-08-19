@@ -287,7 +287,7 @@ export function LessonPage() {
             )}
           </div>
           {error && <Alert>{error}</Alert>}
-          <header className="rounded-2xl bg-[#0a1628] px-5 py-5 text-white shadow-[0_18px_45px_-32px_rgba(10,22,40,0.8)] sm:px-6 sm:py-6">
+          <header className="rounded-2xl border border-white/[0.06] bg-navy px-5 py-5 text-white shadow-[0_18px_45px_-32px_rgba(8,23,43,0.72)] sm:px-6 sm:py-6">
             <p className="text-xs font-semibold text-brand-200">
               {lesson.module.title}
             </p>
@@ -300,9 +300,9 @@ export function LessonPage() {
               </p>
             )}
           </header>
-          <div className="grid items-start gap-4 rounded-2xl bg-[#eaf3ff] p-3 sm:p-4 xl:grid-cols-[minmax(0,1fr)_19rem] xl:p-5">
+          <div className="grid items-start gap-4 rounded-2xl border border-ink-200/80 bg-ink-100/70 p-3 sm:p-4 xl:grid-cols-[minmax(0,1fr)_19rem] xl:p-5">
             <section
-              className="flex min-h-0 flex-col rounded-xl bg-white p-4 shadow-soft sm:min-h-[28rem] sm:p-6"
+              className="flex min-h-0 flex-col rounded-xl border border-ink-200/80 bg-white p-4 shadow-soft sm:min-h-[28rem] sm:p-6"
               aria-label="Lesson content"
             >
               {lessonWorkspace.nuggets.length > 0 ? (
@@ -348,7 +348,7 @@ export function LessonPage() {
               )}
             </section>
 
-            <aside className="rounded-xl bg-[#dceafe] p-4 xl:sticky xl:top-4" aria-label="Lesson activities and supporting content">
+            <aside className="rounded-xl border border-ink-200/80 bg-white p-4 shadow-soft xl:sticky xl:top-4" aria-label="Lesson activities and supporting content">
               <div className="mb-3 flex items-center gap-2 px-0.5">
                 <PanelRight size={17} className="text-brand-600" />
                 <h2 className="text-sm font-semibold text-ink-900">Activities and key points</h2>
@@ -365,7 +365,7 @@ export function LessonPage() {
                   ))}
                 </div>
               ) : (
-                <div className="rounded-xl bg-white p-4 text-xs leading-5 text-ink-500 shadow-soft">
+                <div className="rounded-lg border border-dashed border-ink-300 bg-ink-50 p-4 text-xs leading-5 text-ink-500">
                   No additional activities are attached to this lesson.
                 </div>
               )}
@@ -813,7 +813,7 @@ function LessonBlockView({
     );
   if (block.block_type === "callout")
     return (
-      <aside className={`rounded-xl ${rail ? "bg-[#fff4c2] p-4 text-[#493600]" : "bg-brand-50 p-5 text-brand-950"}`}>
+      <aside className={`rounded-xl border ${rail ? "border-accent-200 bg-accent-50 p-4 text-accent-900" : "border-brand-200 bg-brand-50 p-5 text-brand-950"}`}>
         <h2 className={`${rail ? "text-sm" : ""} font-semibold`}>{content.title || "Key point"}</h2>
         <p className={`mt-2 ${rail ? "text-xs leading-5" : "leading-7"}`}>{content.body}</p>
       </aside>
@@ -922,7 +922,7 @@ function LessonBlockView({
 function KnowledgeCheck({ title, question, answer, compact = false }: { title?: string; question?: string; answer?: string; compact?: boolean }) {
   const [revealed, setRevealed] = useState(false);
   return (
-    <section className={`rounded-xl border border-brand-200 bg-brand-50 text-brand-950 ${compact ? "p-4" : "p-6"}`}>
+    <section className={`rounded-xl border border-brand-200 bg-brand-50/70 text-brand-950 ${compact ? "p-4" : "p-6"}`}>
       <div className="flex items-center gap-2"><HelpCircle size={compact ? 17 : 20} /><h2 className={`${compact ? "text-sm" : ""} font-semibold`}>{title || "Check your understanding"}</h2></div>
       <p className={`mt-3 ${compact ? "text-xs leading-5" : "leading-7"}`}>{question}</p>
       <button type="button" className={`${compact ? "mt-3 min-h-10 w-full rounded-lg border border-brand-200 bg-white px-3 py-2 text-xs font-semibold text-brand-700 transition-colors hover:bg-brand-100" : "btn-secondary mt-4"}`} aria-expanded={revealed} onClick={() => setRevealed((value) => !value)}>

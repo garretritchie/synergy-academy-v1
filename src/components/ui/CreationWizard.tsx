@@ -25,7 +25,7 @@ export function CreationWizard({
   const finalStep = currentStep === steps.length - 1;
   return (
     <div>
-      <ol className="grid gap-2 border-b border-ink-100 pb-4 sm:grid-cols-3">
+      <ol className="grid gap-2 border-b border-ink-100 pb-4 sm:grid-cols-[repeat(auto-fit,minmax(9rem,1fr))]">
         {steps.map((step, index) => {
           const complete = index < currentStep;
           const active = index === currentStep;
