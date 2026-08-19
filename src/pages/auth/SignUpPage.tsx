@@ -1,12 +1,14 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Mail, Lock, User, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { AcademyBrandMark } from "@/components/brand/AcademyBrandMark";
+import { supabase } from "@/lib/supabase";
 
 export function SignUpPage() {
   const { signUp } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -14,6 +16,30 @@ export function SignUpPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [invitedRoles, setInvitedRoles] = useState<string[]>([]);
+
+  useEffect(() => {
+    const token = searchParams.get("invite");
+    if (!token) return;
+    void supabase
+      .rpc("get_user_invitation", { invitation_token: token })
+      .then(({ data, error: invitationError }) => {
+        if (invitationError || !data) {
+          setError("This invitation is invalid or has expired. Ask an administrator for a new link.");
+          return;
+        }
+        const invitation = data as {
+          email: string;
+          first_name: string | null;
+          last_name: string | null;
+          role_names: string[];
+        };
+        setEmail(invitation.email);
+        setFirstName(invitation.first_name || "");
+        setLastName(invitation.last_name || "");
+        setInvitedRoles(invitation.role_names || []);
+      });
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,7 +115,9 @@ export function SignUpPage() {
             Create your account
           </h2>
           <p className="mt-1.5 text-sm text-ink-500">
-            Start your learning journey today.
+            {invitedRoles.length
+              ? `Your invitation includes ${invitedRoles.join(" and ")} access.`
+              : "Start your learning journey today."}
           </p>
 
           <form onSubmit={handleSubmit} className="mt-8 space-y-4">
@@ -160,10 +188,11 @@ export function SignUpPage() {
                   id="email"
                   type="email"
                   required
+                  readOnly={Boolean(invitedRoles.length)}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
-                  className="input pl-10"
+                  className="input pl-10 read-only:bg-ink-50"
                 />
               </div>
             </div>

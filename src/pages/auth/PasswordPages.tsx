@@ -30,11 +30,26 @@ export function ForgotPasswordPage() {
     event.preventDefault();
     setLoading(true);
     setError("");
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(
-      email,
-      { redirectTo: `${window.location.origin}/reset-password` },
+    const { data: emailEnabled, error: settingError } = await supabase.rpc(
+      "email_delivery_enabled",
     );
-    if (resetError) setError(resetError.message);
+    if (!settingError && emailEnabled !== true) {
+      setError(
+        "Email delivery is temporarily disabled. Contact Synergy Bahamas for help accessing your account.",
+      );
+      setLoading(false);
+      return;
+    }
+    const { error: resetError } = await supabase.functions.invoke(
+      "request-password-reset",
+      {
+        body: {
+          email,
+          redirect_to: `${window.location.origin}/reset-password`,
+        },
+      },
+    );
+    if (resetError) setError("The reset request could not be processed. Please try again.");
     else setSent(true);
     setLoading(false);
   };
@@ -101,7 +116,10 @@ export function ResetPasswordPage() {
     }
     setLoading(true);
     setError("");
-    const { error: updateError } = await supabase.auth.updateUser({ password });
+    const { error: updateError } = await supabase.auth.updateUser({
+      password,
+      data: { must_change_password: false },
+    });
     if (updateError) setError(updateError.message);
     else navigate("/");
     setLoading(false);

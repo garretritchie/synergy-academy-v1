@@ -11,13 +11,15 @@ import {
   Cloud,
   Database,
   Globe2,
+  Mail,
   Megaphone,
+  Power,
   ShieldCheck,
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { DirectMessagesPanel } from "@/components/communication/DirectMessagesPanel";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Alert, TableSkeleton } from "@/components/ui/Feedback";
+import { Alert, SubmitButton, TableSkeleton } from "@/components/ui/Feedback";
 import { CreationWizard } from "@/components/ui/CreationWizard";
 import { Field, FormPanel } from "@/components/ui/FormPanel";
 import { supabase } from "@/lib/supabase";
@@ -52,6 +54,7 @@ export function AdminCommunications() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [deliveryNotice, setDeliveryNotice] = useState("");
   const load = useCallback(async () => {
     setLoading(true);
     const [announcementResult, cohortResult] = await Promise.all([
@@ -79,13 +82,31 @@ export function AdminCommunications() {
   const save = async (event: FormEvent) => {
     event.preventDefault();
     setSaving(true);
-    const { error: insertError } = await supabase.from("announcements").insert({
-      ...form,
-      author_id: user?.id,
-      published_at: form.is_published ? new Date().toISOString() : null,
-    });
+    setDeliveryNotice("");
+    const { data: created, error: insertError } = await supabase
+      .from("announcements")
+      .insert({
+        ...form,
+        author_id: user?.id,
+        published_at: form.is_published ? new Date().toISOString() : null,
+      })
+      .select("id")
+      .single();
     if (insertError) setError(insertError.message);
     else {
+      if (form.is_published && created) {
+        const { data: emailResult, error: emailError } = await supabase.functions.invoke(
+          "academy-email",
+          { body: { type: "announcement", announcement_id: created.id } },
+        );
+        setDeliveryNotice(
+          emailError
+            ? "Announcement published, but the email request could not be processed."
+            : emailResult?.suppressed
+              ? "Announcement published. Email was suppressed by the testing kill switch."
+              : `Announcement published and emailed to ${emailResult?.sent ?? 0} learner(s).`,
+        );
+      }
       setForm({
         cohort_id: "",
         title: "",
@@ -106,6 +127,11 @@ export function AdminCommunications() {
         subtitle="Publish cohort announcements from one place."
       />
       <div className="mt-6 space-y-5">
+        {deliveryNotice && (
+          <div className="rounded-lg border border-brand-200 bg-brand-50 px-4 py-3 text-xs leading-5 text-brand-800">
+            {deliveryNotice}
+          </div>
+        )}
         <DirectMessagesPanel role="administrator" />
         <FormPanel
           title="New announcement"
@@ -351,8 +377,8 @@ export function AdminReporting() {
   return (
     <AppLayout>
       <PageHeader
-        title="Reporting"
-        subtitle="A live operational snapshot from the academy database."
+        title="Certificates & credentials"
+        subtitle="Monitor completion credentials and revoke certificates issued in error."
       />
       <div className="mt-6 space-y-6">
         {error && <Alert>{error}</Alert>}
@@ -444,11 +470,28 @@ export function AdminSettings() {
   const [databaseStatus, setDatabaseStatus] = useState<
     "checking" | "ready" | "pending" | "unknown"
   >("checking");
+  const [emailSettings, setEmailSettings] = useState({
+    enabled: false,
+    from_email: "academy@synergybahamas.com",
+    from_name: "Synergy Academy",
+    reply_to: "info@synergybahamas.com",
+  });
+  const [emailAvailable, setEmailAvailable] = useState(true);
+  const [emailSaving, setEmailSaving] = useState(false);
+  const [emailMessage, setEmailMessage] = useState("");
   useEffect(() => {
     void (async () => {
-      const { error: probeError } = await supabase.rpc("verify_certificate", {
-        certificate_code: "settings-readiness-probe",
-      });
+      const [probe, emailResult] = await Promise.all([
+        supabase.rpc("verify_certificate", {
+          certificate_code: "settings-readiness-probe",
+        }),
+        supabase
+          .from("platform_settings")
+          .select("value")
+          .eq("key", "email_delivery")
+          .maybeSingle(),
+      ]);
+      const probeError = probe.error;
       if (!probeError) setDatabaseStatus("ready");
       else if (
         probeError.message.toLowerCase().includes("verify_certificate") &&
@@ -457,8 +500,38 @@ export function AdminSettings() {
       )
         setDatabaseStatus("pending");
       else setDatabaseStatus("unknown");
+      if (emailResult.error) setEmailAvailable(false);
+      else {
+        const emailValue = emailResult.data?.value;
+        if (emailValue)
+          setEmailSettings((current) => ({ ...current, ...emailValue }));
+      }
     })();
   }, []);
+  const saveEmailSettings = async (event: FormEvent) => {
+    event.preventDefault();
+    setEmailSaving(true);
+    setEmailMessage("");
+    const { data, error: settingsError } = await supabase.rpc(
+      "update_email_delivery_settings",
+      {
+        delivery_enabled: emailSettings.enabled,
+        sender_email: emailSettings.from_email,
+        sender_name: emailSettings.from_name,
+        reply_address: emailSettings.reply_to,
+      },
+    );
+    if (settingsError) setEmailMessage(settingsError.message);
+    else {
+      setEmailSettings(data as typeof emailSettings);
+      setEmailMessage(
+        emailSettings.enabled
+          ? "Email delivery is enabled. SMTP2GO requests will now be sent from server-side functions."
+          : "Email delivery is disabled. All application emails and password-reset requests are suppressed.",
+      );
+    }
+    setEmailSaving(false);
+  };
   const databaseLabel =
     databaseStatus === "checking"
       ? "Checking"
@@ -519,7 +592,7 @@ export function AdminSettings() {
             {[
               ["Verify locally", "Run typecheck, lint, build, and role-based acceptance tests."],
               ["Sync GitHub", "Push reviewed application and migration changes. Prompts remain local."],
-              ["Apply database changes", "Run migration 012 in Bolt Supabase and confirm the schema cache refreshes."],
+              ["Apply database changes", "Run all pending migrations through 014 and confirm the schema cache refreshes."],
               ["Publish production", "Use the manual Bolt publish workflow for academy.synergybahamas.com."],
             ].map(([title, description], index) => (
               <li key={title} className="grid grid-cols-[1.75rem_1fr] gap-3">
@@ -543,6 +616,58 @@ export function AdminSettings() {
           <p className="mt-2 text-xs leading-5 text-ink-600">
             One account can hold student, instructor, and administrator roles. Workspace switching happens after sign-in, while Supabase RLS enforces every data boundary.
           </p>
+        </section>
+
+        <section className="page-section overflow-hidden lg:col-span-2">
+          <div className={`border-b px-5 py-4 ${emailSettings.enabled ? "border-success-200 bg-success-50" : "border-warning-200 bg-warning-50"}`}>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <span className={`mt-0.5 flex h-8 w-8 items-center justify-center rounded-lg ${emailSettings.enabled ? "bg-success-100 text-success-700" : "bg-warning-100 text-warning-800"}`}>
+                  <Power size={17} />
+                </span>
+                <div>
+                  <h2 className="font-display text-sm font-semibold text-ink-950">Email delivery kill switch</h2>
+                  <p className="mt-1 text-xs leading-5 text-ink-600">
+                    {emailSettings.enabled ? "Live: announcements, reminders, invitations, welcomes, and password resets may send." : "Testing mode: application email and password-reset requests are blocked."}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={emailSettings.enabled}
+                disabled={!emailAvailable}
+                onClick={() => setEmailSettings((current) => ({ ...current, enabled: !current.enabled }))}
+                className={`relative h-8 w-14 rounded-full transition-colors ${emailSettings.enabled ? "bg-success-600" : "bg-ink-300"}`}
+              >
+                <span className={`absolute left-1 top-1 h-6 w-6 rounded-full bg-white shadow-sm transition-transform ${emailSettings.enabled ? "translate-x-6" : "translate-x-0"}`} />
+                <span className="sr-only">Toggle email delivery</span>
+              </button>
+            </div>
+          </div>
+          <form onSubmit={saveEmailSettings} className="grid gap-4 p-5 md:grid-cols-3 md:items-end">
+            <Field label="Sender name">
+              <input className="input" value={emailSettings.from_name} onChange={(event) => setEmailSettings((current) => ({ ...current, from_name: event.target.value }))} />
+            </Field>
+            <Field label="Sender email">
+              <input required type="email" className="input" value={emailSettings.from_email} onChange={(event) => setEmailSettings((current) => ({ ...current, from_email: event.target.value }))} />
+            </Field>
+            <Field label="Reply-to email">
+              <input required type="email" className="input" value={emailSettings.reply_to} onChange={(event) => setEmailSettings((current) => ({ ...current, reply_to: event.target.value }))} />
+            </Field>
+            <div className="md:col-span-2">
+              {!emailAvailable ? (
+                <p className="text-xs leading-5 text-warning-800">Apply migration 014 before configuring email. SMTP2GO credentials remain in the server-side Edge Function secret store.</p>
+              ) : emailMessage ? (
+                <p className="text-xs leading-5 text-ink-600">{emailMessage}</p>
+              ) : (
+                <p className="flex items-center gap-2 text-xs leading-5 text-ink-500"><Mail size={14} /> The API key is never sent to the browser or stored in this table.</p>
+              )}
+            </div>
+            <div className="flex justify-end">
+              <SubmitButton loading={emailSaving} disabled={!emailAvailable}>Save email settings</SubmitButton>
+            </div>
+          </form>
         </section>
       </div>
     </AppLayout>

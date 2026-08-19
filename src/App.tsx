@@ -83,12 +83,15 @@ const AdminUsers = lazyNamed(loadAdminPages, "AdminUsers");
 const AdminAcademic = lazyNamed(loadAdminPages, "AdminAcademic");
 const AdminCommunications = lazyNamed(loadAdminPages, "AdminCommunications");
 const AdminReporting = lazyNamed(loadAdminPages, "AdminReporting");
+const AdminCertificateManagement = lazyNamed(loadAdminPages, "AdminCertificateManagement");
 const AdminSettings = lazyNamed(loadAdminPages, "AdminSettings");
 
 function RoleRedirect() {
   const { user, profile, roles, loading } = useAuth();
   if (loading) return <FullPageSpinner />;
   if (!user) return <Navigate to="/signin" replace />;
+  if (user.user_metadata?.must_change_password)
+    return <Navigate to="/reset-password?temporary=1" replace />;
   if (profile && !profile.is_active) return <Navigate to="/pending" replace />;
   if (!roles.length) return <Navigate to="/pending" replace />;
   return (
@@ -430,6 +433,38 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/admin/live-sessions"
+        element={
+          <ProtectedRoute allowedRoles={["administrator"]}>
+            <InstructorLiveSessions />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/attendance"
+        element={
+          <ProtectedRoute allowedRoles={["administrator"]}>
+            <InstructorAttendance />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/gradebook"
+        element={
+          <ProtectedRoute allowedRoles={["administrator"]}>
+            <InstructorGradebook />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/students"
+        element={
+          <ProtectedRoute allowedRoles={["administrator"]}>
+            <InstructorStudents />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/admin/access"
         element={
           <ProtectedRoute allowedRoles={["administrator"]}>
@@ -474,6 +509,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={["administrator"]}>
             <AdminCommunications />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/certificates"
+        element={
+          <ProtectedRoute allowedRoles={["administrator"]}>
+            <AdminCertificateManagement />
           </ProtectedRoute>
         }
       />

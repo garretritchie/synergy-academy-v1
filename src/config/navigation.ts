@@ -116,6 +116,15 @@ export const adminNav: NavSection[] = [
     ],
   },
   {
+    label: "Live delivery",
+    items: [
+      { label: "Live Classes", path: "/admin/live-sessions", icon: Video },
+      { label: "Attendance", path: "/admin/attendance", icon: ClipboardCheck },
+      { label: "Gradebook", path: "/admin/gradebook", icon: BarChart3 },
+      { label: "Student Records", path: "/admin/students", icon: Users },
+    ],
+  },
+  {
     label: "Advanced course tools",
     items: [
       {
@@ -137,6 +146,7 @@ export const adminNav: NavSection[] = [
         icon: Megaphone,
       },
       { label: "Reporting", path: "/admin/reporting", icon: BarChart3 },
+      { label: "Certificates", path: "/admin/certificates", icon: Award },
       { label: "Settings", path: "/admin/settings", icon: Settings },
     ],
   },

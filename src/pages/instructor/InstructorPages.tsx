@@ -6,6 +6,7 @@ import {
   ClipboardCheck,
   ClipboardList,
   GraduationCap,
+  Mail,
   Megaphone,
   Send,
   UserRound,
@@ -115,6 +116,8 @@ export function InstructorLiveSessions() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingSession, setUploadingSession] = useState("");
+  const [emailingSession, setEmailingSession] = useState("");
+  const [emailNotice, setEmailNotice] = useState("");
   const [error, setError] = useState("");
   const ids = cohorts.map((item) => item.id);
   const load = async () => {
@@ -204,6 +207,22 @@ export function InstructorLiveSessions() {
     }
     setUploadingSession("");
   };
+  const sendSessionReminder = async (session: LiveSession) => {
+    setEmailingSession(session.id);
+    setEmailNotice("");
+    const { data, error: emailError } = await supabase.functions.invoke(
+      "academy-email",
+      { body: { type: "live_session_reminder", live_session_id: session.id } },
+    );
+    setEmailNotice(
+      emailError
+        ? "The reminder request could not be processed."
+        : data?.suppressed
+          ? "Reminder suppressed by the email testing kill switch."
+          : `Reminder sent to ${data?.sent ?? 0} learner(s).`,
+    );
+    setEmailingSession("");
+  };
   return (
     <AppLayout>
       <PageHeader
@@ -211,6 +230,7 @@ export function InstructorLiveSessions() {
         subtitle="Schedule meetings, preparation notes, joining links, and recordings."
       />
       <div className="mt-6 space-y-5">
+        {emailNotice && <div className="rounded-lg border border-brand-200 bg-brand-50 px-4 py-3 text-xs text-brand-800">{emailNotice}</div>}
         <FormPanel
           title="Schedule a live session"
           open={open}
@@ -331,6 +351,14 @@ export function InstructorLiveSessions() {
                     Open meeting
                   </a>
                 )}
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  disabled={Boolean(emailingSession) || row.is_cancelled}
+                  onClick={() => void sendSessionReminder(row)}
+                >
+                  <Mail size={15} /> {emailingSession === row.id ? "Sending…" : "Email reminder"}
+                </button>
                 <label className="btn-secondary cursor-pointer">
                   <Upload size={15} />
                   {uploadingSession === row.id
@@ -393,6 +421,8 @@ export function InstructorAssignments() {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [emailingAssignment, setEmailingAssignment] = useState("");
+  const [emailNotice, setEmailNotice] = useState("");
   const [error, setError] = useState("");
   const ids = cohorts.map((item) => item.id);
   const load = async () => {
@@ -443,6 +473,22 @@ export function InstructorAssignments() {
     }
     setSaving(false);
   };
+  const sendAssignmentReminder = async (assignment: Assignment) => {
+    setEmailingAssignment(assignment.id);
+    setEmailNotice("");
+    const { data, error: emailError } = await supabase.functions.invoke(
+      "academy-email",
+      { body: { type: "assignment_reminder", assignment_id: assignment.id } },
+    );
+    setEmailNotice(
+      emailError
+        ? "The reminder request could not be processed."
+        : data?.suppressed
+          ? "Reminder suppressed by the email testing kill switch."
+          : `Reminder sent to ${data?.sent ?? 0} learner(s).`,
+    );
+    setEmailingAssignment("");
+  };
   return (
     <AppLayout>
       <PageHeader
@@ -450,6 +496,7 @@ export function InstructorAssignments() {
         subtitle="Create coursework, add optional cohort deadlines, and review submissions."
       />
       <div className="mt-6 space-y-5">
+        {emailNotice && <div className="rounded-lg border border-brand-200 bg-brand-50 px-4 py-3 text-xs text-brand-800">{emailNotice}</div>}
         <FormPanel
           title="Create assignment"
           open={open}
@@ -656,6 +703,14 @@ export function InstructorAssignments() {
                     {row.max_points} points
                   </p>
                 </div>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  disabled={!row.is_published || Boolean(emailingAssignment)}
+                  onClick={() => void sendAssignmentReminder(row)}
+                >
+                  <Mail size={15} /> {emailingAssignment === row.id ? "Sending…" : "Email reminder"}
+                </button>
                 <button
                   className={
                     row.is_published ? "badge-success" : "badge-neutral"

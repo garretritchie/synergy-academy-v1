@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { ScrollText, Trash2 } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ArrowRight, ClipboardCheck, ScrollText, Trash2, UserPlus } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Alert, SubmitButton, TableSkeleton } from "@/components/ui/Feedback";
@@ -153,6 +154,54 @@ export function AdminEnrolments() {
         subtitle="Grant students access to a cohort and manage their enrolment status."
       />
       <div className="mt-6 space-y-5">
+        <section className="grid overflow-hidden rounded-xl border border-ink-200 bg-white sm:grid-cols-3">
+          {[
+            {
+              step: "1",
+              title: "Invite or approve",
+              detail: "Create the learner account and assign Student access.",
+              path: "/admin/users",
+              action: "Manage users",
+              icon: UserPlus,
+            },
+            {
+              step: "2",
+              title: "Enrol in a cohort",
+              detail: "Choose the live delivery group and activate access.",
+              path: "#new-enrolment",
+              action: "Enrol below",
+              icon: ScrollText,
+            },
+            {
+              step: "3",
+              title: "Track delivery",
+              detail: "Record live-class attendance and grades as the course runs.",
+              path: "/admin/attendance",
+              action: "Open attendance",
+              icon: ClipboardCheck,
+            },
+          ].map((item) => {
+            const Icon = item.icon;
+            return (
+              <article key={item.step} className="border-b border-ink-100 p-4 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0">
+                <div className="flex items-center gap-2 text-brand-700">
+                  <span className="text-xs font-bold">{item.step}</span>
+                  <Icon size={16} />
+                  <h2 className="text-xs font-semibold text-ink-900">{item.title}</h2>
+                </div>
+                <p className="mt-2 text-xs leading-5 text-ink-500">{item.detail}</p>
+                <Link
+                  to={item.path}
+                  onClick={() => item.path === "#new-enrolment" && setOpen(true)}
+                  className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-brand-700"
+                >
+                  {item.action} <ArrowRight size={13} />
+                </Link>
+              </article>
+            );
+          })}
+        </section>
+        <div id="new-enrolment">
         <FormPanel
           title="Enrol a student"
           description="Students must have an active student role before they can be enrolled."
@@ -199,6 +248,7 @@ export function AdminEnrolments() {
             </div>
           </form>
         </FormPanel>
+        </div>
         {error && !open && <Alert>{error}</Alert>}
         <section className="overflow-hidden rounded-xl bg-white shadow-soft">
           {loading ? (

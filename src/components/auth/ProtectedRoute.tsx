@@ -19,6 +19,10 @@ export function ProtectedRoute({
 
   if (!user) return <Navigate to="/signin" replace />;
 
+  if (user.user_metadata?.must_change_password) {
+    return <Navigate to="/reset-password?temporary=1" replace />;
+  }
+
   if (profile && !profile.is_active) return <Navigate to="/pending" replace />;
 
   if (!roles.length) return <Navigate to="/pending" replace />;

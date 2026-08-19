@@ -1,10 +1,11 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   Menu,
   X,
   LogOut,
   ChevronDown,
+  ChevronRight,
   RefreshCw,
   Building2,
   UserRound,
@@ -28,8 +29,10 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
   const { profile, roles, signOut } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [canManageSeats, setCanManageSeats] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const defaultRole: UserRole = roles.includes("administrator")
     ? "administrator"
@@ -85,6 +88,19 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
   };
 
   const isCourseContext = !!courseNav;
+
+  useEffect(() => {
+    const activeSection = navSections.find((section) =>
+      section.items.some((item) =>
+        item.path.startsWith("/")
+          ? item.path === homePath
+            ? location.pathname === item.path
+            : location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)
+          : location.pathname.endsWith(`/${item.path}`),
+      ),
+    );
+    setExpandedSection((current) => activeSection?.label ?? current ?? navSections[0]?.label ?? null);
+  }, [homePath, location.pathname, navSections]);
 
   const accountMenu = (compact = false) => (
     <div className="relative">
@@ -202,10 +218,20 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
           <nav className="scrollbar-thin flex-1 overflow-y-auto px-3 py-4">
             {navSections.map((section, i) => (
               <div key={i} className="mb-4">
-                <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/48">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setExpandedSection((current) =>
+                      current === section.label ? null : section.label,
+                    )
+                  }
+                  className="mb-1 flex min-h-9 w-full items-center justify-between rounded-md px-3 text-left text-[10px] font-semibold uppercase tracking-[0.12em] text-white/55 transition-colors hover:bg-white/[0.06] hover:text-white"
+                  aria-expanded={expandedSection === section.label}
+                >
                   {section.label}
-                </p>
-                <div className="space-y-0.5">
+                  {expandedSection === section.label ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                </button>
+                <div className={`space-y-0.5 overflow-hidden ${expandedSection === section.label ? "block" : "hidden"}`}>
                   {section.items.map((item) => {
                     const Icon = item.icon;
                     const to = isCourseContext ? item.path : item.path;
