@@ -298,7 +298,7 @@ function MinePanel({ error, loading, rows, hasAnyRows, releasedCounts, hasFilter
           ? Math.min(100, Math.round(records.reduce((sum, item) => sum + Number(item.progress_percent), 0) / releasedCount))
           : 0;
         return (
-          <Link key={row.id} to={`/student/courses/${row.cohort_id}/home`} className="group min-w-0 rounded-xl bg-white p-5 shadow-soft transition-shadow hover:shadow-elevated focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500">
+          <Link key={row.id} to={`/student/courses/${row.cohort_id}/home`} className="surface-interactive group min-w-0 rounded-xl bg-white p-5 shadow-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500">
             <div className="flex min-w-0 gap-4">
               <CourseCover course={row.cohort.course} />
               <div className="min-w-0 flex-1">
@@ -351,7 +351,7 @@ function CatalogPanel({ error, loading, courses, hasAnyCourses, hasFilters, enro
       {courses.map((course) => {
         const enrolment = enrolledByCourse.get(course.id);
         return (
-          <article key={course.id} className="flex min-w-0 flex-col overflow-hidden rounded-xl bg-white shadow-soft">
+          <article key={course.id} className="surface-interactive flex min-w-0 flex-col overflow-hidden rounded-xl bg-white shadow-soft">
             {course.cover_image_url ? <img src={course.cover_image_url} alt="" className="aspect-video w-full object-cover" /> : <div className="flex aspect-video items-center justify-center bg-brand-50 text-brand-600"><Library size={28} /></div>}
             <div className="flex flex-1 flex-col p-5">
               <div className="flex items-start justify-between gap-3">

@@ -163,7 +163,7 @@ export function StudentDashboard() {
                       <article key={course.enrolment.id} className="grid gap-4 px-5 py-4 md:grid-cols-[minmax(0,1fr)_8rem_7rem_auto] md:items-center">
                         <div className="min-w-0"><h3 className="truncate text-sm font-semibold text-ink-900">{course.enrolment.cohort.course.title}</h3><p className="mt-0.5 truncate text-xs text-ink-500">{course.enrolment.cohort.name}</p></div>
                         <Metric label="Progress" value={`${course.progress}%`} />
-                        <Metric label="Grade" value={course.grade === null ? "—" : `${course.grade}%`} />
+                        <Metric label="Grade" value={course.grade === null ? "Not graded" : `${course.grade}%`} />
                         <Link to={`/student/courses/${course.enrolment.cohort_id}/home`} className="btn-secondary">Open</Link>
                       </article>
                     ))}

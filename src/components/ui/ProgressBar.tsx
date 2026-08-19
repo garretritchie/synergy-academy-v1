@@ -31,10 +31,10 @@ export function ProgressBar({
         </div>
       )}
       <div
-        className={`w-full overflow-hidden rounded-full bg-ink-200 ${heights[size]}`}
+        className={`w-full overflow-hidden rounded-full bg-ink-200/80 shadow-inner ring-1 ring-inset ring-ink-200 ${heights[size]}`}
       >
         <div
-          className="h-full rounded-full bg-brand-500 transition-[width] duration-500 ease-out"
+          className="h-full rounded-full bg-gradient-to-r from-brand-500 to-brand-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.28)] transition-[width] duration-500 ease-out"
           style={{ width: `${percent}%` }}
         />
       </div>

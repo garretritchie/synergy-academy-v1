@@ -33,12 +33,12 @@ export function CreationWizard({
             <li
               key={step}
               aria-current={active ? "step" : undefined}
-              className={`flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs font-semibold ${
+              className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-xs font-semibold transition-colors ${
                 active
-                  ? "bg-brand-50 text-brand-800"
+                  ? "border-brand-200 bg-gradient-to-r from-brand-50 to-white text-brand-800 shadow-sm"
                   : complete
-                    ? "text-success-700"
-                    : "text-ink-400"
+                    ? "border-success-100 bg-success-50/50 text-success-700"
+                    : "border-transparent text-ink-400"
               }`}
             >
               <span
@@ -57,7 +57,7 @@ export function CreationWizard({
           );
         })}
       </ol>
-      <div className="py-5">{children}</div>
+      <div className="py-5 motion-safe:animate-fade-in">{children}</div>
       <div className="flex items-center justify-between border-t border-ink-100 pt-4">
         <button
           type="button"

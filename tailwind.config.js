@@ -88,17 +88,18 @@ export default {
       borderRadius: {
         md: '0.375rem',
         lg: '0.5rem',
-        xl: '0.625rem',
-        '2xl': '0.75rem',
+        xl: '0.75rem',
+        '2xl': '1rem',
       },
       boxShadow: {
-        soft: '0 1px 2px rgba(8, 23, 43, 0.035), 0 8px 22px -20px rgba(8, 23, 43, 0.22)',
-        card: '0 1px 3px rgba(8, 23, 43, 0.045), 0 16px 34px -28px rgba(8, 23, 43, 0.28)',
-        elevated: '0 10px 32px -18px rgba(8, 23, 43, 0.28), 0 2px 8px rgba(8, 23, 43, 0.06)',
+        soft: '0 1px 2px rgba(8, 23, 43, 0.035), 0 10px 28px -22px rgba(17, 91, 165, 0.26)',
+        card: '0 1px 3px rgba(8, 23, 43, 0.045), 0 18px 42px -28px rgba(17, 91, 165, 0.3)',
+        elevated: '0 18px 52px -26px rgba(8, 23, 43, 0.34), 0 3px 12px rgba(8, 23, 43, 0.07)',
+        'brand-soft': '0 12px 30px -18px rgba(23, 111, 196, 0.5)',
       },
       animation: {
-        'fade-in': 'fadeIn 0.3s ease-out',
-        'slide-up': 'slideUp 0.3s ease-out',
+        'fade-in': 'fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
+        'slide-up': 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
         'slide-in-left': 'slideInLeft 0.3s ease-out',
       },
       keyframes: {

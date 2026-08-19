@@ -8,12 +8,12 @@ interface StatCardProps {
   accent?: "brand" | "success" | "warning" | "danger" | "neutral";
 }
 
-const accentStyles: Record<string, { bg: string; text: string }> = {
-  brand: { bg: "bg-brand-50", text: "text-brand-600" },
-  success: { bg: "bg-success-50", text: "text-success-600" },
-  warning: { bg: "bg-warning-50", text: "text-warning-600" },
-  danger: { bg: "bg-danger-50", text: "text-danger-600" },
-  neutral: { bg: "bg-ink-100", text: "text-ink-600" },
+const accentStyles: Record<string, { bg: string; text: string; line: string }> = {
+  brand: { bg: "bg-brand-50", text: "text-brand-600", line: "via-brand-500" },
+  success: { bg: "bg-success-50", text: "text-success-600", line: "via-success-500" },
+  warning: { bg: "bg-warning-50", text: "text-warning-600", line: "via-warning-500" },
+  danger: { bg: "bg-danger-50", text: "text-danger-600", line: "via-danger-500" },
+  neutral: { bg: "bg-ink-100", text: "text-ink-600", line: "via-ink-400" },
 };
 
 export function StatCard({
@@ -25,7 +25,11 @@ export function StatCard({
 }: StatCardProps) {
   const styles = accentStyles[accent];
   return (
-    <div className="card p-5">
+    <div className="card surface-interactive group relative overflow-hidden p-5">
+      <span
+        aria-hidden="true"
+        className={`absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-transparent ${styles.line} to-transparent opacity-70`}
+      />
       <div className="flex items-start justify-between">
         <div>
           <p className="text-xs font-semibold text-ink-500">{label}</p>
@@ -34,7 +38,7 @@ export function StatCard({
         </div>
         {icon && (
           <div
-            className={`flex h-8 w-8 items-center justify-center rounded-md ring-1 ring-inset ring-current/10 ${styles.bg} ${styles.text}`}
+            className={`flex h-9 w-9 items-center justify-center rounded-lg shadow-sm ring-1 ring-inset ring-current/10 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:scale-[1.03] ${styles.bg} ${styles.text}`}
           >
             {icon}
           </div>

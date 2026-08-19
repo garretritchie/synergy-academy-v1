@@ -79,6 +79,32 @@ async function resolveMessage(service: any, payload: any, userId: string, isAdmi
       relatedId: assignment.id,
     };
   }
+  if (payload.type === "certificate") {
+    const { data: certificate, error } = await service
+      .from("certificates")
+      .select("id,student_id,certificate_number,status,student_name_snapshot,course_title_snapshot,student:profiles!certificates_student_id_fkey(email,first_name,last_name),course:courses(title)")
+      .eq("id", payload.certificate_id)
+      .single();
+    if (error) throw error;
+    if (!isAdmin) throw new Error("Only an administrator may email certificates");
+    if (certificate.status !== "issued") throw new Error("Revoked certificates cannot be emailed");
+    const appUrl = Deno.env.get("APP_URL") || "https://academy.synergybahamas.com";
+    const verificationUrl = `${appUrl}/verify/${encodeURIComponent(certificate.certificate_number)}`;
+    const learnerName = certificate.student_name_snapshot
+      || [certificate.student.first_name, certificate.student.last_name].filter(Boolean).join(" ")
+      || "Learner";
+    const courseTitle = certificate.course_title_snapshot || certificate.course.title;
+    const body = `Congratulations ${learnerName}! Your certificate for ${courseTitle} is ready.\n\nView, verify, and download it here: ${verificationUrl}`;
+    return {
+      type: "certificate",
+      recipients: [{ email: certificate.student.email, userId: certificate.student_id }],
+      subject: `Your Synergy Academy certificate: ${courseTitle}`,
+      html: template("Your certificate is ready", body),
+      text: `Your certificate is ready\n\n${body}`,
+      relatedTable: "certificates",
+      relatedId: certificate.id,
+    };
+  }
   if (["welcome", "invitation", "test"].includes(payload.type)) {
     if (!isAdmin) throw new Error("Only an administrator may send this email");
     return {

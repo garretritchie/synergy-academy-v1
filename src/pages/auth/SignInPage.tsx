@@ -59,11 +59,13 @@ export function SignInPage() {
 
   return (
     <main className="min-h-[100dvh] bg-canvas font-sans text-navy lg:grid lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
-      <section className="relative hidden min-h-[100dvh] flex-col justify-between overflow-hidden bg-navy px-12 py-11 text-white lg:flex xl:px-16 xl:py-14">
+      <section className="relative hidden min-h-[100dvh] flex-col justify-between overflow-hidden bg-[linear-gradient(155deg,#07162a_0%,#0a2f5c_66%,#0d5aaa_145%)] px-12 py-11 text-white lg:flex xl:px-16 xl:py-14">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 overflow-hidden"
         >
+          <div className="absolute -left-36 top-1/3 h-80 w-80 rounded-full bg-brand-500/10 blur-3xl" />
+          <div className="absolute -right-24 top-12 h-72 w-72 rounded-full bg-brand-300/[0.07] blur-3xl" />
           <div className="absolute bottom-0 left-0 h-1 w-32 bg-accent-400" />
           <div className="absolute bottom-0 left-32 h-1 w-48 bg-brand-500" />
         </div>
@@ -96,7 +98,7 @@ export function SignInPage() {
             href="https://www.synergybahamas.com"
             target="_blank"
             rel="noreferrer"
-            className="group flex items-center justify-between rounded-lg text-white transition-colors hover:text-brand-200 focus-visible:text-brand-200 focus-visible:ring-brand-400 focus-visible:ring-offset-4 focus-visible:ring-offset-navy"
+            className="group -mx-3 flex items-center justify-between rounded-xl border border-transparent px-3 py-2 text-white transition-[background-color,border-color,color,transform] duration-200 hover:translate-x-0.5 hover:border-white/10 hover:bg-white/[0.06] hover:text-brand-200 focus-visible:text-brand-200 focus-visible:ring-brand-400 focus-visible:ring-offset-4 focus-visible:ring-offset-navy"
           >
             <span>
               <span className="block font-display text-sm font-bold">
@@ -118,8 +120,8 @@ export function SignInPage() {
         </div>
       </section>
 
-      <section className="flex min-h-[100dvh] items-center justify-center px-5 py-8 sm:px-10 lg:px-12">
-        <div className="w-full max-w-[29rem] rounded-xl border border-ink-100 bg-white px-6 py-8 shadow-elevated sm:px-9 sm:py-9">
+      <section className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_85%_4%,rgba(139,197,255,0.16),transparent_24rem)] px-5 py-8 sm:px-10 lg:px-12">
+        <div className="auth-panel w-full max-w-[29rem] px-6 py-8 sm:px-9 sm:py-9">
           <img
             src="/brand/synergy-bahamas-logo-full-color.png"
             alt="Synergy Bahamas"
@@ -210,7 +212,7 @@ export function SignInPage() {
 
           {demoMode && (
             <section
-              className="mt-5 overflow-hidden rounded-lg border border-ink-200 bg-ink-50/70"
+              className="mt-5 overflow-hidden rounded-xl border border-ink-200 bg-gradient-to-br from-ink-50/80 to-brand-50/50 shadow-sm"
               aria-labelledby="demo-access-title"
             >
               <div className="flex items-start gap-2.5 border-b border-ink-200 bg-white/60 px-3.5 py-3">
@@ -236,7 +238,7 @@ export function SignInPage() {
                 {demoAccounts.map((account) => (
                   <div
                     key={account.role}
-                    className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3.5 py-3"
+                    className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3.5 py-3 transition-colors hover:bg-white/80"
                   >
                     <div className="min-w-0 text-xs leading-4 text-slate-600">
                       <p className="font-semibold text-navy">
@@ -254,7 +256,7 @@ export function SignInPage() {
                       onClick={() =>
                         fillDemoAccount(account.email, account.password)
                       }
-                      className="min-h-10 rounded-md border border-ink-200 bg-white px-3 py-1.5 text-xs font-semibold text-brand-700 shadow-sm transition-colors hover:border-brand-300 hover:bg-brand-50 focus-visible:ring-brand-400"
+                      className="min-h-10 rounded-lg border border-ink-200 bg-white px-3 py-1.5 text-xs font-semibold text-brand-700 shadow-sm transition-[background-color,border-color,box-shadow,transform] hover:-translate-y-px hover:border-brand-300 hover:bg-brand-50 hover:shadow-soft focus-visible:ring-brand-400"
                       aria-label={`Use ${account.role.toLowerCase()} credentials`}
                     >
                       Use account

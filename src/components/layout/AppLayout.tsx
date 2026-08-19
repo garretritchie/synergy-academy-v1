@@ -107,14 +107,14 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
       <button
         type="button"
         onClick={() => setUserMenuOpen((open) => !open)}
-        className={`flex min-h-11 items-center rounded-lg border border-transparent transition-colors hover:border-ink-200 hover:bg-ink-50 ${
+        className={`account-trigger flex min-h-11 items-center rounded-lg ${
           compact ? "p-1" : "gap-3 px-2 py-1.5"
         }`}
         aria-expanded={userMenuOpen}
         aria-haspopup="menu"
         aria-label="Open account menu"
       >
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-700 ring-1 ring-brand-200">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-100 to-brand-200/70 text-xs font-bold text-brand-800 shadow-sm ring-1 ring-brand-200">
           {initials}
         </span>
         {!compact && (
@@ -127,7 +127,7 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
                 {activeRole}
               </span>
             </span>
-            <ChevronDown size={14} className="text-ink-400" />
+            <ChevronDown size={14} className={`text-ink-400 transition-transform duration-200 ${userMenuOpen ? "rotate-180" : ""}`} />
           </>
         )}
       </button>
@@ -135,7 +135,7 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
       {userMenuOpen && (
         <div
           role="menu"
-          className="absolute right-0 top-full z-[60] mt-2 w-64 overflow-hidden rounded-xl border border-ink-200 bg-white py-1.5 shadow-elevated"
+          className="absolute right-0 top-full z-[60] mt-2 w-64 overflow-hidden rounded-xl border border-ink-200 bg-white/95 py-1.5 shadow-elevated backdrop-blur-xl motion-safe:animate-slide-up"
         >
           <div className="border-b border-ink-100 px-3 py-2.5">
             <p className="truncate text-xs font-semibold text-ink-900">{fullName}</p>
@@ -148,7 +148,7 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
               setUserMenuOpen(false);
               navigate("/account/profile");
             }}
-            className="flex min-h-10 w-full items-center gap-2 px-3 py-2 text-sm text-ink-700 hover:bg-ink-50"
+            className="menu-item"
           >
             <UserRound size={15} /> Profile and account
           </button>
@@ -160,7 +160,7 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
                 setUserMenuOpen(false);
                 navigate("/organization/seats");
               }}
-              className="flex min-h-10 w-full items-center gap-2 border-t border-ink-100 px-3 py-2 text-sm text-ink-700 hover:bg-ink-50"
+              className="menu-item border-t border-ink-100"
             >
               <Building2 size={15} /> Company seats
             </button>
@@ -176,7 +176,7 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
                   role="menuitem"
                   key={role}
                   onClick={() => switchRole(role)}
-                  className={`flex min-h-10 w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm capitalize ${role === activeRole ? "bg-brand-50 text-brand-700" : "text-ink-700 hover:bg-ink-50"}`}
+                  className={`flex min-h-10 w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm capitalize transition-colors ${role === activeRole ? "bg-brand-50 font-semibold text-brand-700" : "text-ink-700 hover:bg-brand-50 hover:text-brand-800"}`}
                 >
                   <RefreshCw size={14} /> {role}
                 </button>
@@ -187,7 +187,7 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
             type="button"
             role="menuitem"
             onClick={handleSignOut}
-            className="flex min-h-10 w-full items-center gap-2 border-t border-ink-100 px-3 py-2 text-sm text-danger-600 hover:bg-danger-50"
+            className="flex min-h-10 w-full items-center gap-2.5 border-t border-ink-100 px-3 py-2 text-sm text-danger-600 transition-colors hover:bg-danger-50 hover:text-danger-700"
           >
             <LogOut size={15} /> Sign out
           </button>
@@ -200,13 +200,13 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
     <div className="flex h-[100dvh] min-h-[100dvh] overflow-hidden bg-canvas">
       {/* Desktop Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-60 transform border-r border-white/[0.08] bg-[linear-gradient(165deg,#08172b_0%,#0a3264_68%,#0b58ad_135%)] text-white shadow-[8px_0_30px_rgba(7,22,42,0.1)] transition-transform duration-300 lg:static lg:translate-x-0 ${
+        className={`app-sidebar fixed inset-y-0 left-0 z-50 w-60 transform border-r border-white/[0.08] text-white shadow-[8px_0_30px_rgba(7,22,42,0.16)] transition-transform duration-300 lg:static lg:translate-x-0 ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <div className="flex h-full flex-col">
           {/* Logo */}
-          <div className="flex h-[4.5rem] items-center border-b border-white/[0.08] px-5">
+          <div className="relative flex h-[4.5rem] items-center border-b border-white/[0.08] bg-white/[0.025] px-5 shadow-[0_1px_0_rgba(255,255,255,0.03)]">
             <img
               src="/brand/synergy-bahamas-logo-white.png"
               alt="Synergy Bahamas"
@@ -225,7 +225,7 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
                       current === section.label ? null : section.label,
                     )
                   }
-                  className="mb-1 flex min-h-9 w-full items-center justify-between rounded-md px-3 text-left text-[10px] font-semibold uppercase tracking-[0.12em] text-white/55 transition-colors hover:bg-white/[0.06] hover:text-white"
+                  className="mb-1 flex min-h-9 w-full items-center justify-between rounded-lg px-3 text-left text-[10px] font-semibold uppercase tracking-[0.12em] text-white/55 transition-colors hover:bg-white/[0.06] hover:text-white"
                   aria-expanded={expandedSection === section.label}
                 >
                   {section.label}
@@ -264,7 +264,7 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
       {/* Mobile overlay */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-40 bg-ink-900/50 lg:hidden"
+          className="fixed inset-0 z-40 bg-ink-950/55 backdrop-blur-[2px] lg:hidden"
           onClick={() => setMobileOpen(false)}
         />
       )}
@@ -272,10 +272,10 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
       {/* Main content area */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Mobile top bar */}
-        <header className="flex h-[3.75rem] items-center justify-between border-b border-ink-200/80 bg-white/95 px-4 backdrop-blur-sm lg:hidden">
+        <header className="app-topbar flex h-[3.75rem] items-center justify-between px-4 lg:hidden">
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
-            className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-600 hover:bg-ink-100"
+            className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-600 transition-colors hover:bg-brand-50 hover:text-brand-800"
             aria-label={mobileOpen ? "Close navigation" : "Open navigation"}
           >
             {mobileOpen ? <X size={20} /> : <Menu size={20} />}
@@ -285,14 +285,14 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
         </header>
 
         {/* Desktop top bar */}
-        <header className="hidden h-[3.75rem] shrink-0 items-center justify-between border-b border-ink-200/80 bg-white/95 px-7 backdrop-blur-sm lg:flex">
+        <header className="app-topbar hidden h-[3.75rem] shrink-0 items-center justify-between px-7 lg:flex">
           <AcademyBrandMark />
           {accountMenu()}
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto scrollbar-thin">
-          <div className="mx-auto max-w-[1400px] px-4 py-5 sm:px-6 lg:px-7 lg:py-6">
+        <main className="app-main flex-1 overflow-y-auto scrollbar-thin">
+          <div className="mx-auto max-w-[1400px] px-4 py-5 motion-safe:animate-fade-in sm:px-6 lg:px-7 lg:py-6">
             {children}
           </div>
         </main>

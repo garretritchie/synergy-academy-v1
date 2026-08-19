@@ -395,6 +395,11 @@ export interface Certificate {
   revoked_at: string | null;
   revoked_by: string | null;
   revocation_reason: string | null;
+  template_id?: string | null;
+  template_snapshot?: Record<string, unknown>;
+  skills_snapshot?: string[];
+  student_name_snapshot?: string | null;
+  course_title_snapshot?: string | null;
 }
 
 export interface ExternalSystemLink {

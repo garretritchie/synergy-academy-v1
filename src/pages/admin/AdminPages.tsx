@@ -4,7 +4,7 @@ export { AdminUsers } from "./AdminUsers";
 export { AdminAcademic } from "./AdminAcademic";
 export {
   AdminCommunications,
-  AdminReporting as AdminCertificateManagement,
   AdminSettings,
 } from "./AdminSupport";
 export { AdminReporting } from "./AdminReporting";
+export { AdminCertificateManagement } from "./AdminCertificates";

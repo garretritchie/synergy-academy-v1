@@ -17,11 +17,11 @@ export function AcademyBrandMark({
 
   return (
     <span
-      className={`inline-flex shrink-0 items-center ${compact ? "gap-2" : "gap-2.5"} ${className}`}
+      className={`group inline-flex shrink-0 items-center ${compact ? "gap-2" : "gap-2.5"} ${className}`}
       aria-label="Synergy Academy. Skills for What’s Next."
     >
       <span
-        className={`flex shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-sm ring-1 ${
+        className={`flex shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-brand-400 via-brand-600 to-brand-800 text-white shadow-brand-soft ring-1 transition-transform duration-200 group-hover:-translate-y-px ${
           tone === "light" ? "ring-white/20" : "ring-brand-700/10"
         } ${compact ? "h-7 w-7" : "h-8 w-8"}`}
         aria-hidden="true"

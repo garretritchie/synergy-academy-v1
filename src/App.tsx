@@ -17,6 +17,7 @@ import { StudentDashboard } from "@/pages/student/StudentDashboard";
 import { StudentCourses } from "@/pages/student/StudentCourses";
 import { StudentMessages } from "@/pages/student/StudentMessages";
 import { StudentCertificates } from "@/pages/student/StudentCertificates";
+import { StudentCertificateDetail } from "@/pages/student/StudentCertificateDetail";
 import { StudentProfile } from "@/pages/student/StudentProfile";
 
 import { CourseHome } from "@/pages/student/course/CourseHome";
@@ -156,6 +157,10 @@ function AppRoutes() {
       <Route path="/courses/:slug" element={<PublicCourseDetail />} />
       <Route path="/categories/:categorySlug" element={<PublicCourses />} />
       <Route
+        path="/verify"
+        element={<CertificateVerification />}
+      />
+      <Route
         path="/verify/:certificateNumber"
         element={<CertificateVerification />}
       />
@@ -207,6 +212,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={["student"]}>
             <StudentCertificates />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/student/certificates/:certificateId"
+        element={
+          <ProtectedRoute allowedRoles={["student"]}>
+            <StudentCertificateDetail />
           </ProtectedRoute>
         }
       />

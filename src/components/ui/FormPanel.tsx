@@ -17,7 +17,7 @@ export function FormPanel({
   actionLabel?: string;
 }) {
   return (
-    <section className="rounded-xl bg-white shadow-soft">
+    <section className="page-section overflow-hidden">
       <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-base font-semibold text-ink-900">{title}</h2>
@@ -35,7 +35,7 @@ export function FormPanel({
         </button>
       </div>
       {open && (
-        <div className="border-t border-ink-100 px-5 py-5">{children}</div>
+        <div className="border-t border-ink-100 bg-gradient-to-b from-ink-50/55 to-white px-5 py-5 motion-safe:animate-slide-up">{children}</div>
       )}
     </section>
   );

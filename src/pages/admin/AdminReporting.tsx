@@ -302,7 +302,7 @@ export function AdminReporting() {
                 <option value="">Select a cohort</option>
                 {cohorts.map((cohort) => (
                   <option key={cohort.id} value={cohort.id}>
-                    {cohort.course.title} — {cohort.name}
+                    {cohort.course.title} / {cohort.name}
                   </option>
                 ))}
               </select>
@@ -363,8 +363,8 @@ export function AdminReporting() {
                             <p className="mt-0.5 text-ink-500">{row.student.email}</p>
                           </td>
                           <td className="px-5 py-4 capitalize text-ink-600">{row.status}</td>
-                          <td className="px-5 py-4 font-semibold text-ink-900">{row.currentGrade === null ? "—" : `${row.currentGrade}%`}</td>
-                          <td className="px-5 py-4 font-semibold text-ink-900">{row.attendanceRate === null ? "—" : `${row.attendanceRate}%`}</td>
+                          <td className="px-5 py-4 font-semibold text-ink-900">{row.currentGrade === null ? "Not available" : `${row.currentGrade}%`}</td>
+                          <td className="px-5 py-4 font-semibold text-ink-900">{row.attendanceRate === null ? "Not available" : `${row.attendanceRate}%`}</td>
                           <td className="px-5 py-4 tabular-nums text-ink-600">{row.present} / {row.late} / {row.absent} / {row.excused}</td>
                           <td className="px-5 py-4 tabular-nums text-ink-600">{row.notMarked}</td>
                         </tr>

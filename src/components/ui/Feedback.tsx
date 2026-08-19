@@ -18,7 +18,7 @@ export function Alert({
   return (
     <div
       role={tone === "error" ? "alert" : "status"}
-      className={`flex items-start gap-2.5 rounded-lg border px-3.5 py-3 text-sm leading-5 ${styles}`}
+      className={`flex items-start gap-3 rounded-xl border px-4 py-3.5 text-sm leading-5 shadow-sm ${styles}`}
     >
       <Icon className="mt-0.5 shrink-0" size={16} />
       {children}
@@ -52,9 +52,9 @@ export function SubmitButton({
 export function TableSkeleton({ rows = 4 }: { rows?: number }) {
   return (
     <div className="space-y-3 p-5" aria-label="Loading" aria-live="polite">
-      <div className="h-4 w-40 animate-pulse rounded bg-ink-100" />
+      <div className="h-4 w-40 animate-pulse rounded bg-gradient-to-r from-ink-100 via-brand-50 to-ink-100" />
       {Array.from({ length: rows }).map((_, index) => (
-        <div key={index} className="h-12 animate-pulse rounded-lg bg-ink-50" />
+        <div key={index} className="h-12 animate-pulse rounded-lg border border-ink-100 bg-gradient-to-r from-ink-50 via-white to-brand-50/40" />
       ))}
     </div>
   );
