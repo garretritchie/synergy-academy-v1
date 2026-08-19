@@ -3,13 +3,18 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   ArrowRight,
+  BookOpen,
   CheckCircle2,
+  ChevronRight,
   Copy,
   Download,
   ExternalLink,
   HelpCircle,
+  ListTree,
+  LockKeyhole,
   PanelRight,
   PlayCircle,
+  X,
 } from "lucide-react";
 import { CourseLayout } from "./CourseLayout";
 import { Alert, TableSkeleton } from "@/components/ui/Feedback";
@@ -23,6 +28,22 @@ type LessonRow = Lesson & {
   module: { title: string; course_id: string };
 };
 type LessonNavigation = { id: string; title: string };
+type OutlineLesson = LessonNavigation & {
+  display_order: number;
+  estimated_minutes: number | null;
+  module: {
+    id: string;
+    title: string;
+    course_id: string;
+    display_order: number;
+  };
+};
+type OutlineModule = {
+  id: string;
+  title: string;
+  display_order: number;
+  lessons: OutlineLesson[];
+};
 export function LessonPage() {
   const { cohortId, lessonId } = useParams<{
     cohortId: string;
@@ -39,9 +60,14 @@ export function LessonPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [activeNugget, setActiveNugget] = useState(0);
+  const [outlineOpen, setOutlineOpen] = useState(false);
+  const [outlineLessons, setOutlineLessons] = useState<OutlineLesson[]>([]);
+  const [completedLessonIds, setCompletedLessonIds] = useState<string[]>([]);
+  const [releasedLessonIds, setReleasedLessonIds] = useState<string[]>([]);
   useEffect(() => {
     if (!cohortId || !lessonId || !user) return;
     setActiveNugget(0);
+    setOutlineOpen(false);
     void (async () => {
       const [lessonResult, enrolmentResult] = await Promise.all([
         supabase
@@ -103,25 +129,51 @@ export function LessonPage() {
           });
           if (startError) setError(startError.message);
         }
-        const { data: availableLessons, error: navigationError } = await supabase
-          .from("lessons")
-          .select("id,title,display_order,module:modules!inner(course_id,display_order)")
-          .eq("module.course_id", lessonRow.module.course_id)
-          .eq("is_published", true);
-        if (!navigationError && availableLessons) {
-          const ordered = [...availableLessons].sort((left, right) => {
+        const [navigationResult, courseProgressResult, releaseResult] =
+          await Promise.all([
+            supabase
+              .from("lessons")
+              .select(
+                "id,title,display_order,estimated_minutes,module:modules!inner(id,title,course_id,display_order)",
+              )
+              .eq("module.course_id", lessonRow.module.course_id)
+              .eq("is_published", true),
+            supabase
+              .from("progress_records")
+              .select("lesson_id,status")
+              .eq("cohort_id", cohortId)
+              .eq("student_id", user.id),
+            supabase.rpc("get_released_lesson_ids", {
+              cohort_uuid: cohortId,
+            }),
+          ]);
+        if (!navigationResult.error && navigationResult.data) {
+          const ordered = [...navigationResult.data].sort((left, right) => {
             const leftModule = left.module as unknown as { display_order: number };
             const rightModule = right.module as unknown as { display_order: number };
             return (
               leftModule.display_order - rightModule.display_order ||
               left.display_order - right.display_order
             );
-          });
-          const currentIndex = ordered.findIndex((item) => item.id === lessonId);
-          setPreviousLesson(currentIndex > 0 ? ordered[currentIndex - 1] : null);
+          }) as unknown as OutlineLesson[];
+          const released = releaseResult.error
+            ? ordered.map((item) => item.id)
+            : ((releaseResult.data ?? []) as string[]);
+          const navigable = ordered.filter((item) => released.includes(item.id));
+          const currentIndex = navigable.findIndex((item) => item.id === lessonId);
+          setOutlineLessons(ordered);
+          setReleasedLessonIds(released);
+          setCompletedLessonIds(
+            (courseProgressResult.data ?? [])
+              .filter((record) => record.status === "completed")
+              .map((record) => record.lesson_id),
+          );
+          setPreviousLesson(
+            currentIndex > 0 ? navigable[currentIndex - 1] : null,
+          );
           setNextLesson(
-            currentIndex >= 0 && currentIndex < ordered.length - 1
-              ? ordered[currentIndex + 1]
+            currentIndex >= 0 && currentIndex < navigable.length - 1
+              ? navigable[currentIndex + 1]
               : null,
           );
         }
@@ -129,7 +181,15 @@ export function LessonPage() {
       setLoading(false);
     })();
   }, [cohortId, lessonId, user]);
-  const markComplete = async () => {
+  useEffect(() => {
+    if (!outlineOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOutlineOpen(false);
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [outlineOpen]);
+  const markComplete = async (continueToNext = false) => {
     if (!lessonId || !cohortId || !user) return;
     setSaving(true);
     setError("");
@@ -151,6 +211,12 @@ export function LessonPage() {
         );
       if (upsertError) throw upsertError;
       setComplete(true);
+      setCompletedLessonIds((current) =>
+        current.includes(lessonId) ? current : [...current, lessonId],
+      );
+      if (continueToNext && nextLesson) {
+        navigate(`/student/courses/${cohortId}/learn/${nextLesson.id}`);
+      }
     } catch (caught) {
       setError(getErrorMessage(caught));
     } finally {
@@ -164,6 +230,34 @@ export function LessonPage() {
   const activeBlocks = lessonWorkspace.nuggets[activeNugget] ?? [];
   const isLastNugget =
     activeNugget === Math.max(0, lessonWorkspace.nuggets.length - 1);
+  const lessonPartCount = Math.max(1, lessonWorkspace.nuggets.length);
+  const outlineModules = useMemo(() => {
+    const groups = new Map<
+      string,
+      OutlineModule
+    >();
+    for (const outlineLesson of outlineLessons) {
+      const module = outlineLesson.module;
+      if (!groups.has(module.id)) {
+        groups.set(module.id, {
+          id: module.id,
+          title: module.title,
+          display_order: module.display_order,
+          lessons: [],
+        });
+      }
+      groups.get(module.id)?.lessons.push(outlineLesson);
+    }
+    return [...groups.values()].sort(
+      (left, right) => left.display_order - right.display_order,
+    );
+  }, [outlineLessons]);
+  const currentLessonIndex = outlineLessons.findIndex(
+    (item) => item.id === lessonId,
+  );
+  const completedOutlineCount = outlineLessons.filter((item) =>
+    completedLessonIds.includes(item.id),
+  ).length;
   return (
     <CourseLayout>
       {loading ? (
@@ -173,14 +267,25 @@ export function LessonPage() {
       ) : !lesson ? (
         <Alert>{error || "Lesson not found."}</Alert>
       ) : (
-        <article className="mx-auto max-w-6xl space-y-5">
-          <button
-            className="btn-ghost -ml-2"
-            onClick={() => navigate(`/student/courses/${cohortId}/learn`)}
-          >
-            <ArrowLeft size={16} />
-            Curriculum
-          </button>
+        <article className="mx-auto max-w-6xl space-y-5 pb-28 sm:pb-20">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setOutlineOpen(true)}
+            >
+              <ListTree size={16} />
+              Course outline
+              <span className="rounded-md bg-brand-50 px-2 py-0.5 text-xs tabular-nums text-brand-700">
+                {completedOutlineCount}/{outlineLessons.length}
+              </span>
+            </button>
+            {currentLessonIndex >= 0 && (
+              <p className="text-xs font-medium text-ink-500">
+                Lesson {currentLessonIndex + 1} of {outlineLessons.length}
+              </p>
+            )}
+          </div>
           {error && <Alert>{error}</Alert>}
           <header className="rounded-2xl bg-[#0a1628] px-5 py-5 text-white shadow-[0_18px_45px_-32px_rgba(10,22,40,0.8)] sm:px-6 sm:py-6">
             <p className="text-xs font-semibold text-brand-200">
@@ -230,52 +335,10 @@ export function LessonPage() {
                     </div>
                   </div>
                   <div className="flex-1 py-5 sm:py-6">
-                    <div className="mx-auto max-w-[72ch] space-y-5">
-                      {activeBlocks.map((block) => (
-                        <LessonBlockView
-                          key={block.id}
-                          block={block}
-                          cohortId={cohortId || ""}
-                          embedded
-                        />
-                      ))}
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-3 border-t border-ink-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
-                    <button
-                      type="button"
-                      className="btn-secondary w-full sm:w-auto"
-                      disabled={activeNugget === 0}
-                      onClick={() => setActiveNugget((current) => Math.max(0, current - 1))}
-                    >
-                      <ArrowLeft size={16} /> Previous part
-                    </button>
-                    {!isLastNugget ? (
-                      <button
-                        type="button"
-                        className="btn-primary w-full sm:w-auto"
-                        onClick={() =>
-                          setActiveNugget((current) =>
-                            Math.min(lessonWorkspace.nuggets.length - 1, current + 1),
-                          )
-                        }
-                      >
-                        Next part <ArrowRight size={16} />
-                      </button>
-                    ) : complete ? (
-                      <span className="inline-flex items-center justify-center gap-2 text-sm font-medium text-success-700">
-                        <CheckCircle2 size={18} /> Lesson completed
-                      </span>
-                    ) : (
-                      <button
-                        type="button"
-                        disabled={saving}
-                        className="btn-primary w-full !bg-success-600 hover:!bg-success-700 sm:w-auto"
-                        onClick={() => void markComplete()}
-                      >
-                        {saving ? "Saving..." : "Mark lesson complete"}
-                      </button>
-                    )}
+                    <LessonPartContent
+                      blocks={activeBlocks}
+                      cohortId={cohortId || ""}
+                    />
                   </div>
                 </>
               ) : (
@@ -308,26 +371,103 @@ export function LessonPage() {
               )}
             </aside>
           </div>
-          <footer className="flex flex-col gap-3 rounded-xl bg-[#0a1628] p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
-            <div className="flex items-center gap-2">
-              {previousLesson ? (
-                <Link className="btn-secondary w-full sm:w-auto" to={`/student/courses/${cohortId}/learn/${previousLesson.id}`}>
-                  <ArrowLeft size={16} /> Previous
+          <footer className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-navy/95 px-3 py-3 shadow-elevated backdrop-blur-sm sm:px-6">
+            <div className="mx-auto grid max-w-6xl grid-cols-2 items-center gap-2 sm:grid-cols-[1fr_auto_1fr] sm:gap-3">
+            <div>
+              {activeNugget > 0 ? (
+                <button
+                  type="button"
+                  className="btn-secondary w-full sm:w-auto"
+                  onClick={() =>
+                    setActiveNugget((current) => Math.max(0, current - 1))
+                  }
+                >
+                  <ArrowLeft size={16} /> Previous part
+                </button>
+              ) : previousLesson ? (
+                <Link
+                  className="btn-secondary w-full sm:w-auto"
+                  to={`/student/courses/${cohortId}/learn/${previousLesson.id}`}
+                >
+                  <ArrowLeft size={16} /> Previous lesson
                 </Link>
               ) : (
-                <Link className="btn-secondary w-full sm:w-auto" to={`/student/courses/${cohortId}/learn`}>
-                  <ArrowLeft size={16} /> Curriculum
-                </Link>
+                <button
+                  type="button"
+                  className="btn-secondary w-full sm:w-auto"
+                  onClick={() => setOutlineOpen(true)}
+                >
+                  <ListTree size={16} /> Course outline
+                </button>
               )}
             </div>
-            <div className="flex items-center justify-end gap-3">
-              {nextLesson && (
-                <Link className="btn-primary w-full sm:w-auto" to={`/student/courses/${cohortId}/learn/${nextLesson.id}`}>
+            <div className="order-first col-span-2 text-center sm:order-none sm:col-span-1">
+              <p className="text-xs font-semibold text-white">
+                Part {activeNugget + 1} of {lessonPartCount}
+              </p>
+              <p className="mt-0.5 text-xs text-white/60">
+                {complete ? "Lesson completed" : "Lesson in progress"}
+              </p>
+            </div>
+            <div className="flex justify-end">
+              {!isLastNugget ? (
+                <button
+                  type="button"
+                  className="btn-primary w-full sm:w-auto"
+                  onClick={() =>
+                    setActiveNugget((current) =>
+                      Math.min(
+                        lessonWorkspace.nuggets.length - 1,
+                        current + 1,
+                      ),
+                    )
+                  }
+                >
+                  Next part <ArrowRight size={16} />
+                </button>
+              ) : !complete ? (
+                <button
+                  type="button"
+                  disabled={saving}
+                  className="btn-primary w-full !bg-success-600 hover:!bg-success-700 sm:w-auto"
+                  onClick={() => void markComplete(Boolean(nextLesson))}
+                >
+                  {saving
+                    ? "Saving..."
+                    : nextLesson
+                      ? "Complete and continue"
+                      : "Complete lesson"}
+                  {!saving && nextLesson && <ArrowRight size={16} />}
+                </button>
+              ) : nextLesson ? (
+                <Link
+                  className="btn-primary w-full sm:w-auto"
+                  to={`/student/courses/${cohortId}/learn/${nextLesson.id}`}
+                >
                   Next lesson <ArrowRight size={16} />
                 </Link>
+              ) : (
+                <button
+                  type="button"
+                  className="btn-secondary w-full sm:w-auto"
+                  onClick={() => setOutlineOpen(true)}
+                >
+                  Review course outline
+                </button>
               )}
             </div>
+            </div>
           </footer>
+          {outlineOpen && (
+            <CourseOutlineDrawer
+              modules={outlineModules}
+              currentLessonId={lessonId || ""}
+              cohortId={cohortId || ""}
+              completedLessonIds={completedLessonIds}
+              releasedLessonIds={releasedLessonIds}
+              onClose={() => setOutlineOpen(false)}
+            />
+          )}
         </article>
       )}
     </CourseLayout>
@@ -347,10 +487,23 @@ function buildLessonWorkspace(blocks: LessonBlock[]) {
   const ordered = [...blocks].sort((a, b) => a.display_order - b.display_order);
   const railBlocks: LessonBlock[] = [];
   const nuggets: LessonBlock[][] = [];
+  const groupedPartIndexes = new Map<string, number>();
   let pendingStructure: LessonBlock[] = [];
   for (const block of ordered) {
     if (RAIL_BLOCK_TYPES.has(block.block_type)) {
       railBlocks.push(block);
+      continue;
+    }
+    const partId = String(block.content.part_id || "");
+    if (partId) {
+      const existingIndex = groupedPartIndexes.get(partId);
+      if (existingIndex === undefined) {
+        groupedPartIndexes.set(partId, nuggets.length);
+        nuggets.push([...pendingStructure, block]);
+      } else {
+        nuggets[existingIndex].push(...pendingStructure, block);
+      }
+      pendingStructure = [];
       continue;
     }
     if (["heading", "divider"].includes(block.block_type)) {
@@ -362,6 +515,243 @@ function buildLessonWorkspace(blocks: LessonBlock[]) {
   }
   if (pendingStructure.length) nuggets.push(pendingStructure);
   return { nuggets, railBlocks };
+}
+
+function LessonPartContent({
+  blocks,
+  cohortId,
+}: {
+  blocks: LessonBlock[];
+  cohortId: string;
+}) {
+  const layout = String(
+    blocks.find((block) => block.content.part_layout)?.content.part_layout ||
+      "stacked",
+  );
+  const mediaBlocks = blocks.filter((block) =>
+    ["image", "video"].includes(block.block_type),
+  );
+  const textBlocks = blocks.filter(
+    (block) => !["image", "video"].includes(block.block_type),
+  );
+  const renderBlocks = (items: LessonBlock[]) => (
+    <div className="space-y-5">
+      {items.map((block) => (
+        <LessonBlockView
+          key={block.id}
+          block={block}
+          cohortId={cohortId}
+          embedded
+        />
+      ))}
+    </div>
+  );
+
+  if (layout === "split" && mediaBlocks.length > 0 && textBlocks.length > 0) {
+    return (
+      <div className="grid items-start gap-6 lg:grid-cols-2">
+        <div className="min-w-0">{renderBlocks(mediaBlocks)}</div>
+        <div className="min-w-0">{renderBlocks(textBlocks)}</div>
+      </div>
+    );
+  }
+
+  return <div className="mx-auto max-w-[72ch]">{renderBlocks(blocks)}</div>;
+}
+
+function CourseOutlineDrawer({
+  modules,
+  currentLessonId,
+  cohortId,
+  completedLessonIds,
+  releasedLessonIds,
+  onClose,
+}: {
+  modules: OutlineModule[];
+  currentLessonId: string;
+  cohortId: string;
+  completedLessonIds: string[];
+  releasedLessonIds: string[];
+  onClose: () => void;
+}) {
+  const totalLessons = modules.reduce(
+    (total, module) => total + module.lessons.length,
+    0,
+  );
+  const completedLessons = modules
+    .flatMap((module) => module.lessons)
+    .filter((lesson) => completedLessonIds.includes(lesson.id)).length;
+  const completionPercent = totalLessons
+    ? Math.round((completedLessons / totalLessons) * 100)
+    : 0;
+
+  return (
+    <div className="fixed inset-0 z-[70] flex justify-end" role="presentation">
+      <button
+        type="button"
+        className="absolute inset-0 bg-navy/55"
+        aria-label="Close course outline"
+        onClick={onClose}
+      />
+      <aside
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="course-outline-title"
+        className="relative flex h-full w-full max-w-md flex-col bg-canvas shadow-elevated"
+      >
+        <header className="border-b border-ink-200 bg-white px-5 py-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-brand-700">
+                Course progress
+              </p>
+              <h2 id="course-outline-title" className="mt-1 text-xl text-ink-950">
+                Course outline
+              </h2>
+              <p className="mt-1 text-sm text-ink-500">
+                {completedLessons} of {totalLessons} lessons complete
+              </p>
+            </div>
+            <button
+              type="button"
+              className="flex h-10 w-10 items-center justify-center rounded-lg text-ink-500 hover:bg-ink-100"
+              aria-label="Close course outline"
+              onClick={onClose}
+            >
+              <X size={19} />
+            </button>
+          </div>
+          <div
+            className="mt-4 h-2 overflow-hidden rounded-full bg-ink-100"
+            role="progressbar"
+            aria-label="Course completion"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={completionPercent}
+          >
+            <div
+              className="h-full rounded-full bg-brand-600 transition-[width] duration-300"
+              style={{ width: `${completionPercent}%` }}
+            />
+          </div>
+        </header>
+
+        <div className="scrollbar-thin flex-1 overflow-y-auto p-4 sm:p-5">
+          <div className="space-y-4">
+            {modules.map((module, moduleIndex) => {
+              const moduleCompleted = module.lessons.filter((lesson) =>
+                completedLessonIds.includes(lesson.id),
+              ).length;
+              return (
+                <section
+                  key={module.id}
+                  className="overflow-hidden rounded-xl border border-ink-100 bg-white shadow-soft"
+                >
+                  <div className="border-b border-ink-100 px-4 py-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold text-brand-700">
+                          Module {moduleIndex + 1}
+                        </p>
+                        <h3 className="mt-0.5 text-sm font-semibold text-ink-900">
+                          {module.title}
+                        </h3>
+                      </div>
+                      <span className="text-xs tabular-nums text-ink-400">
+                        {moduleCompleted}/{module.lessons.length}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="p-1.5">
+                    {module.lessons.map((outlineLesson) => {
+                      const completed = completedLessonIds.includes(
+                        outlineLesson.id,
+                      );
+                      const released = releasedLessonIds.includes(
+                        outlineLesson.id,
+                      );
+                      const current = outlineLesson.id === currentLessonId;
+                      const content = (
+                        <>
+                          <span
+                            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                              completed
+                                ? "bg-success-50 text-success-700"
+                                : current
+                                  ? "bg-brand-600 text-white"
+                                  : released
+                                    ? "bg-brand-50 text-brand-700"
+                                    : "bg-ink-100 text-ink-400"
+                            }`}
+                          >
+                            {completed ? (
+                              <CheckCircle2 size={16} />
+                            ) : released ? (
+                              <BookOpen size={15} />
+                            ) : (
+                              <LockKeyhole size={14} />
+                            )}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-sm font-medium text-ink-800">
+                              {outlineLesson.title}
+                            </span>
+                            <span className="mt-0.5 block text-xs text-ink-400">
+                              {completed
+                                ? "Completed"
+                                : current
+                                  ? "Current lesson"
+                                  : released
+                                    ? `${outlineLesson.estimated_minutes ?? 0} minutes`
+                                    : "Locked"}
+                            </span>
+                          </span>
+                          {released && (
+                            <ChevronRight size={16} className="text-ink-300" />
+                          )}
+                        </>
+                      );
+                      return released ? (
+                        <Link
+                          key={outlineLesson.id}
+                          to={`/student/courses/${cohortId}/learn/${outlineLesson.id}`}
+                          onClick={onClose}
+                          aria-current={current ? "page" : undefined}
+                          className={`flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors ${
+                            current
+                              ? "bg-brand-50"
+                              : "hover:bg-ink-50"
+                          }`}
+                        >
+                          {content}
+                        </Link>
+                      ) : (
+                        <div
+                          key={outlineLesson.id}
+                          className="flex items-center gap-3 rounded-lg px-3 py-2.5 opacity-75"
+                        >
+                          {content}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+        </div>
+        <footer className="border-t border-ink-200 bg-white p-4">
+          <Link
+            className="btn-secondary w-full"
+            to={`/student/courses/${cohortId}/learn`}
+            onClick={onClose}
+          >
+            View curriculum page
+          </Link>
+        </footer>
+      </aside>
+    </div>
+  );
 }
 
 function LessonBlockView({

@@ -25,6 +25,14 @@ import type { Course, Lesson, LessonBlock, Module } from "@/types";
 
 const UPLOAD_BLOCK_TYPES = ["image", "video", "resource"];
 const MAX_ASSET_BYTES = 250 * 1024 * 1024;
+const RAIL_BLOCK_TYPES = new Set([
+  "assignment_reference",
+  "quiz_reference",
+  "knowledge_check",
+  "resource",
+  "external_link",
+  "callout",
+]);
 
 type ModuleTree = Module & {
   lessons: Array<Lesson & { lesson_blocks: LessonBlock[] }>;
@@ -48,6 +56,8 @@ export function AdminAcademic() {
   const [blockAnswer, setBlockAnswer] = useState("");
   const [blockAlt, setBlockAlt] = useState("");
   const [blockCaption, setBlockCaption] = useState("");
+  const [blockPart, setBlockPart] = useState("new");
+  const [blockPartLayout, setBlockPartLayout] = useState("stacked");
   const [blockFile, setBlockFile] = useState<File | null>(null);
   const [blockStoredPath, setBlockStoredPath] = useState("");
   const [blockStoredName, setBlockStoredName] = useState("");
@@ -91,6 +101,29 @@ export function AdminAcademic() {
     () => courses.find((item) => item.id === courseId),
     [courses, courseId],
   );
+  const selectedLesson = useMemo(
+    () =>
+      modules
+        .flatMap((module) => module.lessons)
+        .find((lesson) => lesson.id === blockLesson),
+    [blockLesson, modules],
+  );
+  const partOptions = useMemo(() => {
+    const options: Array<{ id: string; label: string }> = [];
+    const seen = new Set<string>();
+    const blocks = [...(selectedLesson?.lesson_blocks ?? [])].sort(
+      (left, right) => left.display_order - right.display_order,
+    );
+    for (const block of blocks) {
+      if (RAIL_BLOCK_TYPES.has(block.block_type)) continue;
+      const configuredPart = String(block.content.part_id || "");
+      const id = configuredPart || `legacy:${block.id}`;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      options.push({ id, label: `Part ${options.length + 1}` });
+    }
+    return options;
+  }, [selectedLesson]);
   const addModule = async (event: FormEvent) => {
     event.preventDefault();
     setSaving(true);
@@ -147,9 +180,58 @@ export function AdminAcademic() {
       setSaving(false);
       return;
     }
-    const lesson = modules
-      .flatMap((module) => module.lessons)
-      .find((item) => item.id === blockLesson);
+    const lesson = selectedLesson;
+    const isRailBlock = RAIL_BLOCK_TYPES.has(blockType);
+    let resolvedPartId: string | undefined;
+    if (!isRailBlock) {
+      resolvedPartId =
+        blockPart === "new" ? `part-${crypto.randomUUID()}` : blockPart;
+      if (resolvedPartId.startsWith("legacy:")) {
+        const anchorId = resolvedPartId.slice("legacy:".length);
+        const anchor = lesson?.lesson_blocks.find((block) => block.id === anchorId);
+        resolvedPartId = `part-${anchorId}`;
+        if (anchor) {
+          const { error: anchorError } = await supabase
+            .from("lesson_blocks")
+            .update({
+              content: {
+                ...anchor.content,
+                part_id: resolvedPartId,
+                part_layout: blockPartLayout,
+              },
+            })
+            .eq("id", anchorId);
+          if (anchorError) {
+            setError(getErrorMessage(anchorError));
+            setSaving(false);
+            return;
+          }
+        }
+      } else {
+        const partMembers = (lesson?.lesson_blocks ?? []).filter(
+          (block) => String(block.content.part_id || "") === resolvedPartId,
+        );
+        const layoutResults = await Promise.all(
+          partMembers.map((block) =>
+            supabase
+              .from("lesson_blocks")
+              .update({
+                content: {
+                  ...block.content,
+                  part_layout: blockPartLayout,
+                },
+              })
+              .eq("id", block.id),
+          ),
+        );
+        const layoutError = layoutResults.find((result) => result.error)?.error;
+        if (layoutError) {
+          setError(getErrorMessage(layoutError));
+          setSaving(false);
+          return;
+        }
+      }
+    }
     const content: Record<string, string | undefined> =
       blockType === "text"
         ? { text: blockContent }
@@ -184,6 +266,10 @@ export function AdminAcademic() {
               title: blockType === "callout" ? "Key point" : "Resource",
               body: blockContent,
             };
+    if (resolvedPartId) {
+      content.part_id = resolvedPartId;
+      content.part_layout = blockPartLayout;
+    }
     if (blockType === "image") {
       content.alt = blockAlt;
       content.caption = blockCaption;
@@ -246,6 +332,8 @@ export function AdminAcademic() {
       setBlockLesson("");
       setBlockAlt("");
       setBlockCaption("");
+      setBlockPart("new");
+      setBlockPartLayout("stacked");
       setBlockFile(null);
       setBlockStoredPath("");
       setBlockStoredName("");
@@ -266,6 +354,8 @@ export function AdminAcademic() {
     setBlockAnswer(content.answer || "");
     setBlockAlt(content.alt || "");
     setBlockCaption(content.caption || "");
+    setBlockPart(content.part_id || `legacy:${block.id}`);
+    setBlockPartLayout(content.part_layout || "stacked");
     setBlockFile(null);
     setBlockStoredPath(content.storage_path || "");
     setBlockStoredName(content.file_name || "");
@@ -604,6 +694,13 @@ export function AdminAcademic() {
                                               <span className="badge-neutral capitalize">
                                                 {block.block_type}
                                               </span>
+                                              {!RAIL_BLOCK_TYPES.has(block.block_type) && (
+                                                <span className="badge-brand">
+                                                  {content.part_id
+                                                    ? "Grouped part"
+                                                    : "Single part"}
+                                                </span>
+                                              )}
                                               <span className="min-w-0 flex-1 truncate text-ink-600">
                                                 {content.url ||
                                                   content.text ||
@@ -761,7 +858,13 @@ export function AdminAcademic() {
                       required
                       className="input"
                       value={blockLesson}
-                      onChange={(event) => setBlockLesson(event.target.value)}
+                      onChange={(event) => {
+                        setBlockLesson(event.target.value);
+                        if (!editingBlockId) {
+                          setBlockPart("new");
+                          setBlockPartLayout("stacked");
+                        }
+                      }}
                     >
                       <option value="">Select lesson</option>
                       {modules.flatMap((module) =>
@@ -804,6 +907,42 @@ export function AdminAcademic() {
                       <option value="divider">Divider</option>
                     </select>
                   </Field>
+                  {!RAIL_BLOCK_TYPES.has(blockType) && (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <Field
+                        label="Lesson part"
+                        hint="Combine text and media by assigning blocks to the same part."
+                      >
+                        <select
+                          className="input"
+                          value={blockPart}
+                          onChange={(event) => setBlockPart(event.target.value)}
+                        >
+                          <option value="new">Start a new part</option>
+                          {partOptions.map((part) => (
+                            <option key={part.id} value={part.id}>
+                              Add to {part.label.toLowerCase()}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                      <Field
+                        label="Part layout"
+                        hint="Split places media beside text on wider screens."
+                      >
+                        <select
+                          className="input"
+                          value={blockPartLayout}
+                          onChange={(event) =>
+                            setBlockPartLayout(event.target.value)
+                          }
+                        >
+                          <option value="stacked">Stacked</option>
+                          <option value="split">Split media and text</option>
+                        </select>
+                      </Field>
+                    </div>
+                  )}
                   {UPLOAD_BLOCK_TYPES.includes(blockType) ? (
                     <Field
                       label={blockType === "image" ? "Image file" : blockType === "video" ? "Video file" : "Resource file"}

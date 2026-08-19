@@ -53,7 +53,7 @@ The frontend uses only the anon key. Row-level security remains the authorizatio
 ## First-course operating sequence
 
 1. Create a course and keep it in draft while authoring.
-2. Add modules, lessons, and content blocks in **Curriculum builder**.
+2. Add modules, lessons, and content blocks in **Curriculum builder**. Blocks can start a new lesson part or join an existing part, allowing text and uploaded image/video content to share one stacked or split learning view.
 3. Publish the required modules and lessons, then publish the course.
 4. Create a cohort and assign its lead instructor.
 5. Assign student roles and enrol the learners.

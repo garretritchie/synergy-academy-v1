@@ -16,29 +16,29 @@ colors:
   danger: "#dc2626"
 typography:
   display:
-    fontFamily: "Montserrat Variable, Montserrat, system-ui, sans-serif"
+    fontFamily: "Montserrat, system-ui, sans-serif"
     fontSize: "3rem"
     fontWeight: 700
     lineHeight: 1.08
     letterSpacing: "-0.03em"
   headline:
-    fontFamily: "Montserrat Variable, Montserrat, system-ui, sans-serif"
+    fontFamily: "Montserrat, system-ui, sans-serif"
     fontSize: "1.5rem"
     fontWeight: 700
     lineHeight: 1.25
     letterSpacing: "-0.025em"
   title:
-    fontFamily: "Montserrat Variable, Montserrat, system-ui, sans-serif"
+    fontFamily: "Montserrat, system-ui, sans-serif"
     fontSize: "1rem"
     fontWeight: 600
     lineHeight: 1.5
   body:
-    fontFamily: "Open Sans Variable, Open Sans, system-ui, sans-serif"
+    fontFamily: "Open Sans, system-ui, sans-serif"
     fontSize: "0.875rem"
     fontWeight: 400
     lineHeight: 1.5
   label:
-    fontFamily: "Open Sans Variable, Open Sans, system-ui, sans-serif"
+    fontFamily: "Open Sans, system-ui, sans-serif"
     fontSize: "0.875rem"
     fontWeight: 600
     lineHeight: 1.25
@@ -117,8 +117,8 @@ The palette combines institutional navy, clear action blue, and cool neutral sur
 
 ## Typography
 
-**Display Font:** Locally served Montserrat Variable (with Montserrat and system sans fallbacks)
-**Body Font:** Locally served Open Sans Variable (with Open Sans and system sans fallbacks)
+**Display Font:** Montserrat (with system sans fallbacks)
+**Body Font:** Open Sans (with system sans fallbacks)
 
 **Character:** Montserrat gives headings a confident geometric structure while Open Sans keeps dense academic and administrative copy neutral and readable.
 
@@ -153,6 +153,12 @@ Depth is ambient and restrained. White surfaces separate primarily through backg
 Controls use gently curved 8px corners, standard surfaces use 12px corners, and only large authentication or feature panels use 16px corners. Pills belong to compact statuses and badges. Circular shapes are reserved for avatars, unread markers, and small identity accents.
 
 ## Components
+
+### Lesson player
+
+- **Course orientation:** A persistent outline drawer shows every published module and lesson with completed, current, available, and locked states.
+- **Content parts:** One lesson part may contain multiple ordered blocks. Stacked is the default; split layout places image or video media beside text on wider screens and collapses to one column on mobile.
+- **Navigation:** A persistent contextual bar moves backward or forward through parts first, then through lessons, without presenting two competing navigation systems.
 
 ### Buttons
 

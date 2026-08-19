@@ -4,8 +4,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Open Sans Variable', 'Open Sans', 'system-ui', '-apple-system', 'sans-serif'],
-        display: ['Montserrat Variable', 'Montserrat', 'system-ui', '-apple-system', 'sans-serif'],
+        sans: ['Open Sans', 'system-ui', '-apple-system', 'sans-serif'],
+        display: ['Montserrat', 'system-ui', '-apple-system', 'sans-serif'],
       },
       colors: {
         navy: '#0a1628',
