@@ -1,0 +1,302 @@
+import { useEffect, useState, type ReactNode } from "react";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import {
+  Menu,
+  X,
+  LogOut,
+  ChevronDown,
+  ChevronRight,
+  RefreshCw,
+  Building2,
+  UserRound,
+} from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import {
+  getNavForRole,
+  getHomePathForRole,
+  type NavSection,
+} from "@/config/navigation";
+import type { UserRole } from "@/types";
+import { supabase } from "@/lib/supabase";
+import { AcademyBrandMark } from "@/components/brand/AcademyBrandMark";
+
+interface AppLayoutProps {
+  children: ReactNode;
+  courseNav?: NavSection[];
+}
+
+export function AppLayout({ children, courseNav }: AppLayoutProps) {
+  const { profile, roles, signOut } = useAuth();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [expandedSection, setExpandedSection] = useState<string | null>(null);
+  const [canManageSeats, setCanManageSeats] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const defaultRole: UserRole = roles.includes("administrator")
+    ? "administrator"
+    : roles.includes("instructor")
+      ? "instructor"
+      : "student";
+
+  const [activeRole, setActiveRole] = useState<UserRole>(() => {
+    const saved = window.localStorage.getItem(
+      "synergy-active-role",
+    ) as UserRole | null;
+    return saved ?? defaultRole;
+  });
+
+  useEffect(() => {
+    if (!roles.includes(activeRole)) setActiveRole(defaultRole);
+  }, [activeRole, defaultRole, roles]);
+
+  useEffect(() => {
+    if (!profile?.id) return;
+    void supabase
+      .from("organization_members")
+      .select("id")
+      .eq("user_id", profile.id)
+      .eq("status", "active")
+      .in("member_role", ["owner", "seat_manager"])
+      .limit(1)
+      .then(({ data }) => setCanManageSeats(Boolean(data?.length)));
+  }, [profile?.id]);
+
+  const navSections = courseNav ?? getNavForRole(activeRole);
+  const homePath = getHomePathForRole(activeRole);
+
+  const fullName =
+    [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") ||
+    "User";
+  const initials =
+    [profile?.first_name?.[0], profile?.last_name?.[0]]
+      .filter(Boolean)
+      .join("")
+      .toUpperCase() || "U";
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/signin");
+  };
+
+  const switchRole = (role: UserRole) => {
+    window.localStorage.setItem("synergy-active-role", role);
+    setActiveRole(role);
+    setUserMenuOpen(false);
+    navigate(getHomePathForRole(role));
+  };
+
+  const isCourseContext = !!courseNav;
+
+  useEffect(() => {
+    const activeSection = navSections.find((section) =>
+      section.items.some((item) =>
+        item.path.startsWith("/")
+          ? item.path === homePath
+            ? location.pathname === item.path
+            : location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)
+          : location.pathname.endsWith(`/${item.path}`),
+      ),
+    );
+    setExpandedSection((current) => activeSection?.label ?? current ?? navSections[0]?.label ?? null);
+  }, [homePath, location.pathname, navSections]);
+
+  const accountMenu = (compact = false) => (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setUserMenuOpen((open) => !open)}
+        className={`flex min-h-11 items-center rounded-lg border border-transparent transition-colors hover:border-ink-200 hover:bg-ink-50 ${
+          compact ? "p-1" : "gap-3 px-2 py-1.5"
+        }`}
+        aria-expanded={userMenuOpen}
+        aria-haspopup="menu"
+        aria-label="Open account menu"
+      >
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-700 ring-1 ring-brand-200">
+          {initials}
+        </span>
+        {!compact && (
+          <>
+            <span className="min-w-0 text-left">
+              <span className="block max-w-40 truncate text-xs font-semibold text-ink-900">
+                {fullName}
+              </span>
+              <span className="block text-xs capitalize leading-4 text-ink-500">
+                {activeRole}
+              </span>
+            </span>
+            <ChevronDown size={14} className="text-ink-400" />
+          </>
+        )}
+      </button>
+
+      {userMenuOpen && (
+        <div
+          role="menu"
+          className="absolute right-0 top-full z-[60] mt-2 w-64 overflow-hidden rounded-xl border border-ink-200 bg-white py-1.5 shadow-elevated"
+        >
+          <div className="border-b border-ink-100 px-3 py-2.5">
+            <p className="truncate text-xs font-semibold text-ink-900">{fullName}</p>
+            <p className="truncate text-xs leading-5 text-ink-500">{profile?.email}</p>
+          </div>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setUserMenuOpen(false);
+              navigate("/account/profile");
+            }}
+            className="flex min-h-10 w-full items-center gap-2 px-3 py-2 text-sm text-ink-700 hover:bg-ink-50"
+          >
+            <UserRound size={15} /> Profile and account
+          </button>
+          {canManageSeats && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setUserMenuOpen(false);
+                navigate("/organization/seats");
+              }}
+              className="flex min-h-10 w-full items-center gap-2 border-t border-ink-100 px-3 py-2 text-sm text-ink-700 hover:bg-ink-50"
+            >
+              <Building2 size={15} /> Company seats
+            </button>
+          )}
+          {roles.length > 1 && (
+            <div className="border-t border-ink-100 px-1.5 py-1">
+              <p className="px-2 py-1 text-xs font-semibold uppercase tracking-[0.1em] text-ink-400">
+                Switch workspace
+              </p>
+              {roles.map((role) => (
+                <button
+                  type="button"
+                  role="menuitem"
+                  key={role}
+                  onClick={() => switchRole(role)}
+                  className={`flex min-h-10 w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm capitalize ${role === activeRole ? "bg-brand-50 text-brand-700" : "text-ink-700 hover:bg-ink-50"}`}
+                >
+                  <RefreshCw size={14} /> {role}
+                </button>
+              ))}
+            </div>
+          )}
+          <button
+            type="button"
+            role="menuitem"
+            onClick={handleSignOut}
+            className="flex min-h-10 w-full items-center gap-2 border-t border-ink-100 px-3 py-2 text-sm text-danger-600 hover:bg-danger-50"
+          >
+            <LogOut size={15} /> Sign out
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="flex h-[100dvh] min-h-[100dvh] overflow-hidden bg-canvas">
+      {/* Desktop Sidebar */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-60 transform border-r border-white/[0.08] bg-[linear-gradient(165deg,#08172b_0%,#0a3264_68%,#0b58ad_135%)] text-white shadow-[8px_0_30px_rgba(7,22,42,0.1)] transition-transform duration-300 lg:static lg:translate-x-0 ${
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="flex h-full flex-col">
+          {/* Logo */}
+          <div className="flex h-[4.5rem] items-center border-b border-white/[0.08] px-5">
+            <img
+              src="/brand/synergy-bahamas-logo-white.png"
+              alt="Synergy Bahamas"
+              className="h-auto w-[7.75rem]"
+            />
+          </div>
+
+          {/* Nav */}
+          <nav className="scrollbar-thin flex-1 overflow-y-auto px-3 py-4">
+            {navSections.map((section, i) => (
+              <div key={i} className="mb-4">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setExpandedSection((current) =>
+                      current === section.label ? null : section.label,
+                    )
+                  }
+                  className="mb-1 flex min-h-9 w-full items-center justify-between rounded-md px-3 text-left text-[10px] font-semibold uppercase tracking-[0.12em] text-white/55 transition-colors hover:bg-white/[0.06] hover:text-white"
+                  aria-expanded={expandedSection === section.label}
+                >
+                  {section.label}
+                  {expandedSection === section.label ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                </button>
+                <div className={`space-y-0.5 overflow-hidden ${expandedSection === section.label ? "block" : "hidden"}`}>
+                  {section.items.map((item) => {
+                    const Icon = item.icon;
+                    const to = isCourseContext ? item.path : item.path;
+                    return (
+                      <NavLink
+                        key={item.path}
+                        to={to}
+                        end={
+                          item.path === homePath ||
+                          (isCourseContext && item.path === "home")
+                        }
+                        className={({ isActive }) =>
+                          `sidebar-link ${isActive ? "sidebar-link-active" : ""}`
+                        }
+                        onClick={() => setMobileOpen(false)}
+                      >
+                        <Icon size={16} strokeWidth={1.8} />
+                        <span>{item.label}</span>
+                      </NavLink>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </nav>
+
+        </div>
+      </aside>
+
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-ink-900/50 lg:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {/* Main content area */}
+      <div className="flex flex-1 flex-col overflow-hidden">
+        {/* Mobile top bar */}
+        <header className="flex h-[3.75rem] items-center justify-between border-b border-ink-200/80 bg-white/95 px-4 backdrop-blur-sm lg:hidden">
+          <button
+            onClick={() => setMobileOpen(!mobileOpen)}
+            className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-600 hover:bg-ink-100"
+            aria-label={mobileOpen ? "Close navigation" : "Open navigation"}
+          >
+            {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+          <AcademyBrandMark compact />
+          {accountMenu(true)}
+        </header>
+
+        {/* Desktop top bar */}
+        <header className="hidden h-[3.75rem] shrink-0 items-center justify-between border-b border-ink-200/80 bg-white/95 px-7 backdrop-blur-sm lg:flex">
+          <AcademyBrandMark />
+          {accountMenu()}
+        </header>
+
+        {/* Page content */}
+        <main className="flex-1 overflow-y-auto scrollbar-thin">
+          <div className="mx-auto max-w-[1400px] px-4 py-5 sm:px-6 lg:px-7 lg:py-6">
+            {children}
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}

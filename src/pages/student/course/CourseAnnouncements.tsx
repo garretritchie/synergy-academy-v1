@@ -1,0 +1,1 @@
+export { CourseAnnouncements } from "./CourseSupportPages";

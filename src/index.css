@@ -1,0 +1,190 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+    font-synthesis: none;
+  }
+
+  html {
+    @apply bg-canvas;
+    text-rendering: optimizeLegibility;
+  }
+
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply m-0 min-w-[320px] bg-canvas font-sans text-sm leading-6 text-ink-800 antialiased;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11', 'kern';
+    font-optical-sizing: auto;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display font-semibold tracking-tight;
+    text-wrap: balance;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  button,
+  a {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2;
+  }
+
+  a {
+    @apply underline-offset-4;
+  }
+
+  ::selection {
+    @apply bg-brand-200 text-brand-900;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold leading-5 transition-[background-color,border-color,color,box-shadow,transform] duration-150 focus-visible:ring-2 focus-visible:ring-offset-2 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-primary {
+    @apply btn border border-brand-700/20 bg-brand-600 text-white shadow-sm hover:bg-brand-700 hover:shadow-soft focus:ring-brand-500;
+  }
+
+  .btn-secondary {
+    @apply btn border border-ink-200 bg-white text-ink-700 shadow-sm hover:border-ink-300 hover:bg-ink-50 focus:ring-ink-400;
+  }
+
+  .btn-ghost {
+    @apply btn text-ink-600 hover:bg-ink-100 focus:ring-ink-400;
+  }
+
+  .btn-danger {
+    @apply btn bg-danger-600 text-white hover:bg-danger-700 focus:ring-danger-500;
+  }
+
+  .card {
+    @apply rounded-xl border border-ink-200/80 bg-white shadow-soft;
+  }
+
+  .card-elevated {
+    @apply rounded-xl border border-ink-200/80 bg-white shadow-card;
+  }
+
+  .input {
+    @apply min-h-10 w-full rounded-lg border border-ink-300 bg-white px-3.5 py-2 text-sm leading-5 text-ink-900 shadow-sm placeholder:text-ink-400 transition-[border-color,box-shadow] focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/15 disabled:cursor-not-allowed disabled:bg-ink-50 disabled:text-ink-500;
+  }
+
+  .label {
+    @apply mb-1.5 block text-sm font-semibold leading-5 text-ink-700;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+
+  .badge-brand {
+    @apply badge bg-brand-100 text-brand-700;
+  }
+
+  .badge-success {
+    @apply badge bg-success-100 text-success-700;
+  }
+
+  .badge-warning {
+    @apply badge bg-warning-100 text-warning-700;
+  }
+
+  .badge-danger {
+    @apply badge bg-danger-100 text-danger-700;
+  }
+
+  .badge-neutral {
+    @apply badge bg-ink-100 text-ink-600;
+  }
+
+  .sidebar-link {
+    @apply flex min-h-10 items-center gap-2.5 rounded-md px-3 py-2 text-[13px] font-medium text-white/75 transition-colors hover:bg-white/[0.08] hover:text-white focus-visible:ring-white/80 focus-visible:ring-offset-navy;
+  }
+
+  .sidebar-link-active {
+    @apply bg-white/[0.12] font-semibold text-white shadow-[inset_2px_0_0_rgba(255,255,255,0.92)] hover:bg-white/[0.16] hover:text-white;
+  }
+
+  .premium-surface {
+    @apply rounded-xl border border-ink-200/80 bg-white shadow-soft;
+  }
+
+  .page-section {
+    @apply rounded-xl border border-ink-200/80 bg-white shadow-soft;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: theme('colors.ink.300') transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-ink-300 rounded-full;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .lesson-reading-progress {
+    width: 100%;
+    transform: scaleX(0);
+    transform-origin: left;
+    animation: lesson-reading-progress linear;
+    animation-timeline: scroll(root);
+  }
+}
+
+@keyframes lesson-reading-progress {
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+@media (pointer: coarse) {
+  .btn,
+  .input,
+  .sidebar-link {
+    min-height: 44px;
+  }
+}
