@@ -1,0 +1,188 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-18T20:39:14.6945441-04:00",
+  "title": "Design System: Synergy Academy",
+  "extensions": {
+    "colorMeta": {
+      "synergy-navy": {
+        "role": "primary",
+        "displayName": "Synergy Navy",
+        "canonical": "#0a1628",
+        "tonalRamp": [
+          "#02050a",
+          "#07101e",
+          "#0a1628",
+          "#18304f",
+          "#3d5875",
+          "#7890a7",
+          "#bdc9d4",
+          "#eef2f6"
+        ]
+      },
+      "academy-blue": {
+        "role": "primary",
+        "displayName": "Academy Blue",
+        "canonical": "#1c7bf5",
+        "tonalRamp": [
+          "#061a33",
+          "#0b376c",
+          "#1056aa",
+          "#1c7bf5",
+          "#59a2fa",
+          "#91c2fc",
+          "#c5defe",
+          "#eff7ff"
+        ]
+      },
+      "warm-gold": {
+        "role": "secondary",
+        "displayName": "Warm Gold",
+        "canonical": "#ffc107",
+        "tonalRamp": [
+          "#332600",
+          "#6b5000",
+          "#a77d00",
+          "#ffc107",
+          "#ffd653",
+          "#ffe594",
+          "#fff1c7",
+          "#fffaf0"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Cool Paper",
+        "canonical": "#f8fafc",
+        "tonalRamp": [
+          "#171a1d",
+          "#343a40",
+          "#59616a",
+          "#818b95",
+          "#abb4bd",
+          "#ced4da",
+          "#e8edf1",
+          "#f8fafc"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Brand Display",
+        "purpose": "Identity statements and rare feature headings."
+      },
+      "headline": {
+        "displayName": "Page Headline",
+        "purpose": "Page and authentication headings."
+      },
+      "body": {
+        "displayName": "Interface Body",
+        "purpose": "Instructions, records, and learning content."
+      }
+    },
+    "shadows": [
+      {
+        "name": "soft",
+        "value": "0 2px 8px -2px rgba(0,0,0,.08), 0 1px 3px -1px rgba(0,0,0,.06)",
+        "purpose": "Default grouped surfaces."
+      },
+      {
+        "name": "elevated",
+        "value": "0 8px 32px -8px rgba(0,0,0,.12), 0 4px 12px -4px rgba(0,0,0,.06)",
+        "purpose": "Menus and temporary layers."
+      }
+    ],
+    "motion": [
+      {
+        "name": "state-transition",
+        "value": "200ms ease-out",
+        "purpose": "Hover, focus, drawer, and menu state changes."
+      }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The main action within a form or operational panel.",
+      "html": "<button class=\"ds-btn-primary\">Save changes</button>",
+      "css": ".ds-btn-primary{background:#1c7bf5;color:#fff;border:0;border-radius:8px;padding:10px 16px;font:600 14px 'Open Sans',sans-serif;transition:background .2s ease-out,box-shadow .2s ease-out}.ds-btn-primary:hover{background:#1463e0}.ds-btn-primary:focus-visible{outline:2px solid #1c7bf5;outline-offset:2px}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "A supporting action that does not compete with the primary task.",
+      "html": "<button class=\"ds-btn-secondary\">Cancel</button>",
+      "css": ".ds-btn-secondary{background:#fff;color:#334155;border:1px solid #e2e8f0;border-radius:8px;padding:10px 16px;font:600 14px 'Open Sans',sans-serif;transition:background .2s ease-out}.ds-btn-secondary:hover{background:#f8fafc}.ds-btn-secondary:focus-visible{outline:2px solid #64748b;outline-offset:2px}"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "A persistent-label academic or administrative field.",
+      "html": "<label class=\"ds-field\">Course title<input value=\"AI Business Essentials\"></label>",
+      "css": ".ds-field{display:grid;gap:6px;color:#334155;font:600 14px 'Open Sans',sans-serif}.ds-field input{background:#fff;color:#0f172a;border:1px solid #e2e8f0;border-radius:8px;padding:10px 14px;font:400 14px 'Open Sans',sans-serif}.ds-field input:focus-visible{outline:2px solid rgba(28,123,245,.3);border-color:#1c7bf5}"
+    },
+    {
+      "name": "Status Chip",
+      "kind": "chip",
+      "description": "Compact semantic state for records and workflow status.",
+      "html": "<span class=\"ds-chip\">Published</span>",
+      "css": ".ds-chip{display:inline-flex;align-items:center;border-radius:999px;background:#dcfce7;color:#15803d;padding:2px 10px;font:600 12px 'Open Sans',sans-serif}"
+    },
+    {
+      "name": "Operational Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "The standard white grouped surface on cool paper.",
+      "html": "<section class=\"ds-card\"><h2>Course progress</h2><p>Released work and completion records appear here.</p></section>",
+      "css": ".ds-card{background:#fff;color:#0f172a;border-radius:12px;padding:20px;box-shadow:0 2px 8px -2px rgba(0,0,0,.08),0 1px 3px -1px rgba(0,0,0,.06);font-family:'Open Sans',sans-serif}.ds-card h2{margin:0;font:600 16px Montserrat,sans-serif}.ds-card p{margin:8px 0 0;color:#64748b;font-size:14px;line-height:1.5}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Guided Academy",
+    "overview": "Synergy Academy is a calm, structured adult-learning workspace. The visual world is polished and direct rather than decorative.",
+    "keyCharacteristics": [
+      "Strong navy-and-white brand framing",
+      "Blue reserved for navigation, focus, and primary action",
+      "Compact operational typography with clear hierarchy",
+      "Soft ambient depth and consistently rounded surfaces",
+      "Responsive navigation that preserves the same information architecture"
+    ],
+    "rules": [
+      {
+        "name": "The Blue Means Action Rule",
+        "body": "Blue identifies something interactive, selected, or in focus; it does not wash entire content areas without purpose.",
+        "section": "colors"
+      },
+      {
+        "name": "The Two-Family Rule",
+        "body": "Montserrat carries identity and hierarchy; Open Sans carries instructions, data, and extended reading.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tonal-First Rule",
+        "body": "Use background contrast before adding elevation; a surface does not need both a prominent border and a prominent shadow.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do use the supplied full logo assets wherever a full brand signature is appropriate.",
+      "Do keep one obvious primary action per form or operational panel.",
+      "Do provide loading, empty, error, disabled, hover, and keyboard-focus states.",
+      "Do use tabular numerals for changing counts, grades, and percentages."
+    ],
+    "donts": [
+      "Don't introduce unrelated gradients, glass effects, hard-offset shadows, or decorative texture.",
+      "Don't replace Lucide icons with emoji or platform glyphs.",
+      "Don't use warm gold as a general call-to-action color.",
+      "Don't expose academic data in decorative or public-facing components."
+    ]
+  }
+}

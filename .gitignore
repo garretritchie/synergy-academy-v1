@@ -24,3 +24,9 @@ dist-ssr
 
 # Internal-only project prompts
 Prompts/
+
+# Local Supabase CLI state
+supabase/.temp/
+
+# Generated local QA captures
+tmp/

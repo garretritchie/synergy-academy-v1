@@ -1,0 +1,4 @@
+project_id = "synergy-academy"
+
+[functions.request-password-reset]
+verify_jwt = false
