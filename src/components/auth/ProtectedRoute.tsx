@@ -1,0 +1,30 @@
+import { Navigate } from 'react-router-dom';
+import type { ReactNode } from 'react';
+import { useAuth } from '@/context/AuthContext';
+import { FullPageSpinner } from '@/components/ui/Spinner';
+import type { UserRole } from '@/types';
+
+interface ProtectedRouteProps {
+  children: ReactNode;
+  allowedRoles?: UserRole[];
+}
+
+export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
+  const { user, roles, loading } = useAuth();
+
+  if (loading) return <FullPageSpinner message="Loading your workspace..." />;
+
+  if (!user) return <Navigate to="/signin" replace />;
+
+  if (allowedRoles && !allowedRoles.some((r) => roles.includes(r))) {
+    const homePath = roles.includes('administrator')
+      ? '/admin'
+      : roles.includes('instructor')
+        ? '/instructor'
+        : '/student';
+    return <Navigate to={homePath} replace />;
+  }
+
+  return <>{children}</>;
+;
+}
