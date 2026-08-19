@@ -63,6 +63,8 @@ export function SignUpPage() {
         <img
           src="/brand/synergy-bahamas-logo-white.png"
           alt="Synergy Bahamas"
+          width="2810"
+          height="964"
           className="relative z-10 h-auto w-60 object-contain object-left"
         />
         <AcademyBrandMark tone="light" className="relative z-10 mt-3" />
@@ -107,6 +109,8 @@ export function SignUpPage() {
           <img
             src="/brand/synergy-bahamas-logo-full-color.png"
             alt="Synergy Bahamas"
+            width="2810"
+            height="964"
             className="mb-8 h-auto w-52 object-contain object-left lg:hidden"
           />
           <AcademyBrandMark compact className="-mt-5 mb-7 lg:hidden" />
@@ -150,10 +154,12 @@ export function SignUpPage() {
                   />
                   <input
                     id="firstName"
+                    name="given-name"
                     type="text"
                     required
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
+                    autoComplete="given-name"
                     placeholder="First name"
                     className="input pl-10"
                   />
@@ -165,10 +171,12 @@ export function SignUpPage() {
                 </label>
                 <input
                   id="lastName"
+                  name="family-name"
                   type="text"
                   required
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
+                  autoComplete="family-name"
                   placeholder="Last name"
                   className="input"
                 />
@@ -186,11 +194,13 @@ export function SignUpPage() {
                 />
                 <input
                   id="email"
+                  name="email"
                   type="email"
                   required
                   readOnly={Boolean(invitedRoles.length)}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
                   placeholder="you@example.com"
                   className="input pl-10 read-only:bg-ink-50"
                 />
@@ -208,11 +218,13 @@ export function SignUpPage() {
                 />
                 <input
                   id="password"
+                  name="new-password"
                   type="password"
                   required
                   minLength={10}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="new-password"
                   placeholder="At least 10 characters"
                   className="input pl-10"
                 />

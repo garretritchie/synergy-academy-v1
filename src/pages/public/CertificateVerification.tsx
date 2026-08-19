@@ -56,7 +56,7 @@ export function CertificateVerification() {
     <main className="min-h-[100dvh] bg-canvas px-4 py-8 sm:px-6 lg:py-12">
       <div className="mx-auto max-w-6xl">
         <header className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-          <Link to="/signin" aria-label="Synergy Academy sign in"><img src="/brand/synergy-bahamas-logo-full-color.png" alt="Synergy Bahamas" className="h-auto w-52" /></Link>
+          <Link to="/signin" aria-label="Synergy Academy sign in"><img src="/brand/synergy-bahamas-logo-full-color.png" alt="Synergy Bahamas" width="2810" height="964" className="h-auto w-52" /></Link>
           <AcademyBrandMark compact />
         </header>
 
@@ -90,7 +90,7 @@ export function CertificateVerification() {
                   <div className="mt-5 rounded-xl bg-brand-50/70 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-brand-800">Skills and key topics</p><ul className="mt-3 grid gap-2 text-sm text-ink-700 sm:grid-cols-2">{record.skills.map((skill) => <li key={skill} className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 shrink-0 text-brand-600" size={15} />{skill}</li>)}</ul></div>
                 )}
                 {record.status === "issued" && (
-                  <button className="btn-secondary mt-5" onClick={() => setShowCertificate((value) => !value)}><Award size={15} /> {showCertificate ? "Hide certificate" : "View full certificate"}</button>
+                  <button type="button" className="btn-secondary mt-5" onClick={() => setShowCertificate((value) => !value)}><Award size={15} /> {showCertificate ? "Hide certificate" : "View full certificate"}</button>
                 )}
               </div>
             ) : (
@@ -101,8 +101,8 @@ export function CertificateVerification() {
 
         {record?.status === "issued" && showCertificate && (
           <section className="mt-8">
-            <div className="mb-3 flex items-center justify-between"><h2 className="font-display text-lg font-semibold text-ink-900">Digital certificate</h2><button className="btn-primary" disabled={pdfBusy} onClick={() => void downloadPdf()}><Download size={15} /> {pdfBusy ? "Generating..." : "Generate PDF"}</button></div>
-            <div className="overflow-auto rounded-xl border border-ink-200 bg-ink-100 p-3 sm:p-6"><div className="mx-auto min-w-[720px] max-w-6xl shadow-elevated"><CertificateRenderer ref={certificateRef} certificate={record} /></div></div>
+            <div className="mb-3 flex items-center justify-between"><h2 className="font-display text-lg font-semibold text-ink-900">Digital certificate</h2><button type="button" className="btn-primary" disabled={pdfBusy} onClick={() => void downloadPdf()}><Download size={15} /> {pdfBusy ? "Generating..." : "Generate PDF"}</button></div>
+            <div className="overflow-hidden rounded-xl border border-ink-200 bg-ink-100 p-3 sm:p-6"><div className="mx-auto w-full max-w-6xl shadow-elevated"><CertificateRenderer ref={certificateRef} certificate={record} /></div></div>
           </section>
         )}
 

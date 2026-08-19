@@ -1,11 +1,29 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Award, Check, Copy, Download, Eye, ImageUp, Mail, Pencil, RotateCcw, ShieldCheck, Trash2 } from "lucide-react";
+import {
+  Award,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Copy,
+  Download,
+  Eye,
+  ImageUp,
+  Mail,
+  Pencil,
+  RotateCcw,
+  Search,
+  ShieldCheck,
+  SlidersHorizontal,
+  Trash2,
+  X,
+} from "lucide-react";
 import { Link } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Alert, TableSkeleton } from "@/components/ui/Feedback";
 import { CreationWizard } from "@/components/ui/CreationWizard";
 import { Field, FormPanel } from "@/components/ui/FormPanel";
+import { PageTabs } from "@/components/ui/PageTabs";
 import { CertificateRenderer } from "@/features/certificates/CertificateRenderer";
 import { downloadCertificatePdf } from "@/features/certificates/pdf";
 import {
@@ -38,6 +56,39 @@ type IssuedRow = {
   course: { title: string };
 };
 
+type CertificateStatusFilter = "all" | "issued" | "revoked";
+type CertificateSort = "newest" | "oldest" | "student" | "course";
+type CertificateWorkspaceTab = "directory" | "templates";
+
+const PAGE_SIZE = 25;
+const CERTIFICATE_SELECT = "id,certificate_number,issued_date,status,revocation_reason,student_name_snapshot,course_title_snapshot,student:profiles!certificates_student_id_fkey(first_name,last_name,email),course:courses(title)";
+const certificateSorts: Record<CertificateSort, { column: string; ascending: boolean }> = {
+  newest: { column: "issued_date", ascending: false },
+  oldest: { column: "issued_date", ascending: true },
+  student: { column: "student_name_snapshot", ascending: true },
+  course: { column: "course_title_snapshot", ascending: true },
+};
+
+function sanitizeCertificateSearch(value: string) {
+  return value.replace(/[,%_()]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function dateAfter(date: string) {
+  const [year, month, day] = date.split("-").map(Number);
+  const next = new Date(Date.UTC(year, month - 1, day + 1));
+  return next.toISOString().slice(0, 10);
+}
+
+function studentName(certificate: IssuedRow) {
+  return certificate.student_name_snapshot
+    || [certificate.student.first_name, certificate.student.last_name].filter(Boolean).join(" ")
+    || certificate.student.email;
+}
+
+function courseTitle(certificate: IssuedRow) {
+  return certificate.course_title_snapshot || certificate.course.title;
+}
+
 const emptyTemplate = {
   name: "Synergy Blue Completion",
   description: "A branded landscape certificate for successful course completion.",
@@ -65,7 +116,19 @@ export function AdminCertificateManagement() {
   const [templates, setTemplates] = useState<CertificateTemplate[]>([]);
   const [courses, setCourses] = useState<CourseOption[]>([]);
   const [issued, setIssued] = useState<IssuedRow[]>([]);
+  const [activeTab, setActiveTab] = useState<CertificateWorkspaceTab>("directory");
   const [loading, setLoading] = useState(true);
+  const [issuedLoading, setIssuedLoading] = useState(true);
+  const [issuedCount, setIssuedCount] = useState(0);
+  const [issuedTotals, setIssuedTotals] = useState({ issued: 0, revoked: 0 });
+  const [searchValue, setSearchValue] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<CertificateStatusFilter>("all");
+  const [courseFilter, setCourseFilter] = useState("");
+  const [issuedFrom, setIssuedFrom] = useState("");
+  const [issuedTo, setIssuedTo] = useState("");
+  const [sort, setSort] = useState<CertificateSort>("newest");
+  const [page, setPage] = useState(1);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [panelOpen, setPanelOpen] = useState(false);
@@ -80,23 +143,96 @@ export function AdminCertificateManagement() {
   const [revokingId, setRevokingId] = useState("");
   const [revocationReason, setRevocationReason] = useState("");
 
-  const load = useCallback(async () => {
+  const loadCatalog = useCallback(async () => {
     setLoading(true);
     setError("");
-    const [templateResult, courseResult, certificateResult] = await Promise.all([
+    const [templateResult, courseResult] = await Promise.all([
       supabase.from("certificate_templates").select("*").order("is_default", { ascending: false }).order("name"),
       supabase.from("courses").select("id,title,certificate_template_id,certificate_skills").order("title"),
-      supabase.from("certificates").select("id,certificate_number,issued_date,status,revocation_reason,student_name_snapshot,course_title_snapshot,student:profiles!certificates_student_id_fkey(first_name,last_name,email),course:courses(title)").order("issued_date", { ascending: false }).limit(50),
     ]);
-    const firstError = templateResult.error || courseResult.error || certificateResult.error;
+    const firstError = templateResult.error || courseResult.error;
     if (firstError) setError(`${firstError.message}. Apply migration 015 to activate certificate templates.`);
     if (!templateResult.error) setTemplates((templateResult.data ?? []) as unknown as CertificateTemplate[]);
     if (!courseResult.error) setCourses((courseResult.data ?? []) as unknown as CourseOption[]);
-    if (!certificateResult.error) setIssued((certificateResult.data ?? []) as unknown as IssuedRow[]);
     setLoading(false);
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  const loadCertificateTotals = useCallback(async () => {
+    const [issuedResult, revokedResult] = await Promise.all([
+      supabase.from("certificates").select("id", { count: "exact", head: true }).eq("status", "issued"),
+      supabase.from("certificates").select("id", { count: "exact", head: true }).eq("status", "revoked"),
+    ]);
+    const totalsError = issuedResult.error || revokedResult.error;
+    if (totalsError) {
+      setError(`${totalsError.message}. Apply migrations 015 and 016 to activate the certificate directory.`);
+      return;
+    }
+    setIssuedTotals({ issued: issuedResult.count ?? 0, revoked: revokedResult.count ?? 0 });
+  }, []);
+
+  const loadIssued = useCallback(async () => {
+    setIssuedLoading(true);
+    setError("");
+    const safeSearch = sanitizeCertificateSearch(debouncedSearch);
+    const rangeStart = (page - 1) * PAGE_SIZE;
+    const sortConfig = certificateSorts[sort];
+    let query = supabase
+      .from("certificates")
+      .select(CERTIFICATE_SELECT, { count: "exact" });
+
+    if (statusFilter !== "all") query = query.eq("status", statusFilter);
+    if (courseFilter) query = query.eq("course_id", courseFilter);
+    if (issuedFrom) query = query.gte("issued_date", `${issuedFrom}T00:00:00`);
+    if (issuedTo) query = query.lt("issued_date", `${dateAfter(issuedTo)}T00:00:00`);
+    if (safeSearch) {
+      query = query.or(
+        `certificate_number.ilike.%${safeSearch}%,student_name_snapshot.ilike.%${safeSearch}%,course_title_snapshot.ilike.%${safeSearch}%`,
+      );
+    }
+
+    const result = await query
+      .order(sortConfig.column, { ascending: sortConfig.ascending, nullsFirst: false })
+      .order("id", { ascending: sortConfig.ascending })
+      .range(rangeStart, rangeStart + PAGE_SIZE - 1);
+
+    if (result.error) {
+      setError(`${result.error.message}. Apply migrations 015 and 016 to activate the certificate directory.`);
+      setIssued([]);
+      setIssuedCount(0);
+    } else {
+      setIssued((result.data ?? []) as unknown as IssuedRow[]);
+      setIssuedCount(result.count ?? 0);
+    }
+    setIssuedLoading(false);
+  }, [courseFilter, debouncedSearch, issuedFrom, issuedTo, page, sort, statusFilter]);
+
+  useEffect(() => {
+    void Promise.all([loadCatalog(), loadCertificateTotals()]);
+  }, [loadCatalog, loadCertificateTotals]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setPage(1);
+      setDebouncedSearch(searchValue.trim());
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [searchValue]);
+
+  useEffect(() => { void loadIssued(); }, [loadIssued]);
+
+  const totalPages = Math.max(1, Math.ceil(issuedCount / PAGE_SIZE));
+  const resultStart = issuedCount === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const resultEnd = Math.min(page * PAGE_SIZE, issuedCount);
+  const filtersActive = Boolean(debouncedSearch || statusFilter !== "all" || courseFilter || issuedFrom || issuedTo);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
+  useEffect(() => {
+    setRevokingId("");
+    setRevocationReason("");
+  }, [courseFilter, debouncedSearch, issuedFrom, issuedTo, page, sort, statusFilter]);
 
   const preview = useMemo<CertificateViewModel>(() => ({
     ...sampleCertificate,
@@ -115,6 +251,7 @@ export function AdminCertificateManagement() {
   };
 
   const editTemplate = (template: CertificateTemplate) => {
+    setActiveTab("templates");
     setEditingId(template.id);
     setForm({
       name: template.name,
@@ -167,7 +304,7 @@ export function AdminCertificateManagement() {
       setNotice(editingId ? "Certificate template updated." : "Certificate template created and ready to use.");
       setPanelOpen(false);
       resetForm();
-      await load();
+      await loadCatalog();
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Could not save the certificate template");
     } finally { setSaving(false); }
@@ -176,13 +313,19 @@ export function AdminCertificateManagement() {
   const deleteTemplate = async (template: CertificateTemplate) => {
     if (!window.confirm(`Delete “${template.name}”? Issued certificates will keep their saved design snapshot.`)) return;
     const { error: deleteError } = await supabase.from("certificate_templates").delete().eq("id", template.id);
-    if (deleteError) setError(deleteError.message); else await load();
+    if (deleteError) setError(deleteError.message); else await loadCatalog();
   };
 
   const revokeCertificate = async (certificateId: string) => {
     if (!revocationReason.trim()) return;
     const { error: updateError } = await supabase.from("certificates").update({ status: "revoked", revocation_reason: revocationReason.trim(), revoked_at: new Date().toISOString(), revoked_by: user?.id }).eq("id", certificateId);
-    if (updateError) setError(updateError.message); else { setRevokingId(""); setRevocationReason(""); await load(); }
+    if (updateError) {
+      setError(updateError.message);
+    } else {
+      setRevokingId("");
+      setRevocationReason("");
+      await Promise.all([loadIssued(), loadCertificateTotals()]);
+    }
   };
 
   const emailCertificate = async (certificateId: string) => {
@@ -196,6 +339,19 @@ export function AdminCertificateManagement() {
     setNotice("Public verification link copied.");
   };
 
+  const resetCertificateFilters = () => {
+    setSearchValue("");
+    setDebouncedSearch("");
+    setStatusFilter("all");
+    setCourseFilter("");
+    setIssuedFrom("");
+    setIssuedTo("");
+    setSort("newest");
+    setPage(1);
+  };
+
+  const certificateBeingRevoked = issued.find((certificate) => certificate.id === revokingId);
+
   return (
     <AppLayout>
       <PageHeader title="Certificates & credentials" subtitle="Design reusable templates, choose the skills employers see, and manage issued credentials." actions={<Link className="btn-secondary" to="/verify" target="_blank"><ShieldCheck size={15} /> Public verifier</Link>} />
@@ -205,10 +361,28 @@ export function AdminCertificateManagement() {
 
         <div className="grid gap-4 sm:grid-cols-3">
           <Metric label="Active templates" value={templates.filter((item) => item.is_active).length} />
-          <Metric label="Issued certificates" value={issued.filter((item) => item.status === "issued").length} />
-          <Metric label="Revoked" value={issued.filter((item) => item.status === "revoked").length} />
+          <Metric label="Issued certificates" value={issuedTotals.issued} />
+          <Metric label="Revoked" value={issuedTotals.revoked} />
         </div>
 
+        <PageTabs
+          ariaLabel="Certificate management views"
+          baseId="certificate-workspace"
+          value={activeTab}
+          onChange={setActiveTab}
+          options={[
+            { id: "directory", label: "Issued directory", icon: <Award size={15} />, count: issuedTotals.issued + issuedTotals.revoked },
+            { id: "templates", label: "Templates & setup", icon: <ImageUp size={15} />, count: templates.filter((item) => item.is_active).length },
+          ]}
+        />
+
+        {activeTab === "templates" && (
+          <div
+            id="certificate-workspace-templates-panel"
+            role="tabpanel"
+            aria-labelledby="certificate-workspace-templates-tab"
+            className="space-y-6 motion-safe:animate-fade-in"
+          >
         <FormPanel title="Certificate template studio" description="A guided setup for branding, wording, automatic issuance, and public skills." open={panelOpen} actionLabel="Create template" onToggle={() => { if (panelOpen) resetForm(); setPanelOpen((value) => !value); }}>
           <form onSubmit={saveTemplate}>
             <CreationWizard steps={["Template basics", "Design & branding", "Issuance & preview"]} currentStep={step} canContinue={step === 0 ? Boolean(form.name.trim()) : true} saving={saving} finalAction={editingId ? "Save changes" : "Create template"} onBack={() => setStep((value) => Math.max(0, value - 1))} onNext={() => setStep((value) => Math.min(2, value + 1))}>
@@ -237,7 +411,7 @@ export function AdminCertificateManagement() {
                     <label className="flex items-center gap-2 text-sm text-ink-700"><input type="checkbox" checked={form.design.show_signatures} onChange={(event) => updateDesign("show_signatures", event.target.checked)} /> Show signature area</label>
                     <button type="button" className="btn-ghost justify-self-start" onClick={() => setForm((current) => ({ ...current, design: { ...defaultCertificateDesign } }))}><RotateCcw size={15} /> Reset design</button>
                   </div>
-                  <div><div className="mb-2 flex items-center justify-between"><p className="text-xs font-semibold uppercase tracking-wide text-ink-500">Live preview</p><button type="button" className="btn-ghost" onClick={async () => { if (!previewRef.current) return; setNotice(""); try { await downloadCertificatePdf(previewRef.current, sampleCertificate.certificate_number); setNotice("Demo certificate PDF generated."); } catch (pdfError) { setError(pdfError instanceof Error ? pdfError.message : "PDF generation failed"); } }}><Download size={14} /> Test PDF</button></div><div className="overflow-auto rounded-xl bg-ink-100 p-3"><div className="min-w-[560px] shadow-card"><CertificateRenderer ref={previewRef} certificate={preview} /></div></div></div>
+                  <div><div className="mb-2 flex items-center justify-between"><p className="text-xs font-semibold uppercase tracking-wide text-ink-500">Live preview</p><button type="button" className="btn-ghost" onClick={async () => { if (!previewRef.current) return; setNotice(""); try { await downloadCertificatePdf(previewRef.current, sampleCertificate.certificate_number); setNotice("Demo certificate PDF generated."); } catch (pdfError) { setError(pdfError instanceof Error ? pdfError.message : "PDF generation failed"); } }}><Download size={14} /> Test PDF</button></div><div className="overflow-hidden rounded-xl bg-ink-100 p-3"><div className="mx-auto w-full max-w-[720px] shadow-card"><CertificateRenderer ref={previewRef} certificate={preview} /></div></div></div>
                 </div>
               )}
               {step === 2 && (
@@ -249,7 +423,7 @@ export function AdminCertificateManagement() {
                     <label className="flex items-center gap-2 text-sm text-ink-700"><input type="checkbox" checked={form.design.show_grade} onChange={(event) => updateDesign("show_grade", event.target.checked)} /> Show final grade publicly</label>
                     <Alert tone="info">Certificates are created automatically when an enrolment is marked complete. Issued records keep a snapshot of this design and the course skills.</Alert>
                   </div>
-                  <div className="overflow-auto rounded-xl bg-ink-100 p-3"><div className="min-w-[640px] shadow-card"><CertificateRenderer certificate={{ ...preview, skills: skillsText.split(/\n|,/).map((item) => item.trim()).filter(Boolean) }} /></div></div>
+                  <div className="overflow-hidden rounded-xl bg-ink-100 p-3"><div className="mx-auto w-full max-w-[780px] shadow-card"><CertificateRenderer certificate={{ ...preview, skills: skillsText.split(/\n|,/).map((item) => item.trim()).filter(Boolean) }} /></div></div>
                 </div>
               )}
             </CreationWizard>
@@ -267,18 +441,242 @@ export function AdminCertificateManagement() {
           )}
         </section>
 
-        <section className="overflow-hidden rounded-xl border border-ink-100 bg-white shadow-soft">
-          <div className="border-b border-ink-100 px-5 py-4"><h2 className="font-display font-semibold text-ink-900">Issued certificates</h2><p className="mt-1 text-xs text-ink-500">View, email, copy verification links, or revoke credentials issued in error.</p></div>
-          {loading ? <TableSkeleton /> : issued.length === 0 ? <div className="p-6 text-center text-sm text-ink-500">Certificates will appear here after eligible course completions.</div> : (
-            <div className="divide-y divide-ink-100">{issued.map((certificate) => {
-              const studentName = certificate.student_name_snapshot || [certificate.student.first_name, certificate.student.last_name].filter(Boolean).join(" ") || certificate.student.email;
-              const courseTitle = certificate.course_title_snapshot || certificate.course.title;
-              return <article key={certificate.id} className="px-5 py-4"><div className="flex flex-col gap-3 lg:flex-row lg:items-center"><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h3 className="font-medium text-ink-900">{studentName}</h3><span className={`badge ${certificate.status === "issued" ? "bg-success-50 text-success-700" : "bg-danger-50 text-danger-700"}`}>{certificate.status}</span></div><p className="mt-1 text-xs text-ink-500">{courseTitle} · {certificate.certificate_number} · {formatDate(certificate.issued_date)}</p></div><div className="flex flex-wrap gap-2"><Link className="btn-secondary" to={`/verify/${certificate.certificate_number}`} target="_blank"><Eye size={14} /> View</Link><button className="btn-secondary" onClick={() => void copyVerificationLink(certificate.certificate_number)}><Copy size={14} /> Copy link</button>{certificate.status === "issued" && <button className="btn-secondary" onClick={() => void emailCertificate(certificate.id)}><Mail size={14} /> Email</button>}{certificate.status === "issued" && <button className="btn-ghost text-danger-700" onClick={() => setRevokingId(certificate.id)}>Revoke</button>}</div></div>{revokingId === certificate.id && <div className="mt-3 flex flex-col gap-2 rounded-lg bg-danger-50 p-3 sm:flex-row"><input className="input flex-1" value={revocationReason} onChange={(event) => setRevocationReason(event.target.value)} placeholder="Required revocation reason" /><button className="btn-primary !bg-danger-600" disabled={!revocationReason.trim()} onClick={() => void revokeCertificate(certificate.id)}>Confirm revocation</button><button className="btn-secondary" onClick={() => setRevokingId("")}>Cancel</button></div>}</article>;
-            })}</div>
+          </div>
+        )}
+
+        {activeTab === "directory" && (
+        <section
+          id="certificate-workspace-directory-panel"
+          role="tabpanel"
+          aria-labelledby="certificate-workspace-directory-tab"
+          className="overflow-hidden rounded-xl border border-ink-100 bg-white shadow-soft motion-safe:animate-fade-in"
+        >
+          <div className="flex flex-col gap-3 border-b border-ink-100 px-5 py-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 id="issued-certificates-title" className="font-display font-semibold text-ink-900">Issued certificate directory</h2>
+              <p className="mt-1 text-xs text-ink-500">Search, review, email, verify, or revoke every credential from one scalable directory.</p>
+            </div>
+            <span className="badge-neutral self-start">{(issuedTotals.issued + issuedTotals.revoked).toLocaleString()} total records</span>
+          </div>
+
+          <div className="border-b border-ink-100 bg-gradient-to-b from-ink-50/80 to-white px-5 py-4">
+            <div className="mb-3 flex items-center gap-2 text-xs font-semibold text-ink-700">
+              <SlidersHorizontal size={15} className="text-brand-700" />
+              Search and filters
+            </div>
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-[minmax(16rem,1.5fr)_9rem_minmax(12rem,1fr)_9.5rem_9.5rem_10.5rem]">
+              <label className="block">
+                <span className="sr-only">Search certificates</span>
+                <span className="relative block">
+                  <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400" />
+                  <input
+                    type="search"
+                    className="input pl-10"
+                    value={searchValue}
+                    onChange={(event) => setSearchValue(event.target.value)}
+                    placeholder="Name, course, or certificate code"
+                  />
+                </span>
+              </label>
+              <label>
+                <span className="sr-only">Certificate status</span>
+                <select className="input" value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value as CertificateStatusFilter); setPage(1); }}>
+                  <option value="all">All statuses</option>
+                  <option value="issued">Issued</option>
+                  <option value="revoked">Revoked</option>
+                </select>
+              </label>
+              <label>
+                <span className="sr-only">Course</span>
+                <select className="input" value={courseFilter} onChange={(event) => { setCourseFilter(event.target.value); setPage(1); }}>
+                  <option value="">All courses</option>
+                  {courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}
+                </select>
+              </label>
+              <label>
+                <span className="sr-only">Issued from</span>
+                <input className="input" type="date" value={issuedFrom} onChange={(event) => { setIssuedFrom(event.target.value); setPage(1); }} title="Issued from" />
+              </label>
+              <label>
+                <span className="sr-only">Issued through</span>
+                <input className="input" type="date" value={issuedTo} min={issuedFrom || undefined} onChange={(event) => { setIssuedTo(event.target.value); setPage(1); }} title="Issued through" />
+              </label>
+              <label>
+                <span className="sr-only">Sort certificates</span>
+                <select className="input" value={sort} onChange={(event) => { setSort(event.target.value as CertificateSort); setPage(1); }}>
+                  <option value="newest">Newest first</option>
+                  <option value="oldest">Oldest first</option>
+                  <option value="student">Student A-Z</option>
+                  <option value="course">Course A-Z</option>
+                </select>
+              </label>
+            </div>
+            <div className="mt-3 flex min-h-8 flex-wrap items-center justify-between gap-2 text-xs text-ink-500">
+              <p aria-live="polite">
+                {issuedLoading ? "Updating results..." : `Showing ${resultStart.toLocaleString()}-${resultEnd.toLocaleString()} of ${issuedCount.toLocaleString()} matching records`}
+              </p>
+              {filtersActive && (
+                <button type="button" className="inline-flex items-center gap-1.5 font-semibold text-brand-700 hover:text-brand-800" onClick={resetCertificateFilters}>
+                  <X size={14} /> Clear filters
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div aria-busy={issuedLoading}>
+            {issuedLoading ? (
+              <TableSkeleton rows={6} />
+            ) : issued.length === 0 ? (
+              <div className="px-6 py-12 text-center">
+                <Award className="mx-auto text-brand-500" size={28} />
+                <p className="mt-3 font-semibold text-ink-900">{filtersActive ? "No certificates match these filters" : "No certificates issued yet"}</p>
+                <p className="mt-1 text-sm text-ink-500">{filtersActive ? "Adjust or clear the search criteria to see more records." : "Certificates will appear here after eligible course completions."}</p>
+                {filtersActive && <button type="button" className="btn-secondary mt-4" onClick={resetCertificateFilters}>Clear filters</button>}
+              </div>
+            ) : (
+              <>
+                <div className="hidden xl:block">
+                  <table className="w-full table-fixed text-left text-sm">
+                    <colgroup>
+                      <col className="w-[22%]" />
+                      <col className="w-[25%]" />
+                      <col className="w-[12%]" />
+                      <col className="w-[9%]" />
+                      <col className="w-[17%]" />
+                      <col className="w-[15%]" />
+                    </colgroup>
+                    <thead>
+                      <tr>
+                        <th className="px-5 py-3 text-xs">Student</th>
+                        <th className="px-4 py-3 text-xs">Course</th>
+                        <th className="px-4 py-3 text-xs">Issued</th>
+                        <th className="px-4 py-3 text-xs">Status</th>
+                        <th className="px-4 py-3 text-xs">Certificate code</th>
+                        <th className="px-5 py-3 text-right text-xs">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-ink-100">
+                      {issued.map((certificate) => (
+                        <tr key={certificate.id}>
+                          <td className="px-5 py-3.5">
+                            <p className="truncate font-semibold text-ink-900" title={studentName(certificate)}>{studentName(certificate)}</p>
+                            <p className="mt-0.5 truncate text-xs text-ink-500" title={certificate.student.email}>{certificate.student.email}</p>
+                          </td>
+                          <td className="max-w-xs px-4 py-3.5 text-ink-700"><span className="line-clamp-2">{courseTitle(certificate)}</span></td>
+                          <td className="whitespace-nowrap px-4 py-3.5 text-ink-600">{formatDate(certificate.issued_date)}</td>
+                          <td className="px-4 py-3.5"><CertificateStatus status={certificate.status} /></td>
+                          <td className="px-4 py-3.5"><span className="block truncate whitespace-nowrap font-mono text-xs text-ink-600" title={certificate.certificate_number}>{certificate.certificate_number}</span></td>
+                          <td className="px-3 py-3.5"><CertificateActions certificate={certificate} onCopy={copyVerificationLink} onEmail={emailCertificate} onRevoke={setRevokingId} /></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="divide-y divide-ink-100 xl:hidden">
+                  {issued.map((certificate) => (
+                    <article key={certificate.id} className="px-4 py-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h3 className="font-semibold text-ink-900">{studentName(certificate)}</h3>
+                          <p className="mt-0.5 truncate text-xs text-ink-500">{certificate.student.email}</p>
+                        </div>
+                        <CertificateStatus status={certificate.status} />
+                      </div>
+                      <dl className="mt-3 grid gap-2 text-xs">
+                        <div><dt className="font-semibold text-ink-500">Course</dt><dd className="mt-0.5 text-ink-700">{courseTitle(certificate)}</dd></div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div><dt className="font-semibold text-ink-500">Issued</dt><dd className="mt-0.5 text-ink-700">{formatDate(certificate.issued_date)}</dd></div>
+                          <div><dt className="font-semibold text-ink-500">Code</dt><dd className="mt-0.5 truncate font-mono text-ink-700">{certificate.certificate_number}</dd></div>
+                        </div>
+                      </dl>
+                      <div className="mt-3"><CertificateActions certificate={certificate} onCopy={copyVerificationLink} onEmail={emailCertificate} onRevoke={setRevokingId} mobile /></div>
+                    </article>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
+          {certificateBeingRevoked && (
+            <div className="border-t border-danger-100 bg-danger-50/80 px-5 py-4">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+                <div className="min-w-0 flex-1">
+                  <label className="label" htmlFor="revocation-reason">Revoke {certificateBeingRevoked.certificate_number}</label>
+                  <input id="revocation-reason" className="input" value={revocationReason} onChange={(event) => setRevocationReason(event.target.value)} placeholder="Required revocation reason" autoFocus />
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button className="btn-danger" disabled={!revocationReason.trim()} onClick={() => void revokeCertificate(certificateBeingRevoked.id)}>Confirm revocation</button>
+                  <button className="btn-secondary" onClick={() => { setRevokingId(""); setRevocationReason(""); }}>Cancel</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {issuedCount > 0 && !issuedLoading && (
+            <div className="flex flex-col gap-3 border-t border-ink-100 bg-ink-50/60 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-ink-500">Page {page.toLocaleString()} of {totalPages.toLocaleString()}</p>
+              <div className="flex items-center gap-2">
+                <button type="button" className="btn-secondary !min-h-9 px-3 py-1.5 text-xs" disabled={page === 1} onClick={() => setPage((current) => Math.max(1, current - 1))}><ChevronLeft size={14} /> Previous</button>
+                <button type="button" className="btn-secondary !min-h-9 px-3 py-1.5 text-xs" disabled={page === totalPages} onClick={() => setPage((current) => Math.min(totalPages, current + 1))}>Next <ChevronRight size={14} /></button>
+              </div>
+            </div>
           )}
         </section>
+        )}
       </div>
     </AppLayout>
+  );
+}
+
+function CertificateStatus({ status }: { status: IssuedRow["status"] }) {
+  return (
+    <span className={status === "issued" ? "badge-success capitalize" : "badge-danger capitalize"}>
+      {status}
+    </span>
+  );
+}
+
+function CertificateActions({
+  certificate,
+  onCopy,
+  onEmail,
+  onRevoke,
+  mobile = false,
+}: {
+  certificate: IssuedRow;
+  onCopy: (certificateNumber: string) => Promise<void>;
+  onEmail: (certificateId: string) => Promise<void>;
+  onRevoke: (certificateId: string) => void;
+  mobile?: boolean;
+}) {
+  const className = mobile
+    ? "btn-secondary !min-h-9 px-3 py-1.5 text-xs"
+    : "btn-ghost !min-h-9 !w-9 p-0";
+
+  return (
+    <div className={`flex flex-wrap items-center gap-1 ${mobile ? "" : "justify-end"}`}>
+      <Link className={className} to={`/verify/${certificate.certificate_number}`} target="_blank" rel="noreferrer" title="View certificate">
+        <Eye size={15} />
+        <span className={mobile ? "" : "sr-only"}>View</span>
+      </Link>
+      <button type="button" className={className} onClick={() => void onCopy(certificate.certificate_number)} title="Copy verification link">
+        <Copy size={15} />
+        <span className={mobile ? "" : "sr-only"}>Copy link</span>
+      </button>
+      {certificate.status === "issued" && (
+        <button type="button" className={className} onClick={() => void onEmail(certificate.id)} title="Email certificate">
+          <Mail size={15} />
+          <span className={mobile ? "" : "sr-only"}>Email</span>
+        </button>
+      )}
+      {certificate.status === "issued" && (
+        <button type="button" className={`${className} text-danger-700 hover:bg-danger-50 hover:text-danger-800`} onClick={() => onRevoke(certificate.id)} title="Revoke certificate">
+          <X size={15} />
+          <span className={mobile ? "" : "sr-only"}>Revoke</span>
+        </button>
+      )}
+    </div>
   );
 }
 

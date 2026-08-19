@@ -34,6 +34,8 @@ function PublicShell({ children }: { children: ReactNode }) {
             <img
               src="/brand/synergy-bahamas-logo-white.png"
               alt="Synergy Bahamas"
+              width="2810"
+              height="964"
               className="h-auto w-36"
             />
             <AcademyBrandMark tone="light" compact className="mt-2" />
@@ -131,7 +133,7 @@ export function PublicCourses() {
               {visible.map((course) => (
                 <article key={course.course_id} className="overflow-hidden rounded-xl bg-white shadow-soft">
                   {course.cover_image_url ? (
-                    <img className="aspect-[16/9] w-full object-cover" src={course.cover_image_url} alt="" />
+                    <img className="aspect-[16/9] w-full object-cover" src={course.cover_image_url} alt="" loading="lazy" decoding="async" />
                   ) : (
                     <div className="flex aspect-[16/9] items-center justify-center bg-brand-50 text-brand-600">
                       <GraduationCap size={34} />

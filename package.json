@@ -8,7 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "seed:demo": "node scripts/create-demo-course.mjs",
-    "verify:migrations": "node scripts/sql-static-check.mjs supabase/migrations/20260818204500_012_beta_readiness.sql && node scripts/sql-static-check.mjs supabase/migrations/20260819104500_013_access_entitlements.sql && node scripts/sql-static-check.mjs supabase/migrations/20260819193000_014_email_delivery_and_manual_users.sql && node scripts/sql-static-check.mjs supabase/migrations/20260819221500_015_digital_certificates.sql",
+    "verify:migrations": "node scripts/sql-static-check.mjs supabase/migrations/20260818204500_012_beta_readiness.sql && node scripts/sql-static-check.mjs supabase/migrations/20260819104500_013_access_entitlements.sql && node scripts/sql-static-check.mjs supabase/migrations/20260819193000_014_email_delivery_and_manual_users.sql && node scripts/sql-static-check.mjs supabase/migrations/20260819221500_015_digital_certificates.sql && node scripts/sql-static-check.mjs supabase/migrations/20260819233000_016_certificate_directory_scaling.sql",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.app.json"
   },

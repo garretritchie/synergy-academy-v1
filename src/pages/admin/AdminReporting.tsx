@@ -140,38 +140,56 @@ export function AdminReporting() {
 
     const attendance = (attendanceResult.data ?? []) as AttendanceRecord[];
     const itemCategory = new Map(items.map((item) => [item.id, item.grade_category_id]));
+    const attendanceByEnrolment = new Map<string, AttendanceRecord[]>();
+    for (const record of attendance) {
+      const records = attendanceByEnrolment.get(record.enrolment_id) ?? [];
+      records.push(record);
+      attendanceByEnrolment.set(record.enrolment_id, records);
+    }
+    const gradesByEnrolment = new Map<string, Grade[]>();
+    for (const grade of grades) {
+      const learnerGrades = gradesByEnrolment.get(grade.enrolment_id) ?? [];
+      learnerGrades.push(grade);
+      gradesByEnrolment.set(grade.enrolment_id, learnerGrades);
+    }
     const completedSessionCount = sessionResult.data?.length ?? 0;
     setHeldSessions(completedSessionCount);
     setRows(
       enrolments
         .map((enrolment) => {
-          const learnerAttendance = attendance.filter(
-            (record) => record.enrolment_id === enrolment.id,
+          const learnerAttendance = attendanceByEnrolment.get(enrolment.id) ?? [];
+          let present = 0;
+          let late = 0;
+          let absent = 0;
+          let excused = 0;
+          let countedAttendance = 0;
+          let attended = 0;
+          for (const record of learnerAttendance) {
+            if (record.status === "present") present += 1;
+            if (record.status === "late") late += 1;
+            if (record.status === "absent") absent += 1;
+            if (record.status === "excused") excused += 1;
+            if (record.status !== "excused") countedAttendance += 1;
+            if (["present", "late", "left_early"].includes(record.status)) attended += 1;
+          }
+          const learnerGrades = (gradesByEnrolment.get(enrolment.id) ?? []).filter(
+            (grade) => !grade.is_excused && grade.percentage !== null,
           );
-          const countedAttendance = learnerAttendance.filter(
-            (record) => record.status !== "excused",
-          );
-          const attended = countedAttendance.filter((record) =>
-            ["present", "late", "left_early"].includes(record.status),
-          ).length;
-          const learnerGrades = grades.filter(
-            (grade) =>
-              grade.enrolment_id === enrolment.id &&
-              !grade.is_excused &&
-              grade.percentage !== null,
-          );
+          const gradeTotalsByCategory = new Map<string, { total: number; count: number }>();
+          for (const grade of learnerGrades) {
+            const categoryId = itemCategory.get(grade.grade_item_id);
+            if (!categoryId) continue;
+            const current = gradeTotalsByCategory.get(categoryId) ?? { total: 0, count: 0 };
+            current.total += Number(grade.percentage);
+            current.count += 1;
+            gradeTotalsByCategory.set(categoryId, current);
+          }
           const categoryScores = categories
             .map((category) => {
-              const categoryGrades = learnerGrades.filter(
-                (grade) => itemCategory.get(grade.grade_item_id) === category.id,
-              );
-              return categoryGrades.length
+              const categoryTotal = gradeTotalsByCategory.get(category.id);
+              return categoryTotal
                 ? {
-                    score:
-                      categoryGrades.reduce(
-                        (sum, grade) => sum + Number(grade.percentage),
-                        0,
-                      ) / categoryGrades.length,
+                    score: categoryTotal.total / categoryTotal.count,
                     weight: Number(category.weight),
                   }
                 : null;
@@ -199,13 +217,13 @@ export function AdminReporting() {
             currentGrade:
               currentGrade === null ? null : Math.round(currentGrade * 10) / 10,
             finalGrade: enrolment.final_grade,
-            attendanceRate: countedAttendance.length
-              ? Math.round((attended / countedAttendance.length) * 1000) / 10
+            attendanceRate: countedAttendance
+              ? Math.round((attended / countedAttendance) * 1000) / 10
               : null,
-            present: learnerAttendance.filter((record) => record.status === "present").length,
-            late: learnerAttendance.filter((record) => record.status === "late").length,
-            absent: learnerAttendance.filter((record) => record.status === "absent").length,
-            excused: learnerAttendance.filter((record) => record.status === "excused").length,
+            present,
+            late,
+            absent,
+            excused,
             notMarked: Math.max(0, completedSessionCount - learnerAttendance.length),
           };
         })
@@ -308,10 +326,10 @@ export function AdminReporting() {
               </select>
             </Field>
             <div className="flex flex-wrap gap-2">
-              <button className="btn-secondary" disabled={!rows.length} onClick={() => download("gradebook")}>
+              <button type="button" className="btn-secondary" disabled={!rows.length} onClick={() => download("gradebook")}>
                 <FileSpreadsheet size={16} /> Export gradebook
               </button>
-              <button className="btn-primary" disabled={!rows.length} onClick={() => download("attendance")}>
+              <button type="button" className="btn-primary" disabled={!rows.length} onClick={() => download("attendance")}>
                 <Download size={16} /> Export attendance
               </button>
             </div>
@@ -343,7 +361,27 @@ export function AdminReporting() {
               {rows.length === 0 ? (
                 <EmptyState icon={<Users size={30} />} title="No enrolled learners" description="Enrol students before generating this report." />
               ) : (
-                <div className="overflow-x-auto">
+                <>
+                  <div className="divide-y divide-ink-100 xl:hidden">
+                    {rows.map((row) => (
+                      <article key={row.enrolmentId} className="render-auto p-5">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="min-w-0">
+                            <p className="truncate font-semibold text-ink-900">{fullName(row.student)}</p>
+                            <p className="mt-0.5 truncate text-xs text-ink-500">{row.student.email}</p>
+                          </div>
+                          <span className="badge-neutral shrink-0 capitalize">{row.status}</span>
+                        </div>
+                        <dl className="mt-4 grid grid-cols-2 gap-x-5 gap-y-3 text-xs sm:grid-cols-4">
+                          <ReportDetail label="Current grade" value={row.currentGrade === null ? "Not available" : `${row.currentGrade}%`} />
+                          <ReportDetail label="Attendance" value={row.attendanceRate === null ? "Not available" : `${row.attendanceRate}%`} />
+                          <ReportDetail label="P / L / A / E" value={`${row.present} / ${row.late} / ${row.absent} / ${row.excused}`} />
+                          <ReportDetail label="Unmarked" value={String(row.notMarked)} />
+                        </dl>
+                      </article>
+                    ))}
+                  </div>
+                  <div className="hidden overflow-x-auto xl:block">
                   <table className="w-full text-left text-xs">
                     <thead className="bg-ink-50 uppercase tracking-wide text-ink-500">
                       <tr>
@@ -371,13 +409,23 @@ export function AdminReporting() {
                       ))}
                     </tbody>
                   </table>
-                </div>
+                  </div>
+                </>
               )}
             </section>
           </>
         )}
       </div>
     </AppLayout>
+  );
+}
+
+function ReportDetail({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="font-medium text-ink-500">{label}</dt>
+      <dd className="mt-1 font-semibold tabular-nums text-ink-900">{value}</dd>
+    </div>
   );
 }
 

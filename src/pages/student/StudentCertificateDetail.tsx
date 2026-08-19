@@ -64,13 +64,13 @@ export function StudentCertificateDetail() {
         <div className="flex flex-wrap gap-2">
           <a className="btn-secondary" href={verificationUrl} target="_blank" rel="noreferrer"><ExternalLink size={15} /> Verify</a>
           <a className="btn-secondary" href={emailHref}><Mail size={15} /> Share by email</a>
-          <button className="btn-secondary" onClick={() => window.print()}><Printer size={15} /> Print</button>
-          <button className="btn-primary" disabled={pdfBusy} onClick={() => void downloadPdf()}><Download size={15} /> {pdfBusy ? "Generating..." : "Generate PDF"}</button>
+          <button type="button" className="btn-secondary" onClick={() => window.print()}><Printer size={15} /> Print</button>
+          <button type="button" className="btn-primary" disabled={pdfBusy} onClick={() => void downloadPdf()}><Download size={15} /> {pdfBusy ? "Generating..." : "Generate PDF"}</button>
         </div>
       </div>
       {error && <div className="mt-5"><Alert>{error}</Alert></div>}
-      <div className="certificate-preview-shell mt-6 overflow-auto rounded-xl border border-ink-200 bg-ink-100 p-3 shadow-inner sm:p-6">
-        <div className="mx-auto min-w-[720px] max-w-6xl shadow-elevated"><CertificateRenderer ref={certificateRef} certificate={model} /></div>
+      <div className="certificate-preview-shell mt-6 overflow-hidden rounded-xl border border-ink-200 bg-ink-100 p-3 shadow-inner sm:p-6">
+        <div className="mx-auto w-full max-w-6xl shadow-elevated"><CertificateRenderer ref={certificateRef} certificate={model} /></div>
       </div>
     </AppLayout>
   );

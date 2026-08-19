@@ -164,6 +164,7 @@ export function SignInPage() {
                 />
                 <input
                   id="email"
+                  name="email"
                   type="email"
                   required
                   value={email}
@@ -190,6 +191,7 @@ export function SignInPage() {
                 />
                 <input
                   id="password"
+                  name="password"
                   type="password"
                   required
                   value={password}

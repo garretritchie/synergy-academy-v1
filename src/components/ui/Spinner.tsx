@@ -11,13 +11,19 @@ export function Spinner({ size = 24, className = "" }: SpinnerProps) {
     <Loader2
       size={size}
       className={`animate-spin text-brand-500 ${className}`}
+      aria-hidden="true"
     />
   );
 }
 
 export function FullPageSpinner({ message }: { message?: string }) {
   return (
-    <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 bg-gradient-to-b from-brand-50/70 via-ink-50 to-white">
+    <div
+      className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 bg-gradient-to-b from-brand-50/70 via-ink-50 to-white"
+      role="status"
+      aria-label={message ?? "Loading"}
+      aria-live="polite"
+    >
       <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-brand-100 bg-white shadow-card"><Spinner size={30} /></div>
       {message && <p className="text-sm text-ink-500">{message}</p>}
     </div>
@@ -26,7 +32,7 @@ export function FullPageSpinner({ message }: { message?: string }) {
 
 export function CardSpinner() {
   return (
-    <div className="flex items-center justify-center py-12">
+    <div className="flex items-center justify-center py-12" role="status" aria-label="Loading" aria-live="polite">
       <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 ring-1 ring-brand-100"><Spinner size={24} /></div>
     </div>
   );

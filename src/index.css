@@ -23,7 +23,6 @@
     background-image:
       radial-gradient(circle at 82% -8%, rgb(139 197 255 / 0.13), transparent 32rem),
       linear-gradient(180deg, #f7f9fc 0%, #f3f6fa 42%, #eef3f8 100%);
-    background-attachment: fixed;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11', 'kern';
     font-optical-sizing: auto;
   }
@@ -231,6 +230,11 @@ main table tbody tr {
   .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+
+  .render-auto {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 112px;
   }
 
   .lesson-reading-progress {

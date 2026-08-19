@@ -53,6 +53,7 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
 
   useEffect(() => {
     if (!profile?.id) return;
+    let cancelled = false;
     void supabase
       .from("organization_members")
       .select("id")
@@ -60,7 +61,12 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
       .eq("status", "active")
       .in("member_role", ["owner", "seat_manager"])
       .limit(1)
-      .then(({ data }) => setCanManageSeats(Boolean(data?.length)));
+      .then(({ data }) => {
+        if (!cancelled) setCanManageSeats(Boolean(data?.length));
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [profile?.id]);
 
   const navSections = courseNav ?? getNavForRole(activeRole);
@@ -102,8 +108,26 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
     setExpandedSection((current) => activeSection?.label ?? current ?? navSections[0]?.label ?? null);
   }, [homePath, location.pathname, navSections]);
 
+  useEffect(() => {
+    if (!userMenuOpen) return;
+    const closeOnPointerDown = (event: PointerEvent) => {
+      if (!(event.target instanceof Element) || !event.target.closest("[data-account-menu]")) {
+        setUserMenuOpen(false);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setUserMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOnPointerDown);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnPointerDown);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [userMenuOpen]);
+
   const accountMenu = (compact = false) => (
-    <div className="relative">
+    <div className="relative" data-account-menu>
       <button
         type="button"
         onClick={() => setUserMenuOpen((open) => !open)}
@@ -112,7 +136,7 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
         }`}
         aria-expanded={userMenuOpen}
         aria-haspopup="menu"
-        aria-label="Open account menu"
+        aria-label={userMenuOpen ? "Close account menu" : "Open account menu"}
       >
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-100 to-brand-200/70 text-xs font-bold text-brand-800 shadow-sm ring-1 ring-brand-200">
           {initials}
@@ -210,14 +234,16 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
             <img
               src="/brand/synergy-bahamas-logo-white.png"
               alt="Synergy Bahamas"
+              width="2810"
+              height="964"
               className="h-auto w-[7.75rem]"
             />
           </div>
 
           {/* Nav */}
           <nav className="scrollbar-thin flex-1 overflow-y-auto px-3 py-4">
-            {navSections.map((section, i) => (
-              <div key={i} className="mb-4">
+            {navSections.map((section) => (
+              <div key={section.label} className="mb-4">
                 <button
                   type="button"
                   onClick={() =>
@@ -263,9 +289,11 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
 
       {/* Mobile overlay */}
       {mobileOpen && (
-        <div
+        <button
+          type="button"
           className="fixed inset-0 z-40 bg-ink-950/55 backdrop-blur-[2px] lg:hidden"
           onClick={() => setMobileOpen(false)}
+          aria-label="Close navigation"
         />
       )}
 
@@ -274,6 +302,7 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
         {/* Mobile top bar */}
         <header className="app-topbar flex h-[3.75rem] items-center justify-between px-4 lg:hidden">
           <button
+            type="button"
             onClick={() => setMobileOpen(!mobileOpen)}
             className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-600 transition-colors hover:bg-brand-50 hover:text-brand-800"
             aria-label={mobileOpen ? "Close navigation" : "Open navigation"}

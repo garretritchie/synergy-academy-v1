@@ -352,7 +352,7 @@ function CatalogPanel({ error, loading, courses, hasAnyCourses, hasFilters, enro
         const enrolment = enrolledByCourse.get(course.id);
         return (
           <article key={course.id} className="surface-interactive flex min-w-0 flex-col overflow-hidden rounded-xl bg-white shadow-soft">
-            {course.cover_image_url ? <img src={course.cover_image_url} alt="" className="aspect-video w-full object-cover" /> : <div className="flex aspect-video items-center justify-center bg-brand-50 text-brand-600"><Library size={28} /></div>}
+            {course.cover_image_url ? <img src={course.cover_image_url} alt="" className="aspect-video w-full object-cover" loading="lazy" decoding="async" /> : <div className="flex aspect-video items-center justify-center bg-brand-50 text-brand-600"><Library size={28} /></div>}
             <div className="flex flex-1 flex-col p-5">
               <div className="flex items-start justify-between gap-3">
                 <h2 className="line-clamp-2 font-semibold text-ink-900">{course.title}</h2>
@@ -376,7 +376,7 @@ function CatalogPanel({ error, loading, courses, hasAnyCourses, hasFilters, enro
 
 function CourseCover({ course }: { course: Course }) {
   return course.cover_image_url ? (
-    <img src={course.cover_image_url} alt="" className="h-16 w-20 shrink-0 rounded-xl object-cover" />
+    <img src={course.cover_image_url} alt="" className="h-16 w-20 shrink-0 rounded-xl object-cover" loading="lazy" decoding="async" />
   ) : (
     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600"><BookOpen size={22} /></div>
   );

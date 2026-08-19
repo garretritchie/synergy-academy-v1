@@ -12,6 +12,8 @@ function AuthCard({ children }: { children: React.ReactNode }) {
         <img
           src="/brand/synergy-bahamas-logo-full-color.png"
           alt="Synergy Bahamas"
+          width="2810"
+          height="964"
           className="mb-8 h-auto w-52"
         />
         <AcademyBrandMark compact className="-mt-5 mb-7" />
@@ -85,6 +87,7 @@ export function ForgotPasswordPage() {
               />
               <input
                 required
+                name="email"
                 type="email"
                 autoComplete="email"
                 className="input pl-10"
@@ -93,7 +96,7 @@ export function ForgotPasswordPage() {
               />
             </div>
           </label>
-          <button className="btn-primary w-full" disabled={loading}>
+          <button type="submit" className="btn-primary w-full" disabled={loading}>
             {loading ? "Sending…" : "Send reset link"}
           </button>
         </form>
@@ -143,6 +146,7 @@ export function ResetPasswordPage() {
             />
             <input
               required
+              name="new-password"
               type="password"
               minLength={10}
               autoComplete="new-password"
@@ -156,6 +160,7 @@ export function ResetPasswordPage() {
           <span className="label">Confirm password</span>
           <input
             required
+            name="confirm-password"
             type="password"
             minLength={10}
             autoComplete="new-password"
@@ -164,7 +169,7 @@ export function ResetPasswordPage() {
             onChange={(event) => setConfirm(event.target.value)}
           />
         </label>
-        <button className="btn-primary w-full" disabled={loading}>
+        <button type="submit" className="btn-primary w-full" disabled={loading}>
           {loading ? "Updating…" : "Update password"}
         </button>
       </form>

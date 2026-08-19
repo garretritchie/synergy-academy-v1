@@ -4,6 +4,7 @@ import {
   useEffect,
   useState,
   useCallback,
+  useMemo,
   type ReactNode,
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
@@ -45,8 +46,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       supabase.rpc("get_user_roles"),
     ]);
 
-    if (profileRes.data) setProfile(profileRes.data as Profile);
-    if (rolesRes.data) setRoles(rolesRes.data as UserRole[]);
+    setProfile((profileRes.data as Profile | null) ?? null);
+    setRoles((rolesRes.data as UserRole[] | null) ?? []);
   }, []);
 
   useEffect(() => {
@@ -83,15 +84,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => authListener.subscription.unsubscribe();
   }, [loadProfileAndRoles]);
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = useCallback(async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
     return { error: error?.message ?? null };
-  };
+  }, []);
 
-  const signUp = async (
+  const signUp = useCallback(async (
     email: string,
     password: string,
     firstName: string,
@@ -103,34 +104,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       options: { data: { first_name: firstName, last_name: lastName } },
     });
     return { error: error?.message ?? null };
-  };
+  }, []);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     await supabase.auth.signOut();
     setProfile(null);
     setRoles([]);
-  };
+  }, []);
 
-  const refreshProfile = async () => {
+  const refreshProfile = useCallback(async () => {
     if (user) await loadProfileAndRoles(user.id);
-  };
+  }, [loadProfileAndRoles, user]);
+
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      session,
+      user,
+      profile,
+      roles,
+      loading,
+      signIn,
+      signUp,
+      signOut,
+      refreshProfile,
+    }),
+    [loading, profile, refreshProfile, roles, session, signIn, signOut, signUp, user],
+  );
 
   return (
-    <AuthContext.Provider
-      value={{
-        session,
-        user,
-        profile,
-        roles,
-        loading,
-        signIn,
-        signUp,
-        signOut,
-        refreshProfile,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+    <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
   );
 }
 

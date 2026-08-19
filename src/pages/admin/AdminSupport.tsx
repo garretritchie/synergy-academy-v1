@@ -6,7 +6,6 @@ import {
   type ReactNode,
 } from "react";
 import {
-  BarChart3,
   CheckCircle2,
   Cloud,
   Database,
@@ -23,7 +22,7 @@ import { Alert, SubmitButton, TableSkeleton } from "@/components/ui/Feedback";
 import { CreationWizard } from "@/components/ui/CreationWizard";
 import { Field, FormPanel } from "@/components/ui/FormPanel";
 import { supabase } from "@/lib/supabase";
-import { formatDate, fullName } from "@/lib/format";
+import { formatDate } from "@/lib/format";
 import { useAuth } from "@/context/AuthContext";
 
 type CohortOption = { id: string; name: string; course: { title: string } };
@@ -280,187 +279,6 @@ export function AdminCommunications() {
             </div>
           )}
         </section>
-      </div>
-    </AppLayout>
-  );
-}
-
-export function AdminReporting() {
-  const { user } = useAuth();
-  const [counts, setCounts] = useState<Record<string, number>>({});
-  const [certificates, setCertificates] = useState<
-    Array<{
-      id: string;
-      certificate_number: string;
-      issued_date: string;
-      status: "issued" | "revoked";
-      revocation_reason: string | null;
-      student: {
-        first_name: string | null;
-        last_name: string | null;
-        email: string;
-      };
-      course: { title: string };
-    }>
-  >([]);
-  const [revokingId, setRevokingId] = useState("");
-  const [revocationReason, setRevocationReason] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const load = useCallback(async () => {
-      setLoading(true);
-      const tables = [
-        "profiles",
-        "courses",
-        "cohorts",
-        "enrolments",
-        "live_sessions",
-        "submissions",
-        "certificates",
-      ];
-      const [results, certificateResult] = await Promise.all([
-        Promise.all(tables.map((table) =>
-          supabase.from(table).select("*", { count: "exact", head: true }),
-        )),
-        supabase
-          .from("certificates")
-          .select(
-            "id,certificate_number,issued_date,status,revocation_reason,student:profiles!certificates_student_id_fkey(first_name,last_name,email),course:courses(title)",
-          )
-          .order("issued_date", { ascending: false })
-          .limit(20),
-      ]);
-      const failed = results.find((result) => result.error) || certificateResult;
-      if (failed?.error) setError(failed.error.message);
-      else {
-        setCounts(
-          Object.fromEntries(
-            tables.map((table, index) => [table, results[index].count ?? 0]),
-          ),
-        );
-        setCertificates(
-          (certificateResult.data ?? []) as unknown as typeof certificates,
-        );
-      }
-      setLoading(false);
-  }, []);
-  useEffect(() => {
-    void load();
-  }, [load]);
-  const revokeCertificate = async (certificateId: string) => {
-    if (!user || !revocationReason.trim()) return;
-    const { error: updateError } = await supabase
-      .from("certificates")
-      .update({
-        status: "revoked",
-        revoked_at: new Date().toISOString(),
-        revoked_by: user.id,
-        revocation_reason: revocationReason.trim(),
-      })
-      .eq("id", certificateId);
-    if (updateError) setError(updateError.message);
-    else {
-      setRevokingId("");
-      setRevocationReason("");
-      await load();
-    }
-  };
-  const labels: Record<string, string> = {
-    profiles: "Accounts",
-    courses: "Courses",
-    cohorts: "Cohorts",
-    enrolments: "Enrolments",
-    live_sessions: "Live sessions",
-    submissions: "Submissions",
-    certificates: "Certificates",
-  };
-  return (
-    <AppLayout>
-      <PageHeader
-        title="Certificates & credentials"
-        subtitle="Monitor completion credentials and revoke certificates issued in error."
-      />
-      <div className="mt-6 space-y-6">
-        {error && <Alert>{error}</Alert>}
-        {loading ? (
-          <TableSkeleton />
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {Object.entries(counts).map(([key, value]) => (
-              <div key={key} className="rounded-xl bg-white p-5 shadow-soft">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-ink-500">{labels[key]}</p>
-                  <BarChart3 size={17} className="text-brand-600" />
-                </div>
-                <p className="mt-3 text-3xl font-semibold tabular-nums text-ink-900">
-                  {value}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
-        {!loading && certificates.length > 0 && (
-          <section className="overflow-hidden rounded-xl bg-white shadow-soft">
-            <div className="border-b border-ink-100 px-5 py-4">
-              <h2 className="font-semibold text-ink-900">Recent certificates</h2>
-              <p className="mt-1 text-xs text-ink-500">
-                Revoke an issued record only when it was created in error; the change is audited.
-              </p>
-            </div>
-            <div className="divide-y divide-ink-100">
-              {certificates.map((certificate) => (
-                <article key={certificate.id} className="px-5 py-4">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                    <div className="min-w-0 flex-1">
-                      <h3 className="font-medium text-ink-900">
-                        {fullName(certificate.student) || certificate.student.email}
-                      </h3>
-                      <p className="text-xs text-ink-500">
-                        {certificate.course.title} · {certificate.certificate_number} · {formatDate(certificate.issued_date)}
-                      </p>
-                    </div>
-                    <span className={certificate.status === "revoked" ? "badge-danger" : "badge-success"}>
-                      {certificate.status}
-                    </span>
-                    {certificate.status === "issued" && (
-                      <button
-                        type="button"
-                        className="btn-ghost text-danger-700"
-                        onClick={() => setRevokingId(certificate.id)}
-                      >
-                        Revoke
-                      </button>
-                    )}
-                  </div>
-                  {certificate.status === "revoked" && certificate.revocation_reason && (
-                    <p className="mt-2 text-xs text-danger-700">
-                      {certificate.revocation_reason}
-                    </p>
-                  )}
-                  {revokingId === certificate.id && (
-                    <div className="mt-3 grid gap-2 border-t border-ink-100 pt-3 sm:grid-cols-[1fr_auto] sm:items-end">
-                      <Field label="Revocation reason">
-                        <input
-                          className="input"
-                          value={revocationReason}
-                          onChange={(event) => setRevocationReason(event.target.value)}
-                        />
-                      </Field>
-                      <button
-                        type="button"
-                        className="btn-primary !bg-danger-600 hover:!bg-danger-700"
-                        disabled={!revocationReason.trim()}
-                        onClick={() => void revokeCertificate(certificate.id)}
-                      >
-                        Confirm revocation
-                      </button>
-                    </div>
-                  )}
-                </article>
-              ))}
-            </div>
-          </section>
-        )}
       </div>
     </AppLayout>
   );

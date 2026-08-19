@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import { Plus, X } from "lucide-react";
 
 export function FormPanel({
@@ -16,6 +16,7 @@ export function FormPanel({
   children: ReactNode;
   actionLabel?: string;
 }) {
+  const panelId = useId();
   return (
     <section className="page-section overflow-hidden">
       <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
@@ -29,13 +30,15 @@ export function FormPanel({
           type="button"
           onClick={onToggle}
           className={open ? "btn-ghost" : "btn-primary"}
+          aria-expanded={open}
+          aria-controls={panelId}
         >
           {open ? <X size={16} /> : <Plus size={16} />}
           {open ? "Close" : actionLabel}
         </button>
       </div>
       {open && (
-        <div className="border-t border-ink-100 bg-gradient-to-b from-ink-50/55 to-white px-5 py-5 motion-safe:animate-slide-up">{children}</div>
+        <div id={panelId} className="border-t border-ink-100 bg-gradient-to-b from-ink-50/55 to-white px-5 py-5 motion-safe:animate-slide-up">{children}</div>
       )}
     </section>
   );
