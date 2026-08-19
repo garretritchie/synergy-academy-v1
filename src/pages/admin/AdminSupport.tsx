@@ -572,7 +572,7 @@ function EnvironmentStatus({
         {icon}
         <span className="text-xs font-medium">{label}</span>
       </div>
-      <span className={`mt-3 inline-flex rounded-md px-2 py-1 text-[11px] font-semibold ${toneClass}`}>
+      <span className={`mt-3 inline-flex rounded-md px-2 py-1 text-xs font-semibold ${toneClass}`}>
         {value}
       </span>
     </div>

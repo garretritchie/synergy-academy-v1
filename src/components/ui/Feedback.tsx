@@ -10,15 +10,15 @@ export function Alert({
 }) {
   const styles =
     tone === "error"
-      ? "bg-danger-50 text-danger-700"
+      ? "border-danger-200 bg-danger-50 text-danger-800"
       : tone === "success"
-        ? "bg-success-50 text-success-700"
-        : "bg-brand-50 text-brand-700";
+        ? "border-success-200 bg-success-50 text-success-800"
+        : "border-brand-200 bg-brand-50 text-brand-800";
   const Icon = tone === "success" ? CheckCircle2 : AlertCircle;
   return (
     <div
       role={tone === "error" ? "alert" : "status"}
-      className={`flex items-start gap-2 rounded-lg px-3 py-2.5 text-sm ${styles}`}
+      className={`flex items-start gap-2.5 rounded-lg border px-3.5 py-3 text-sm leading-5 ${styles}`}
     >
       <Icon className="mt-0.5 shrink-0" size={16} />
       {children}
@@ -51,7 +51,7 @@ export function SubmitButton({
 
 export function TableSkeleton({ rows = 4 }: { rows?: number }) {
   return (
-    <div className="space-y-3 p-5" aria-label="Loading">
+    <div className="space-y-3 p-5" aria-label="Loading" aria-live="polite">
       <div className="h-4 w-40 animate-pulse rounded bg-ink-100" />
       {Array.from({ length: rows }).map((_, index) => (
         <div key={index} className="h-12 animate-pulse rounded-lg bg-ink-50" />

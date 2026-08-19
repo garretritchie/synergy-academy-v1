@@ -34,7 +34,7 @@ export function ProgressBar({
         className={`w-full overflow-hidden rounded-full bg-ink-200 ${heights[size]}`}
       >
         <div
-          className="h-full rounded-full bg-brand-500 transition-all duration-500 ease-out"
+          className="h-full rounded-full bg-brand-500 transition-[width] duration-500 ease-out"
           style={{ width: `${percent}%` }}
         />
       </div>

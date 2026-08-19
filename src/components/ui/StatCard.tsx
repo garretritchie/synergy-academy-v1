@@ -25,11 +25,11 @@ export function StatCard({
 }: StatCardProps) {
   const styles = accentStyles[accent];
   return (
-    <div className="card p-4">
+    <div className="card p-5">
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-xs font-semibold text-ink-500">{label}</p>
-          <p className="mt-1.5 font-display text-xl font-semibold tabular-nums text-ink-950">{value}</p>
+          <p className="text-sm font-medium text-ink-500">{label}</p>
+          <p className="mt-2 font-display text-2xl font-semibold leading-none tabular-nums text-ink-950">{value}</p>
           {hint && <p className="mt-1 text-xs text-ink-400">{hint}</p>}
         </div>
         {icon && (

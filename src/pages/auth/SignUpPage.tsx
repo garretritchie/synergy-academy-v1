@@ -33,7 +33,7 @@ export function SignUpPage() {
   return (
     <div className="flex min-h-[100dvh] flex-col bg-ink-50 lg:grid lg:grid-cols-2">
       {/* Left branding panel */}
-      <div className="relative hidden flex-col justify-between overflow-hidden bg-[#07172B] p-12 lg:flex">
+      <div className="relative hidden flex-col justify-between overflow-hidden bg-navy p-12 lg:flex">
         <img
           src="/brand/synergy-bahamas-logo-white.png"
           alt="Synergy Bahamas"
@@ -42,7 +42,7 @@ export function SignUpPage() {
         <AcademyBrandMark tone="light" className="relative z-10 mt-3" />
 
         <div className="relative z-10 text-white">
-          <h1 className="text-3xl font-bold leading-tight">
+          <h1 className="font-display text-3xl font-bold leading-tight">
             Join the
             <br />
             learning community.
@@ -77,7 +77,7 @@ export function SignUpPage() {
 
       {/* Right form panel */}
       <div className="flex flex-1 items-center justify-center p-6 sm:p-12">
-        <div className="w-full max-w-sm">
+        <div className="w-full max-w-md rounded-xl border border-ink-100 bg-white p-6 shadow-card sm:p-8 lg:max-w-md">
           <img
             src="/brand/synergy-bahamas-logo-full-color.png"
             alt="Synergy Bahamas"
@@ -85,7 +85,7 @@ export function SignUpPage() {
           />
           <AcademyBrandMark compact className="-mt-5 mb-7 lg:hidden" />
 
-          <h2 className="text-2xl font-bold text-ink-900">
+          <h2 className="font-display text-2xl font-semibold text-ink-950">
             Create your account
           </h2>
           <p className="mt-1.5 text-sm text-ink-500">
@@ -126,7 +126,7 @@ export function SignUpPage() {
                     required
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
-                    placeholder="Jane"
+                    placeholder="First name"
                     className="input pl-10"
                   />
                 </div>
@@ -141,7 +141,7 @@ export function SignUpPage() {
                   required
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
-                  placeholder="Doe"
+                  placeholder="Last name"
                   className="input"
                 />
               </div>

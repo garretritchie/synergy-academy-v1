@@ -430,7 +430,7 @@ export function CourseCalendar() {
             className="flex items-center gap-4 px-5 py-4"
           >
             <div className="flex h-12 w-12 flex-col items-center justify-center rounded-lg bg-brand-50 text-brand-800">
-              <span className="text-[10px] font-semibold uppercase">
+              <span className="text-xs font-semibold uppercase">
                 {new Intl.DateTimeFormat("en-BS", { month: "short" }).format(
                   new Date(event.date),
                 )}

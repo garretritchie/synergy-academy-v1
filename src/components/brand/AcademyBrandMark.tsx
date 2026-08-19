@@ -31,7 +31,7 @@ export function AcademyBrandMark({
       <span className="flex min-w-0 flex-col">
         <span className="flex items-center leading-none">
           <span
-            className={`${primary} font-display font-bold ${compact ? "text-[10px] tracking-[0.13em]" : "text-xs tracking-[0.16em]"}`}
+            className={`${primary} font-display font-bold leading-none ${compact ? "text-[11px] tracking-[0.12em]" : "text-[13px] tracking-[0.14em]"}`}
           >
             SYNERGY
           </span>
@@ -40,13 +40,13 @@ export function AcademyBrandMark({
             aria-hidden="true"
           />
           <span
-            className={`${secondary} font-display font-semibold ${compact ? "text-[9px] tracking-[0.13em]" : "text-[11px] tracking-[0.16em]"}`}
+            className={`${secondary} font-display font-semibold leading-none ${compact ? "text-[10px] tracking-[0.12em]" : "text-xs tracking-[0.14em]"}`}
           >
             ACADEMY
           </span>
         </span>
         <span
-          className={`${tagline} mt-1 whitespace-nowrap font-sans font-semibold leading-none tracking-[0.025em] ${compact ? "text-[8px]" : "text-[9px]"}`}
+          className={`${tagline} mt-1 whitespace-nowrap font-sans font-semibold leading-tight tracking-[0.01em] ${compact ? "text-[10px]" : "text-[11px]"}`}
         >
           Skills for What’s Next.
         </span>

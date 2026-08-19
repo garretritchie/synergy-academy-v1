@@ -2,7 +2,7 @@
 # Profiles, Roles, and Instructor Profiles
 
 ## Purpose
-Establishes the core identity and authorization foundation for the Synergy Bahamas Learning Platform.
+Establishes the core identity and authorization foundation for the Synergy Bahamas eLearning Platform.
 
 ## New Tables
 

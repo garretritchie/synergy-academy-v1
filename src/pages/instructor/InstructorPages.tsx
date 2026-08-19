@@ -447,7 +447,7 @@ export function InstructorAssignments() {
     <AppLayout>
       <PageHeader
         title="Assignments & quizzes"
-        subtitle="Create coursework, publish due dates, and review submissions."
+        subtitle="Create coursework, add optional cohort deadlines, and review submissions."
       />
       <div className="mt-6 space-y-5">
         <FormPanel
@@ -522,7 +522,7 @@ export function InstructorAssignments() {
               {assignmentStep === 1 && (
                 <div className="space-y-4">
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    <Field label="Due date">
+                    <Field label="Due date (optional)">
                       <input
                         type="datetime-local"
                         className="input"
@@ -650,7 +650,10 @@ export function InstructorAssignments() {
                 <div className="min-w-0 flex-1">
                   <h2 className="font-medium text-ink-900">{row.title}</h2>
                   <p className="text-xs text-ink-500">
-                    Due {formatDateTime(row.due_date)} · {row.max_points} points
+                    {row.due_date
+                      ? `Due ${formatDateTime(row.due_date)} · `
+                      : "No due date · "}
+                    {row.max_points} points
                   </p>
                 </div>
                 <button

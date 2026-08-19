@@ -1,16 +1,48 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Mail, Lock, AlertCircle, ArrowUpRight } from "lucide-react";
+import {
+  Mail,
+  Lock,
+  AlertCircle,
+  ArrowUpRight,
+  KeyRound,
+  Phone,
+} from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { AcademyBrandMark } from "@/components/brand/AcademyBrandMark";
 
 export function SignInPage() {
   const { signIn } = useAuth();
   const navigate = useNavigate();
+  const currentYear = new Date().getFullYear();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const demoAccounts = [
+    {
+      role: "Demo admin",
+      email: import.meta.env.VITE_DEMO_ADMIN_EMAIL,
+      password: import.meta.env.VITE_DEMO_ADMIN_PASSWORD,
+    },
+    {
+      role: "Demo student",
+      email: import.meta.env.VITE_DEMO_STUDENT_EMAIL,
+      password: import.meta.env.VITE_DEMO_STUDENT_PASSWORD,
+    },
+  ].filter(
+    (account): account is { role: string; email: string; password: string } =>
+      Boolean(account.email && account.password),
+  );
+  const demoMode =
+    import.meta.env.VITE_DEMO_MVP_MODE === "true" && demoAccounts.length > 0;
+
+  const fillDemoAccount = (demoEmail: string, demoPassword: string) => {
+    setEmail(demoEmail);
+    setPassword(demoPassword);
+    setError(null);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,15 +58,15 @@ export function SignInPage() {
   };
 
   return (
-    <main className="min-h-[100dvh] bg-[#f5f5f5] font-sans text-[#0a1628] lg:grid lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
-      <section className="relative hidden min-h-[100dvh] flex-col justify-between overflow-hidden bg-[#0a1628] px-12 py-11 text-white lg:flex xl:px-16 xl:py-14">
+    <main className="min-h-[100dvh] bg-canvas font-sans text-navy lg:grid lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
+      <section className="relative hidden min-h-[100dvh] flex-col justify-between overflow-hidden bg-navy px-12 py-11 text-white lg:flex xl:px-16 xl:py-14">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 overflow-hidden"
         >
-          <div className="absolute -right-56 top-24 h-[34rem] w-[34rem] rounded-full border border-[#0066ff]/15" />
-          <div className="absolute bottom-0 left-0 h-1 w-32 bg-[#ffc107]" />
-          <div className="absolute bottom-0 left-32 h-1 w-48 bg-[#0066ff]" />
+          <div className="absolute -right-56 top-24 h-[34rem] w-[34rem] rounded-full border border-brand-500/15" />
+          <div className="absolute bottom-0 left-0 h-1 w-32 bg-accent-400" />
+          <div className="absolute bottom-0 left-32 h-1 w-48 bg-brand-500" />
         </div>
 
         <img
@@ -44,11 +76,9 @@ export function SignInPage() {
           height="964"
           className="relative z-10 h-auto w-60 object-contain object-left xl:w-72"
         />
-        <AcademyBrandMark tone="light" className="relative z-10 mt-3" />
-
         <div className="relative z-10 max-w-xl pb-8">
           <div
-            className="mb-7 h-1 w-14 rounded-full bg-[#0066ff]"
+            className="mb-7 h-1 w-14 rounded-full bg-brand-500"
             aria-hidden="true"
           />
           <h1 className="max-w-lg font-display text-3xl font-bold leading-[1.12] tracking-[-0.03em] xl:text-4xl">
@@ -56,36 +86,41 @@ export function SignInPage() {
             <br />
             Achieve more.
           </h1>
-          <p className="mt-5 max-w-md text-[13px] leading-6 text-slate-300">
-            Instructor-led courses with live sessions, structured curriculum,
-            and personalized academic records in one place.
+          <p className="mt-5 max-w-md text-sm leading-6 text-slate-300">
+            Build skills at your pace with practical eLearning courses, guided
+            pathways, and live instructor support when it matters.
           </p>
         </div>
 
-        <a
-          href="https://www.synergybahamas.com"
-          target="_blank"
-          rel="noreferrer"
-          className="group relative z-10 flex max-w-lg items-center justify-between border-t border-white/15 pt-7 text-white outline-none transition-colors hover:text-[#7eb3ff] focus-visible:text-[#7eb3ff] focus-visible:ring-2 focus-visible:ring-[#0066ff] focus-visible:ring-offset-4 focus-visible:ring-offset-[#0a1628]"
-        >
-          <span>
-            <span className="block font-display text-sm font-bold">
-              Visit Synergy Bahamas
+        <div className="relative z-10 max-w-lg border-t border-white/15 pt-7">
+          <a
+            href="https://www.synergybahamas.com"
+            target="_blank"
+            rel="noreferrer"
+            className="group flex items-center justify-between rounded-lg text-white transition-colors hover:text-brand-200 focus-visible:text-brand-200 focus-visible:ring-brand-400 focus-visible:ring-offset-4 focus-visible:ring-offset-navy"
+          >
+            <span>
+              <span className="block font-display text-sm font-bold">
+                Visit Synergy Bahamas
+              </span>
+              <span className="mt-1 block text-xs text-slate-300">
+                synergybahamas.com
+              </span>
             </span>
-            <span className="mt-1 block text-[11px] text-slate-300">
-              synergybahamas.com
-            </span>
-          </span>
-          <ArrowUpRight
-            size={24}
-            aria-hidden="true"
-            className="transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
-          />
-        </a>
+            <ArrowUpRight
+              size={24}
+              aria-hidden="true"
+              className="transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+            />
+          </a>
+          <p className="mt-4 text-xs text-slate-400">
+            © {currentYear} Synergy Bahamas. All rights reserved.
+          </p>
+        </div>
       </section>
 
       <section className="flex min-h-[100dvh] items-center justify-center px-5 py-8 sm:px-10 lg:px-12">
-        <div className="w-full max-w-[29rem] rounded-xl border border-white bg-white px-6 py-8 shadow-[0_24px_70px_-38px_rgba(10,22,40,0.45)] sm:px-9 sm:py-9">
+        <div className="w-full max-w-[29rem] rounded-xl border border-ink-100 bg-white px-6 py-8 shadow-elevated sm:px-9 sm:py-9">
           <img
             src="/brand/synergy-bahamas-logo-full-color.png"
             alt="Synergy Bahamas"
@@ -93,9 +128,9 @@ export function SignInPage() {
             height="964"
             className="mb-10 h-auto w-48 object-contain object-left lg:hidden"
           />
-          <AcademyBrandMark compact className="-mt-7 mb-8 lg:hidden" />
+          <AcademyBrandMark compact className="mb-7" />
 
-          <h2 className="font-display text-xl font-semibold tracking-[-0.02em] text-[#0a1628]">
+          <h2 className="font-display text-2xl font-semibold leading-tight text-navy">
             Welcome back
           </h2>
           <p className="mt-2 text-sm leading-6 text-slate-600">
@@ -115,7 +150,7 @@ export function SignInPage() {
 
             <div>
               <label
-                className="mb-1.5 block text-xs font-semibold text-[#0a1628]"
+                className="label"
                 htmlFor="email"
               >
                 Email address
@@ -134,26 +169,18 @@ export function SignInPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   autoComplete="email"
                   placeholder="you@example.com"
-                  className="h-11 w-full rounded-lg border border-slate-300 bg-white pl-11 pr-4 text-sm text-[#0a1628] outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-[#0066ff] focus:ring-4 focus:ring-[#0066ff]/10"
+                  className="input h-11 pl-11 pr-4"
                 />
               </div>
             </div>
 
             <div>
-              <div className="mb-2 flex items-center justify-between">
-                <label
-                  className="block text-xs font-semibold text-[#0a1628]"
-                  htmlFor="password"
-                >
-                  Password
-                </label>
-                <Link
-                  to="/forgot-password"
-                  className="text-xs font-semibold text-[#0066ff] hover:underline"
-                >
-                  Forgot password?
-                </Link>
-              </div>
+              <label
+                className="label"
+                htmlFor="password"
+              >
+                Password
+              </label>
               <div className="relative">
                 <Lock
                   size={18}
@@ -168,7 +195,7 @@ export function SignInPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   autoComplete="current-password"
                   placeholder="Your password"
-                  className="h-11 w-full rounded-lg border border-slate-300 bg-white pl-11 pr-4 text-sm text-[#0a1628] outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-[#0066ff] focus:ring-4 focus:ring-[#0066ff]/10"
+                  className="input h-11 pl-11 pr-4"
                 />
               </div>
             </div>
@@ -176,26 +203,113 @@ export function SignInPage() {
             <button
               type="submit"
               disabled={loading}
-              className="mt-1 inline-flex h-11 w-full items-center justify-center rounded-lg bg-[#0066ff] px-5 font-display text-[13px] font-semibold text-white shadow-[0_12px_26px_-14px_rgba(0,102,255,0.9)] transition hover:bg-[#0057d9] focus:outline-none focus:ring-4 focus:ring-[#0066ff]/25 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
+              className="btn-primary mt-1 h-11 w-full font-display"
             >
               {loading ? "Signing in..." : "Sign In"}
             </button>
           </form>
 
-          <p className="mt-6 text-center text-xs text-slate-600">
-            Don't have an account?{" "}
-            <Link
-              to="/signup"
-              className="font-semibold text-[#0066ff] underline-offset-4 hover:text-[#004fc7] hover:underline focus:outline-none focus:ring-2 focus:ring-[#0066ff]/30"
+          {demoMode && (
+            <section
+              className="mt-5 overflow-hidden rounded-lg border border-brand-200 bg-brand-50/60"
+              aria-labelledby="demo-access-title"
             >
-              Create one
-            </Link>
-          </p>
+              <div className="flex items-start gap-2.5 border-b border-brand-200 px-3.5 py-3">
+                <KeyRound
+                  size={16}
+                  aria-hidden="true"
+                  className="mt-0.5 shrink-0 text-brand-600"
+                />
+                <div>
+                  <h3
+                    id="demo-access-title"
+                    className="text-xs font-semibold text-navy"
+                  >
+                    Demo MVP access
+                  </h3>
+                  <p className="mt-0.5 text-xs leading-4 text-slate-500">
+                    Choose an account to preview the appropriate workspace.
+                  </p>
+                </div>
+              </div>
 
-          <div className="mt-7 border-t border-slate-200 pt-5 text-[11px] leading-5 text-slate-500">
-            <span>
-              Synergy Academy is the learning platform of Synergy Bahamas.
-            </span>
+              <div className="divide-y divide-brand-100">
+                {demoAccounts.map((account) => (
+                  <div
+                    key={account.role}
+                    className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3.5 py-3"
+                  >
+                    <div className="min-w-0 text-xs leading-4 text-slate-600">
+                      <p className="font-semibold text-navy">
+                        {account.role}
+                      </p>
+                      <p className="truncate" title={account.email}>
+                        {account.email}
+                      </p>
+                      <p className="break-all font-mono text-xs text-slate-500">
+                        {account.password}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        fillDemoAccount(account.email, account.password)
+                      }
+                      className="min-h-10 rounded-md border border-brand-200 bg-white px-3 py-1.5 text-xs font-semibold text-brand-700 transition-colors hover:border-brand-300 hover:bg-brand-50 focus-visible:ring-brand-400"
+                      aria-label={`Use ${account.role.toLowerCase()} credentials`}
+                    >
+                      Use account
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600">
+            <Link
+              to="/forgot-password"
+              className="font-semibold text-brand-700 hover:text-brand-800 hover:underline"
+            >
+              Forgot password?
+            </Link>
+            <p>
+              Don't have an account?{" "}
+              <Link
+                to="/signup"
+                className="font-semibold text-brand-700 hover:text-brand-800 hover:underline"
+              >
+                Create one
+              </Link>
+            </p>
+          </div>
+
+          <div className="mt-7 border-t border-slate-200 pt-5 text-xs leading-5 text-slate-500">
+            <p>
+              Synergy Academy is the eLearning Platform of Synergy Bahamas.
+            </p>
+            <address className="mt-3 not-italic">
+              <p className="font-semibold text-slate-700">Contact Information</p>
+              <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
+                <span className="inline-flex items-center gap-1.5">
+                  <Phone size={12} aria-hidden="true" />
+                  <a className="hover:text-brand-700 hover:underline" href="tel:+12423230727">
+                    (242) 323-0727
+                  </a>
+                  <span aria-hidden="true">/</span>
+                  <a className="hover:text-brand-700 hover:underline" href="tel:+12426016016">
+                    (242) 601-6016
+                  </a>
+                </span>
+                <a
+                  className="inline-flex items-center gap-1.5 hover:text-brand-700 hover:underline"
+                  href="mailto:info@synergybahamas.com"
+                >
+                  <Mail size={12} aria-hidden="true" />
+                  info@synergybahamas.com
+                </a>
+              </div>
+            </address>
           </div>
         </div>
       </section>

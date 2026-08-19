@@ -192,7 +192,7 @@ export function OrganizationSeats() {
                     <p className="text-lg font-semibold tabular-nums text-brand-800">
                       {activeSeats.length}/{contract.seat_limit}
                     </p>
-                    <p className="text-[11px] text-brand-700">seats assigned</p>
+                    <p className="text-xs text-brand-700">seats assigned</p>
                   </div>
                 </div>
                 <div className="mt-4 flex flex-col gap-2 sm:flex-row">

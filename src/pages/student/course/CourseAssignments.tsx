@@ -483,10 +483,12 @@ export function CourseAssignments() {
                           {row.description}
                         </p>
                       )}
-                      <p className="mt-3 flex items-center gap-1.5 text-xs text-ink-500">
-                        <Clock size={13} />
-                        Due {formatDateTime(row.due_date)}
-                      </p>
+                      {row.due_date && (
+                        <p className="mt-3 flex items-center gap-1.5 text-xs text-ink-500">
+                          <Clock size={13} />
+                          Due {formatDateTime(row.due_date)}
+                        </p>
+                      )}
                       {submission?.grade != null && (
                         <div className="mt-4 rounded-lg bg-success-50 p-3 text-sm text-success-800">
                           <strong>

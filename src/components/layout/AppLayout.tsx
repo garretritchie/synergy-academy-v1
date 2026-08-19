@@ -91,7 +91,7 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
       <button
         type="button"
         onClick={() => setUserMenuOpen((open) => !open)}
-        className={`flex items-center rounded-lg border border-transparent transition-colors hover:border-ink-200 hover:bg-ink-50 ${
+        className={`flex min-h-10 items-center rounded-lg border border-transparent transition-colors hover:border-ink-200 hover:bg-ink-50 ${
           compact ? "p-1" : "gap-3 px-2 py-1.5"
         }`}
         aria-expanded={userMenuOpen}
@@ -107,7 +107,7 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
               <span className="block max-w-40 truncate text-xs font-semibold text-ink-900">
                 {fullName}
               </span>
-              <span className="block text-[10px] capitalize text-ink-500">
+              <span className="block text-xs capitalize leading-4 text-ink-500">
                 {activeRole}
               </span>
             </span>
@@ -123,7 +123,7 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
         >
           <div className="border-b border-ink-100 px-3 py-2.5">
             <p className="truncate text-xs font-semibold text-ink-900">{fullName}</p>
-            <p className="truncate text-[11px] text-ink-500">{profile?.email}</p>
+            <p className="truncate text-xs leading-5 text-ink-500">{profile?.email}</p>
           </div>
           <button
             type="button"
@@ -132,7 +132,7 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
               setUserMenuOpen(false);
               navigate("/account/profile");
             }}
-            className="flex w-full items-center gap-2 px-3 py-2 text-xs text-ink-700 hover:bg-ink-50"
+            className="flex min-h-10 w-full items-center gap-2 px-3 py-2 text-sm text-ink-700 hover:bg-ink-50"
           >
             <UserRound size={15} /> Profile and account
           </button>
@@ -144,14 +144,14 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
                 setUserMenuOpen(false);
                 navigate("/organization/seats");
               }}
-              className="flex w-full items-center gap-2 border-t border-ink-100 px-3 py-2 text-xs text-ink-700 hover:bg-ink-50"
+              className="flex min-h-10 w-full items-center gap-2 border-t border-ink-100 px-3 py-2 text-sm text-ink-700 hover:bg-ink-50"
             >
               <Building2 size={15} /> Company seats
             </button>
           )}
           {roles.length > 1 && (
             <div className="border-t border-ink-100 px-1.5 py-1">
-              <p className="px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-ink-400">
+              <p className="px-2 py-1 text-xs font-semibold uppercase tracking-[0.1em] text-ink-400">
                 Switch workspace
               </p>
               {roles.map((role) => (
@@ -160,7 +160,7 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
                   role="menuitem"
                   key={role}
                   onClick={() => switchRole(role)}
-                  className={`flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs capitalize ${role === activeRole ? "bg-brand-50 text-brand-700" : "text-ink-700 hover:bg-ink-50"}`}
+                  className={`flex min-h-10 w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm capitalize ${role === activeRole ? "bg-brand-50 text-brand-700" : "text-ink-700 hover:bg-ink-50"}`}
                 >
                   <RefreshCw size={14} /> {role}
                 </button>
@@ -171,7 +171,7 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
             type="button"
             role="menuitem"
             onClick={handleSignOut}
-            className="flex w-full items-center gap-2 border-t border-ink-100 px-3 py-2 text-xs text-danger-600 hover:bg-danger-50"
+            className="flex min-h-10 w-full items-center gap-2 border-t border-ink-100 px-3 py-2 text-sm text-danger-600 hover:bg-danger-50"
           >
             <LogOut size={15} /> Sign out
           </button>
@@ -181,10 +181,10 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
   );
 
   return (
-    <div className="flex h-[100dvh] min-h-[100dvh] overflow-hidden bg-[#f4f7fb]">
+    <div className="flex h-[100dvh] min-h-[100dvh] overflow-hidden bg-canvas">
       {/* Desktop Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-60 transform border-r border-white/10 bg-[linear-gradient(160deg,#07162a_0%,#0b3f82_58%,#0066ff_135%)] text-white shadow-[8px_0_30px_rgba(7,22,42,0.12)] transition-transform duration-300 lg:static lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 w-60 transform border-r border-white/10 bg-[linear-gradient(160deg,#0a1628_0%,#0b3f82_58%,#0066ff_135%)] text-white shadow-[8px_0_30px_rgba(7,22,42,0.12)] transition-transform duration-300 lg:static lg:translate-x-0 ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -202,7 +202,7 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
           <nav className="scrollbar-thin flex-1 overflow-y-auto px-3 py-3">
             {navSections.map((section, i) => (
               <div key={i} className="mb-4">
-                <p className="mb-1 px-3 text-[10px] font-bold uppercase tracking-[0.12em] text-white/45">
+                <p className="mb-1 px-3 text-xs font-semibold uppercase tracking-[0.1em] text-white/50">
                   {section.label}
                 </p>
                 <div className="space-y-0.5">
@@ -246,10 +246,11 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
       {/* Main content area */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Mobile top bar */}
-        <header className="flex h-14 items-center justify-between border-b border-ink-200/80 bg-white px-4 lg:hidden">
+        <header className="flex h-16 items-center justify-between border-b border-ink-200/80 bg-white px-4 shadow-sm lg:hidden">
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
             className="rounded-lg p-2 text-ink-600 hover:bg-ink-100"
+            aria-label={mobileOpen ? "Close navigation" : "Open navigation"}
           >
             {mobileOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
@@ -258,14 +259,14 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
         </header>
 
         {/* Desktop top bar */}
-        <header className="hidden h-14 shrink-0 items-center justify-between border-b border-ink-200/80 bg-white px-7 lg:flex">
+        <header className="hidden h-16 shrink-0 items-center justify-between border-b border-ink-200/80 bg-white px-7 shadow-sm lg:flex">
           <AcademyBrandMark />
           {accountMenu()}
         </header>
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto scrollbar-thin">
-          <div className="mx-auto max-w-[1400px] px-4 py-5 sm:px-6 lg:px-7 lg:py-6">
+          <div className="mx-auto max-w-[1400px] px-4 py-5 sm:px-6 lg:px-7 lg:py-7">
             {children}
           </div>
         </main>

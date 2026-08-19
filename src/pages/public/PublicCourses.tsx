@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { ArrowRight, Award, BookOpen, Clock3, GraduationCap } from "lucide-react";
+import { ArrowRight, Award, BookOpen, Clock3, GraduationCap, Mail, Phone } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { Alert, TableSkeleton } from "@/components/ui/Feedback";
 import { EmptyState } from "@/components/ui/Spinner";
@@ -50,9 +50,22 @@ function PublicShell({ children }: { children: ReactNode }) {
       </header>
       {children}
       <footer className="mt-12 border-t border-ink-100 bg-white">
-        <div className="mx-auto flex max-w-6xl flex-col gap-2 px-5 py-6 text-xs text-ink-500 sm:flex-row sm:items-center sm:justify-between sm:px-7">
-          <p>Synergy Academy, a learning platform by Synergy Bahamas.</p>
-          <a className="font-medium text-brand-700 hover:text-brand-800" href="https://www.synergybahamas.com" target="_blank" rel="noreferrer">
+        <div className="mx-auto grid max-w-6xl gap-5 px-5 py-6 text-xs text-ink-500 sm:grid-cols-[1fr_auto] sm:px-7">
+          <div>
+            <p>Synergy Academy, an eLearning Platform by Synergy Bahamas.</p>
+            <address className="mt-2 flex flex-wrap gap-x-4 gap-y-1 not-italic">
+              <span className="inline-flex items-center gap-1.5">
+                <Phone size={13} aria-hidden="true" />
+                <a className="hover:text-brand-700 hover:underline" href="tel:+12423230727">(242) 323-0727</a>
+                <span aria-hidden="true">/</span>
+                <a className="hover:text-brand-700 hover:underline" href="tel:+12426016016">(242) 601-6016</a>
+              </span>
+              <a className="inline-flex items-center gap-1.5 hover:text-brand-700 hover:underline" href="mailto:info@synergybahamas.com">
+                <Mail size={13} aria-hidden="true" /> info@synergybahamas.com
+              </a>
+            </address>
+          </div>
+          <a className="self-start font-medium text-brand-700 hover:text-brand-800" href="https://www.synergybahamas.com" target="_blank" rel="noreferrer">
             Visit synergybahamas.com
           </a>
         </div>

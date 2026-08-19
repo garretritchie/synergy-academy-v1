@@ -1,6 +1,11 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { useParams, NavLink, useNavigate } from "react-router-dom";
-import { ArrowLeft, BookOpen } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useParams,
+  NavLink,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
+import { ArrowLeft, BookOpen, ChevronDown, MoreHorizontal } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { studentCourseNav } from "@/config/navigation";
@@ -11,9 +16,19 @@ export function CourseLayout({ children }: { children: ReactNode }) {
   const { cohortId } = useParams<{ cohortId: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const moreMenuRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
   const [cohort, setCohort] = useState<Cohort | null>(null);
   const [course, setCourse] = useState<Course | null>(null);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+
+  const primaryNavItems = studentCourseNav.slice(0, 4);
+  const mediumNavItems = studentCourseNav.slice(4, 6);
+  const overflowNavItems = [studentCourseNav[2], ...studentCourseNav.slice(4)];
+  const moreMenuActive = studentCourseNav.slice(4).some((item) =>
+    location.pathname.includes(`/${item.path}`),
+  );
 
   useEffect(() => {
     if (!cohortId || !user) return;
@@ -31,6 +46,28 @@ export function CourseLayout({ children }: { children: ReactNode }) {
       setLoading(false);
     })();
   }, [cohortId, user]);
+
+  useEffect(() => {
+    setMoreMenuOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!moreMenuOpen) return;
+    const closeMenu = (event: PointerEvent) => {
+      if (!moreMenuRef.current?.contains(event.target as Node)) {
+        setMoreMenuOpen(false);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMoreMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", closeMenu);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeMenu);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [moreMenuOpen]);
 
   if (loading) return <FullPageSpinner message="Loading course..." />;
 
@@ -58,7 +95,8 @@ export function CourseLayout({ children }: { children: ReactNode }) {
         <div className="mx-auto flex max-w-7xl items-center gap-3">
           <button
             onClick={() => navigate("/student/courses")}
-            className="rounded-lg p-2 text-ink-500 hover:bg-ink-100"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-ink-500 hover:bg-ink-100"
+            aria-label="Back to My Courses"
           >
             <ArrowLeft size={18} />
           </button>
@@ -74,19 +112,51 @@ export function CourseLayout({ children }: { children: ReactNode }) {
         </div>
       </div>
 
-      {/* Course nav tabs */}
+      {/* Responsive course navigation */}
       <div className="border-b border-ink-200 bg-white px-4 lg:px-8">
-        <div className="mx-auto max-w-7xl">
-          <div className="flex gap-1 overflow-x-auto no-scrollbar py-1">
-            {studentCourseNav.map((item) => {
+        <nav
+          className="mx-auto flex max-w-7xl items-center gap-1 py-1"
+          aria-label="Course sections"
+        >
+          <div className="flex min-w-0 flex-1 items-center gap-1">
+            {primaryNavItems.map((item) => {
               const Icon = item.icon;
+              const mobileLabel =
+                item.path === "live"
+                  ? "Live"
+                  : item.path === "assignments"
+                    ? "Work"
+                    : item.label;
               return (
                 <NavLink
                   key={item.path}
                   to={`/student/courses/${cohortId}/${item.path}`}
                   end={item.path === "home"}
                   className={({ isActive }) =>
-                    `flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                    `${item.path === "live" ? "hidden sm:flex" : "flex"} min-h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-semibold transition-colors sm:flex-none sm:px-3 sm:text-sm ${
+                      isActive
+                        ? "bg-brand-50 text-brand-700"
+                        : "text-ink-500 hover:bg-ink-100 hover:text-ink-700"
+                    }`
+                  }
+                >
+                  <Icon size={16} />
+                  <span className="truncate sm:hidden">{mobileLabel}</span>
+                  <span className="hidden whitespace-nowrap sm:inline">
+                    {item.label}
+                  </span>
+                </NavLink>
+              );
+            })}
+
+            {mediumNavItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <NavLink
+                  key={item.path}
+                  to={`/student/courses/${cohortId}/${item.path}`}
+                  className={({ isActive }) =>
+                    `hidden min-h-11 items-center gap-2 whitespace-nowrap rounded-lg px-3 text-sm font-medium transition-colors md:flex ${
                       isActive
                         ? "bg-brand-50 text-brand-700"
                         : "text-ink-500 hover:bg-ink-100 hover:text-ink-700"
@@ -99,7 +169,63 @@ export function CourseLayout({ children }: { children: ReactNode }) {
               );
             })}
           </div>
-        </div>
+
+          <div ref={moreMenuRef} className="relative shrink-0">
+            <button
+              type="button"
+              onClick={() => setMoreMenuOpen((open) => !open)}
+              className={`flex min-h-11 items-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-1 sm:px-3 sm:text-sm ${
+                moreMenuActive || moreMenuOpen
+                  ? "bg-brand-50 text-brand-700"
+                  : "text-ink-500 hover:bg-ink-100 hover:text-ink-700"
+              }`}
+              aria-expanded={moreMenuOpen}
+              aria-haspopup="menu"
+            >
+              <MoreHorizontal size={17} aria-hidden="true" />
+              <span>More</span>
+              <ChevronDown
+                size={14}
+                aria-hidden="true"
+                className={`hidden transition-transform sm:block ${moreMenuOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+
+            {moreMenuOpen && (
+              <div
+                role="menu"
+                className="absolute right-0 top-full z-40 mt-2 w-60 overflow-hidden rounded-xl border border-ink-200 bg-white p-1.5 shadow-elevated"
+              >
+                {overflowNavItems.map((item) => {
+                  const Icon = item.icon;
+                  const visibilityClass =
+                    item.path === "live"
+                      ? "flex sm:hidden"
+                      : ["calendar", "performance"].includes(item.path)
+                        ? "flex md:hidden"
+                        : "flex";
+                  return (
+                    <NavLink
+                      key={item.path}
+                      to={`/student/courses/${cohortId}/${item.path}`}
+                      role="menuitem"
+                      className={({ isActive }) =>
+                        `${visibilityClass} min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors ${
+                          isActive
+                            ? "bg-brand-50 text-brand-700"
+                            : "text-ink-600 hover:bg-ink-50 hover:text-ink-900"
+                        }`
+                      }
+                    >
+                      <Icon size={17} aria-hidden="true" />
+                      <span>{item.label}</span>
+                    </NavLink>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </nav>
       </div>
 
       {/* Content */}

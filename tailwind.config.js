@@ -4,10 +4,12 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Open Sans', 'system-ui', '-apple-system', 'sans-serif'],
-        display: ['Montserrat', 'system-ui', '-apple-system', 'sans-serif'],
+        sans: ['Open Sans Variable', 'Open Sans', 'system-ui', '-apple-system', 'sans-serif'],
+        display: ['Montserrat Variable', 'Montserrat', 'system-ui', '-apple-system', 'sans-serif'],
       },
       colors: {
+        navy: '#0a1628',
+        canvas: '#f4f7fb',
         brand: {
           50: '#eef9ff',
           100: '#d9f0ff',
@@ -84,9 +86,9 @@ export default {
         },
       },
       boxShadow: {
-        soft: '0 8px 24px -16px rgba(17, 46, 87, 0.28), 0 1px 3px rgba(17, 46, 87, 0.06)',
-        card: '0 14px 36px -20px rgba(17, 46, 87, 0.32), 0 3px 10px -6px rgba(17, 46, 87, 0.14)',
-        elevated: '0 22px 54px -24px rgba(17, 46, 87, 0.4), 0 8px 22px -14px rgba(17, 46, 87, 0.2)',
+        soft: '0 1px 2px rgba(10, 22, 40, 0.04), 0 8px 24px -18px rgba(10, 22, 40, 0.24)',
+        card: '0 2px 5px rgba(10, 22, 40, 0.05), 0 18px 42px -28px rgba(10, 22, 40, 0.3)',
+        elevated: '0 8px 18px -8px rgba(10, 22, 40, 0.18), 0 24px 52px -28px rgba(10, 22, 40, 0.34)',
       },
       animation: {
         'fade-in': 'fadeIn 0.3s ease-out',

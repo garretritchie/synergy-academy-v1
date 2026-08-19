@@ -12,7 +12,7 @@ Synergy Bahamas administrators operate the academy, instructors deliver and asse
 
 ## Product Purpose
 
-Synergy Academy is the learning platform for Synergy Bahamas. It manages the complete delivery of instructor-led courses: course setup, cohorts, enrolment, curriculum, live sessions, assignments, assessment, progress, communication, completion, and academic records.
+Synergy Academy is the eLearning Platform for Synergy Bahamas. It manages the complete delivery of instructor-led courses: course setup, cohorts, enrolment, curriculum, live sessions, assignments, assessment, progress, communication, completion, and academic records.
 
 ## Positioning
 

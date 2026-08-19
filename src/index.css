@@ -3,17 +3,45 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    color-scheme: light;
+    font-synthesis: none;
+  }
+
+  html {
+    @apply bg-canvas;
+    text-rendering: optimizeLegibility;
+  }
+
   * {
     -webkit-tap-highlight-color: transparent;
   }
 
   body {
-    @apply bg-ink-50 text-sm text-ink-900 antialiased;
-    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    @apply m-0 min-w-[320px] bg-canvas font-sans text-sm leading-6 text-ink-800 antialiased;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11', 'kern';
+    font-optical-sizing: auto;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-semibold tracking-tight;
+    @apply font-display font-semibold tracking-tight;
+    text-wrap: balance;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  button,
+  a {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2;
+  }
+
+  a {
+    @apply underline-offset-4;
   }
 
   ::selection {
@@ -23,7 +51,7 @@
 
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg px-3.5 py-2 text-[13px] font-semibold transition duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex min-h-10 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold leading-5 transition-[background-color,border-color,color,box-shadow,transform] duration-150 focus-visible:ring-2 focus-visible:ring-offset-2 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .btn-primary {
@@ -31,7 +59,7 @@
   }
 
   .btn-secondary {
-    @apply btn bg-white text-ink-700 border border-ink-200 hover:bg-ink-50 focus:ring-ink-400;
+    @apply btn border border-ink-200 bg-white text-ink-700 shadow-sm hover:border-ink-300 hover:bg-ink-50 focus:ring-ink-400;
   }
 
   .btn-ghost {
@@ -43,19 +71,19 @@
   }
 
   .card {
-    @apply rounded-xl border border-white/80 bg-white shadow-soft;
+    @apply rounded-xl border border-ink-100 bg-white shadow-soft;
   }
 
   .card-elevated {
-    @apply rounded-xl border border-white/80 bg-white shadow-card;
+    @apply rounded-xl border border-ink-100 bg-white shadow-card;
   }
 
   .input {
-    @apply w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-[13px] text-ink-900 placeholder-ink-400 transition-colors focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20;
+    @apply min-h-10 w-full rounded-lg border border-ink-300 bg-white px-3.5 py-2 text-sm leading-5 text-ink-900 shadow-sm placeholder:text-ink-400 transition-[border-color,box-shadow] focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/15 disabled:cursor-not-allowed disabled:bg-ink-50 disabled:text-ink-500;
   }
 
   .label {
-    @apply mb-1.5 block text-xs font-semibold text-ink-700;
+    @apply mb-1.5 block text-sm font-semibold leading-5 text-ink-700;
   }
 
   .badge {
@@ -83,19 +111,19 @@
   }
 
   .sidebar-link {
-    @apply flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-white/70 transition-colors hover:bg-white/10 hover:text-white;
+    @apply flex min-h-10 items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-white/75 transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-white/80 focus-visible:ring-offset-navy;
   }
 
   .sidebar-link-active {
-    @apply bg-white/15 text-white shadow-[inset_3px_0_0_rgba(255,255,255,0.9)] hover:bg-white/20 hover:text-white;
+    @apply bg-white/15 font-semibold text-white shadow-[inset_3px_0_0_rgba(255,255,255,0.9)] hover:bg-white/20 hover:text-white;
   }
 
   .premium-surface {
-    @apply rounded-xl border border-white/80 bg-white shadow-soft;
+    @apply rounded-xl border border-ink-100 bg-white shadow-soft;
   }
 
   .page-section {
-    @apply rounded-xl border border-ink-100/80 bg-white shadow-soft;
+    @apply rounded-xl border border-ink-100 bg-white shadow-soft;
   }
 }
 

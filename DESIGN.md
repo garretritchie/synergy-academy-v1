@@ -16,29 +16,29 @@ colors:
   danger: "#dc2626"
 typography:
   display:
-    fontFamily: "Montserrat, system-ui, sans-serif"
+    fontFamily: "Montserrat Variable, Montserrat, system-ui, sans-serif"
     fontSize: "3rem"
     fontWeight: 700
     lineHeight: 1.08
     letterSpacing: "-0.03em"
   headline:
-    fontFamily: "Montserrat, system-ui, sans-serif"
+    fontFamily: "Montserrat Variable, Montserrat, system-ui, sans-serif"
     fontSize: "1.5rem"
     fontWeight: 700
     lineHeight: 1.25
     letterSpacing: "-0.025em"
   title:
-    fontFamily: "Montserrat, system-ui, sans-serif"
+    fontFamily: "Montserrat Variable, Montserrat, system-ui, sans-serif"
     fontSize: "1rem"
     fontWeight: 600
     lineHeight: 1.5
   body:
-    fontFamily: "Open Sans, system-ui, sans-serif"
+    fontFamily: "Open Sans Variable, Open Sans, system-ui, sans-serif"
     fontSize: "0.875rem"
     fontWeight: 400
     lineHeight: 1.5
   label:
-    fontFamily: "Open Sans, system-ui, sans-serif"
+    fontFamily: "Open Sans Variable, Open Sans, system-ui, sans-serif"
     fontSize: "0.875rem"
     fontWeight: 600
     lineHeight: 1.25
@@ -117,8 +117,8 @@ The palette combines institutional navy, clear action blue, and cool neutral sur
 
 ## Typography
 
-**Display Font:** Montserrat (with system sans fallback)
-**Body Font:** Open Sans (with system sans fallback)
+**Display Font:** Locally served Montserrat Variable (with Montserrat and system sans fallbacks)
+**Body Font:** Locally served Open Sans Variable (with Open Sans and system sans fallbacks)
 
 **Character:** Montserrat gives headings a confident geometric structure while Open Sans keeps dense academic and administrative copy neutral and readable.
 
@@ -134,7 +134,7 @@ The palette combines institutional navy, clear action blue, and cool neutral sur
 
 ## Layout
 
-Authenticated screens use a fixed 256px desktop sidebar and a centered content region capped at 1280px. Content spacing follows a 4/8/16/24/32px rhythm, with 20px as the common card inset. Forms collapse from two or three columns to one, tables scroll horizontally, and the sidebar becomes a dismissible mobile drawer below the 1024px breakpoint. The sign-in screen uses a brand panel and form panel on large screens, then removes the brand panel and places the full-color logo inside the form on mobile.
+Authenticated screens use a fixed 240px desktop sidebar and a centered content region capped at 1400px. Content spacing follows a 4/8/16/24/32px rhythm, with 20px as the common card inset. Forms collapse from two or three columns to one, tables scroll horizontally, and the sidebar becomes a dismissible mobile drawer below the 1024px breakpoint. The sign-in screen uses a brand panel and form panel on large screens, then removes the brand panel and places the full-color logo inside the form on mobile.
 
 ## Elevation & Depth
 
@@ -182,7 +182,7 @@ Controls use gently curved 8px corners, standard surfaces use 12px corners, and 
 
 ### Navigation
 
-Desktop navigation uses Lucide icons with compact text labels in a white sidebar. Active destinations use a pale blue field and stronger blue text. Mobile retains the same sections in an overlay drawer with a persistent academy header.
+Desktop navigation uses Lucide icons with compact text labels in a controlled navy-to-blue brand gradient. Active destinations use a translucent white field, higher-contrast text, and a slim inset marker. Mobile retains the same sections in an overlay drawer with a persistent academy header.
 
 ## Do's and Don'ts
 

@@ -137,7 +137,7 @@ export function AdminDashboard() {
             {quickLinks.slice(0, 4).map((link, index) => (
               <li key={link.path}>
                 <Link to={link.path} className="group flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-brand-50">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-50 text-[11px] font-bold text-brand-700 group-hover:bg-brand-600 group-hover:text-white">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-50 text-xs font-bold text-brand-700 group-hover:bg-brand-600 group-hover:text-white">
                     {index + 1}
                   </span>
                   <span className="min-w-0 flex-1">

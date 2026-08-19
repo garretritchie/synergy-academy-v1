@@ -1,6 +1,6 @@
 # Synergy Academy
 
-Synergy Academy is Synergy Bahamas’ role-aware learning platform for instructor-led cohorts and future self-paced access. It combines reusable lesson content, live delivery, assignment submission, grading, attendance, communication, progress, completion records, organization contacts, and capped seats in one Vite/React application backed by Bolt Supabase.
+Synergy Academy is Synergy Bahamas’ role-aware eLearning Platform for instructor-led cohorts and future self-paced access. It combines reusable lesson content, live delivery, assignment submission, grading, attendance, communication, progress, completion records, organization contacts, and capped seats in one Vite/React application backed by Bolt Supabase.
 
 ## Local development
 

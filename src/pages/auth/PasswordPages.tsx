@@ -8,7 +8,7 @@ import { AcademyBrandMark } from "@/components/brand/AcademyBrandMark";
 function AuthCard({ children }: { children: React.ReactNode }) {
   return (
     <main className="flex min-h-[100dvh] items-center justify-center bg-ink-50 p-6">
-      <section className="w-full max-w-md rounded-xl bg-white p-7 shadow-elevated">
+      <section className="w-full max-w-md rounded-xl border border-ink-100 bg-white p-7 shadow-elevated">
         <img
           src="/brand/synergy-bahamas-logo-full-color.png"
           alt="Synergy Bahamas"
@@ -47,7 +47,7 @@ export function ForgotPasswordPage() {
         <ArrowLeft size={15} />
         Back to sign in
       </Link>
-      <h1 className="mt-6 text-2xl font-semibold text-ink-900">
+      <h1 className="mt-6 font-display text-2xl font-semibold text-ink-950">
         Reset your password
       </h1>
       <p className="mt-2 text-sm leading-6 text-ink-600">
@@ -108,7 +108,7 @@ export function ResetPasswordPage() {
   };
   return (
     <AuthCard>
-      <h1 className="text-2xl font-semibold text-ink-900">
+      <h1 className="font-display text-2xl font-semibold text-ink-950">
         Choose a new password
       </h1>
       <p className="mt-2 text-sm leading-6 text-ink-600">
