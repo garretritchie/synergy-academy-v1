@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
+    "verify:migrations": "node scripts/sql-static-check.mjs supabase/migrations/20260818204500_012_beta_readiness.sql && node scripts/sql-static-check.mjs supabase/migrations/20260819104500_013_access_entitlements.sql",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.app.json"
   },

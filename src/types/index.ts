@@ -1,4 +1,4 @@
-export type UserRole = 'administrator' | 'instructor' | 'student';
+export type UserRole = "administrator" | "instructor" | "student";
 
 export interface Profile {
   id: string;
@@ -54,7 +54,9 @@ export interface Course {
   description: string | null;
   short_description: string | null;
   cover_image_url: string | null;
+  cover_image_storage_path?: string | null;
   introduction_video_url: string | null;
+  introduction_video_storage_path?: string | null;
   duration_weeks: number | null;
   difficulty_level: string | null;
   language: string;
@@ -175,6 +177,7 @@ export interface LiveSession {
   meeting_id: string | null;
   meeting_password: string | null;
   recording_url: string | null;
+  recording_storage_path: string | null;
   preparation_notes: string | null;
   is_cancelled: boolean;
   metadata: Record<string, unknown>;
@@ -210,6 +213,7 @@ export interface Assignment {
   allow_file_upload: boolean;
   allowed_file_types: string[] | null;
   max_file_size_mb: number | null;
+  max_attempts: number;
   is_published: boolean;
 }
 
@@ -228,6 +232,19 @@ export interface Submission {
   feedback: string | null;
   graded_by: string | null;
   graded_at: string | null;
+  attempt_count: number;
+}
+
+export interface SubmissionVersion {
+  id: string;
+  submission_id: string;
+  assignment_id: string;
+  enrolment_id: string;
+  student_id: string;
+  attempt_number: number;
+  content: string | null;
+  submitted_at: string;
+  is_late: boolean;
 }
 
 export interface Assessment {
@@ -280,6 +297,7 @@ export interface Grade {
   is_excused: boolean;
   graded_by: string | null;
   graded_at: string | null;
+  override_reason: string | null;
 }
 
 export interface ProgressRecord {
@@ -349,6 +367,18 @@ export interface Notification {
   created_at: string;
 }
 
+export interface DirectMessage {
+  id: string;
+  sender_id: string;
+  recipient_id: string;
+  body: string;
+  is_read: boolean;
+  read_at: string | null;
+  created_at: string;
+  sender?: Profile;
+  recipient?: Profile;
+}
+
 export interface Certificate {
   id: string;
   enrolment_id: string;
@@ -361,6 +391,10 @@ export interface Certificate {
   final_grade: number | null;
   letter_grade: string | null;
   issued_by: string | null;
+  status: "issued" | "revoked";
+  revoked_at: string | null;
+  revoked_by: string | null;
+  revocation_reason: string | null;
 }
 
 export interface ExternalSystemLink {

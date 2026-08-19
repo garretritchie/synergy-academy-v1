@@ -4,8 +4,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-        display: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        sans: ['Open Sans', 'system-ui', '-apple-system', 'sans-serif'],
+        display: ['Montserrat', 'system-ui', '-apple-system', 'sans-serif'],
       },
       colors: {
         brand: {
@@ -84,9 +84,9 @@ export default {
         },
       },
       boxShadow: {
-        soft: '0 2px 8px -2px rgba(0, 0, 0, 0.08), 0 1px 3px -1px rgba(0, 0, 0, 0.06)',
-        card: '0 4px 16px -4px rgba(0, 0, 0, 0.08), 0 2px 6px -2px rgba(0, 0, 0, 0.04)',
-        elevated: '0 8px 32px -8px rgba(0, 0, 0, 0.12), 0 4px 12px -4px rgba(0, 0, 0, 0.06)',
+        soft: '0 8px 24px -16px rgba(17, 46, 87, 0.28), 0 1px 3px rgba(17, 46, 87, 0.06)',
+        card: '0 14px 36px -20px rgba(17, 46, 87, 0.32), 0 3px 10px -6px rgba(17, 46, 87, 0.14)',
+        elevated: '0 22px 54px -24px rgba(17, 46, 87, 0.4), 0 8px 22px -14px rgba(17, 46, 87, 0.2)',
       },
       animation: {
         'fade-in': 'fadeIn 0.3s ease-out',
