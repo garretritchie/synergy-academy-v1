@@ -1,0 +1,1 @@
+export { CourseResources } from "./CourseSupportPages";
