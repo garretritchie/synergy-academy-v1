@@ -19,6 +19,7 @@ import {
 import type { UserRole } from "@/types";
 import { supabase } from "@/lib/supabase";
 import { AcademyBrandMark } from "@/components/brand/AcademyBrandMark";
+import { UserAvatar } from "@/components/ui/UserAvatar";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -75,12 +76,6 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
   const fullName =
     [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") ||
     "User";
-  const initials =
-    [profile?.first_name?.[0], profile?.last_name?.[0]]
-      .filter(Boolean)
-      .join("")
-      .toUpperCase() || "U";
-
   const handleSignOut = async () => {
     await signOut();
     navigate("/signin");
@@ -138,9 +133,7 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
         aria-haspopup="menu"
         aria-label={userMenuOpen ? "Close account menu" : "Open account menu"}
       >
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-100 to-brand-200/70 text-xs font-bold text-brand-800 shadow-sm ring-1 ring-brand-200">
-          {initials}
-        </span>
+        <UserAvatar profile={profile} size="sm" decorative />
         {!compact && (
           <>
             <span className="min-w-0 text-left">
@@ -298,7 +291,7 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
       )}
 
       {/* Main content area */}
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="relative flex min-w-0 flex-1 flex-col">
         {/* Mobile top bar */}
         <header className="app-topbar flex h-[3.75rem] items-center justify-between px-4 lg:hidden">
           <button
@@ -320,7 +313,7 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
         </header>
 
         {/* Page content */}
-        <main className="app-main flex-1 overflow-y-auto scrollbar-thin">
+        <main className="app-main relative z-0 min-h-0 flex-1 overflow-y-auto scrollbar-thin">
           <div className="mx-auto max-w-[1400px] px-4 py-5 motion-safe:animate-fade-in sm:px-6 lg:px-7 lg:py-6">
             {children}
           </div>

@@ -55,8 +55,8 @@ export function CourseLive() {
   return (
     <CourseLayout>
       <PageHeader
-        title="Live sessions"
-        subtitle="Prepare, join class, and revisit recordings."
+        title="Live meetings"
+        subtitle="Find Zoom links, prepare for class, and revisit recordings."
       />
       <div className="mt-6 space-y-4">
         {error && <Alert>{error}</Alert>}
@@ -68,8 +68,8 @@ export function CourseLive() {
           <div className="rounded-xl bg-white shadow-soft">
             <EmptyState
               icon={<Video size={30} />}
-              title="No live sessions scheduled"
-              description="Your instructor’s sessions will appear here with joining details and preparation notes."
+              title="No live meetings scheduled"
+              description="Your instructor’s Zoom links will appear here with joining details and preparation notes."
             />
           </div>
         ) : (

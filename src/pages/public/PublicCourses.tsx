@@ -153,7 +153,7 @@ export function PublicCourses() {
                     </p>
                     <div className="mt-4 flex items-center gap-3 text-xs text-ink-500">
                       {course.duration_weeks && <span>{course.duration_weeks} weeks</span>}
-                      <span className="capitalize">{course.is_self_paced ? "Self-paced" : course.difficulty_level}</span>
+                      <span className="capitalize">{course.is_self_paced ? "eLearning" : course.difficulty_level}</span>
                     </div>
                     <Link className="btn-primary mt-5 w-full" to={`/courses/${course.slug}`}>
                       View course <ArrowRight size={15} />
@@ -209,7 +209,7 @@ export function PublicCourseDetail() {
                 <p className="mt-4 max-w-3xl text-sm leading-7 text-ink-600">{course.description || course.short_description}</p>
                 <div className="mt-5 flex flex-wrap gap-4 text-xs font-medium text-ink-600">
                   {course.duration_weeks && <span className="inline-flex items-center gap-1.5"><Clock3 size={14} /> {course.duration_weeks} weeks</span>}
-                  <span className="inline-flex items-center gap-1.5"><BookOpen size={14} /> {course.is_self_paced ? "Self-paced" : "Instructor-led options"}</span>
+                  <span className="inline-flex items-center gap-1.5"><BookOpen size={14} /> {course.is_self_paced ? "eLearning" : "Instructor-led options"}</span>
                   <span className="inline-flex items-center gap-1.5"><Award size={14} /> Completion certificate</span>
                 </div>
               </section>

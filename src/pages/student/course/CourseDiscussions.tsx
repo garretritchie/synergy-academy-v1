@@ -1,1 +1,1 @@
-export { CourseDiscussions } from "./CourseSupportPages";
+export { CourseDiscussions } from "./CourseDiscussionBoard";

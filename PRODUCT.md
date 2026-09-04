@@ -8,7 +8,7 @@ web
 
 ## Users
 
-Synergy Bahamas administrators operate the academy, instructors deliver and assess cohort-based courses, and students learn through a mix of self-paced content and live classes. A person may hold more than one role and uses one account across role-specific workspaces.
+Synergy Bahamas administrators operate the academy, instructors deliver and assess cohort-based courses, and students learn through a mix of eLearning content and live classes. A person may hold more than one role and uses one account across role-specific workspaces.
 
 ## Product Purpose
 
@@ -16,7 +16,7 @@ Synergy Academy is the eLearning Platform for Synergy Bahamas. It manages the co
 
 ## Positioning
 
-The platform joins reusable, self-paced curriculum with scheduled live cohort delivery and a durable student academic record in one role-aware system.
+The platform joins reusable eLearning curriculum with scheduled live cohort delivery and a durable student academic record in one role-aware system.
 
 ## Operating Context
 
@@ -39,7 +39,7 @@ The product name is Synergy Academy by Synergy Bahamas. Use the supplied Synergy
 - Synergy Bahamas brand guide and supplied full-color and white logo assets.
 - A comprehensive Supabase schema and RLS migration set in `supabase/migrations`.
 - A detailed 23-sprint build plan supplied with this project.
-- No authoritative final curriculum package for AI Business Essentials is present in this repository; future work must not fabricate final course content.
+- The authoritative AI Business Essentials learner package is present in `src/content/ai-business-essentials.json`, generated from the approved storyboard sources and verified against the 286-screen curriculum map.
 
 ## Product Principles
 

@@ -5,13 +5,11 @@ import {
   Mail,
   Award,
   User,
-  CalendarDays,
   Video,
   ClipboardList,
   BarChart3,
   FolderOpen,
   MessageSquare,
-  HelpCircle,
   Megaphone,
   Users,
   GraduationCap,
@@ -20,6 +18,8 @@ import {
   ScrollText,
   Layers,
   ClipboardCheck,
+  BrainCircuit,
+  ListChecks,
   Clock3,
   Building2,
   WandSparkles,
@@ -42,7 +42,7 @@ export const studentNav: NavSection[] = [
     items: [
       { label: "Dashboard", path: "/student", icon: LayoutDashboard },
       { label: "My Courses", path: "/student/courses", icon: BookOpen },
-      { label: "Notifications", path: "/student/messages", icon: Mail },
+      { label: "Messages", path: "/student/messages", icon: Mail },
       { label: "Certificates", path: "/student/certificates", icon: Award },
       { label: "Profile", path: "/student/profile", icon: User },
     ],
@@ -51,16 +51,13 @@ export const studentNav: NavSection[] = [
 
 export const studentCourseNav: NavItem[] = [
   { label: "Home", path: "home", icon: LayoutDashboard },
-  { label: "Learn", path: "learn", icon: BookOpen },
-  { label: "Live Sessions", path: "live", icon: Video },
+  { label: "Learning", path: "learn", icon: BookOpen },
+  { label: "Assessments", path: "assessments", icon: BrainCircuit },
+  { label: "Activities", path: "activities", icon: ListChecks },
   { label: "Assignments", path: "assignments", icon: ClipboardList },
-  { label: "Calendar", path: "calendar", icon: CalendarDays },
-  { label: "Performance", path: "performance", icon: BarChart3 },
+  { label: "Discussion Board", path: "discussions", icon: MessageSquare },
   { label: "Resources", path: "resources", icon: FolderOpen },
-  { label: "Discussions", path: "discussions", icon: MessageSquare },
-  { label: "Q&A", path: "qa", icon: HelpCircle },
-  { label: "Announcements", path: "announcements", icon: Megaphone },
-  { label: "Instructor", path: "instructor", icon: GraduationCap },
+  { label: "Live Meetings", path: "live", icon: Video },
 ];
 
 export const instructorNav: NavSection[] = [

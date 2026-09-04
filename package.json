@@ -8,7 +8,11 @@
     "build": "vite build",
     "lint": "eslint .",
     "seed:demo": "node scripts/create-demo-course.mjs",
-    "verify:migrations": "node scripts/sql-static-check.mjs supabase/migrations/20260818204500_012_beta_readiness.sql && node scripts/sql-static-check.mjs supabase/migrations/20260819104500_013_access_entitlements.sql && node scripts/sql-static-check.mjs supabase/migrations/20260819193000_014_email_delivery_and_manual_users.sql && node scripts/sql-static-check.mjs supabase/migrations/20260819221500_015_digital_certificates.sql && node scripts/sql-static-check.mjs supabase/migrations/20260819233000_016_certificate_directory_scaling.sql",
+    "content:build": "python scripts/export-ai-business-content.py",
+    "seed:course": "node scripts/seed-ai-business-essentials.mjs",
+    "seed:demo-student": "node scripts/ensure-demo-student.mjs",
+    "verify:course": "node scripts/verify-ai-business-content.mjs",
+    "verify:migrations": "node scripts/sql-static-check.mjs supabase/migrations/20260818204500_012_beta_readiness.sql && node scripts/sql-static-check.mjs supabase/migrations/20260819104500_013_access_entitlements.sql && node scripts/sql-static-check.mjs supabase/migrations/20260819193000_014_email_delivery_and_manual_users.sql && node scripts/sql-static-check.mjs supabase/migrations/20260819221500_015_digital_certificates.sql && node scripts/sql-static-check.mjs supabase/migrations/20260819233000_016_certificate_directory_scaling.sql && node scripts/sql-static-check.mjs supabase/migrations/20260904193000_017_practice_checks_do_not_affect_grades.sql && node scripts/sql-static-check.mjs supabase/migrations/20260904210000_018_live_assessment_feedback.sql && node scripts/sql-static-check.mjs supabase/migrations/20260904220000_019_student_course_asset_access.sql && node scripts/sql-static-check.mjs supabase/migrations/20260904223000_020_profile_avatars.sql && node scripts/sql-static-check.mjs supabase/migrations/20260904224500_021_student_lesson_notes.sql",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.app.json"
   },

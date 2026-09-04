@@ -492,7 +492,7 @@ export function InstructorAssignments() {
   return (
     <AppLayout>
       <PageHeader
-        title="Assignments & quizzes"
+        title="Coursework and assessments"
         subtitle="Create coursework, add optional cohort deadlines, and review submissions."
       />
       <div className="mt-6 space-y-5">

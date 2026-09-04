@@ -49,4 +49,84 @@ The certificate body and lower credential region were checked at the embedded 56
 
 - [P3] Exact curved certificate framing can be reproduced by uploading the user's full background artwork through the template editor when a fixed print-design match is preferred over the responsive default.
 
-final result: passed
+result: passed
+
+---
+
+# AI Business Essentials student workspace design QA
+
+- Source visual truth: `D:\CODEX\AI Class\tmp\pdfs\individual_modules_v1_2\AI_Business_Essentials_Introduction_eLearning_Storyboard_v1.2-01.jpg`
+- Portal baseline: `C:\Users\garre\.codex\visualizations\2026\08\18\01a01654-26a6-73f3-bc00-f53e084127bf\synergy-academy-dev.png`
+- Implementation evidence: Codex in-app Browser tab 1 at `http://127.0.0.1:5174/dev/ai-business-essentials`, captured and inspected during this QA run
+- Browser viewport: 1222 x 920 CSS pixels
+- State: student preview, Introduction and Module 1 progression, plus Learning, Assessments, Activities, and Assignments
+
+## Full-view comparison evidence
+
+The combined comparison used the approved Introduction storyboard, the original Academy portal baseline, and the browser-rendered implementation. The implementation preserves the portal's established Synergy identity while bringing in the storyboard's navy, blue, white, and restrained gold language. It keeps the main course navigation and identity shell course-agnostic, then gives the enrolled course a clear four-area workspace. At the tested desktop viewport, the module outline and one-screen learning panel are visible together without horizontal overflow.
+
+## Focused-region comparison evidence
+
+The focused learning comparison covered Introduction screen 1, the card-based course-at-a-glance screen, and the final Introduction handoff. Content hierarchy matches the storyboard: small eyebrow, plain-language heading, short lead, structured points, and a single clear action. The final screen has no assessment link and presents `Complete and go to Module 1`. A full 16-screen interaction pass confirmed that Module 1 unlocks immediately after Introduction.
+
+The course-area comparison covered locked module checks, the activity catalog, and homework/capstone assignments. Assessment cards communicate question count, pass mark, and lock reason. Activity cards communicate steps and self-check length. Assignment cards separate four homework items from the staged capstone work while keeping everything under Assignments.
+
+## Required fidelity surfaces
+
+- Typography: Montserrat/Open Sans hierarchy is retained with readable 6th-grade-level learner copy and no presentation-sized text blocks.
+- Layout rhythm: one focused explainer screen at a time, a bounded module outline, generous white space, and consistent card padding.
+- Colors and tokens: existing Synergy navy/blue tokens lead; pale blue surfaces and restrained warm callouts mirror the approved storyboard.
+- Navigation: Learning, Assessments, Activities, and Assignments remain persistent and work inside the existing multi-course portal architecture.
+- Progression: Introduction is a real module, Module 1 is locked until it is completed, later learning modules depend on the prior module check, and graded checkpoints remain locked until their required module.
+- Copy: learner-facing delivery language uses `eLearning`; the capstone is housed in Assignments; Module 12 is course review and reference rather than a capstone lesson.
+
+## Comparison history
+
+### Pass 1
+
+- [P1] At 1222 pixels wide, the preview used an `xl` split breakpoint, which stacked the full module list above the active learning screen and hid the core content below the fold.
+- Fix: changed the course workspace split to the `lg` breakpoint, constrained the module outline to the available viewport height, and gave it independent scrolling.
+
+### Pass 2
+
+- Post-fix browser evidence shows the module outline and active screen together, the four course areas in one scan line, readable screen content, and the final action within the normal page flow.
+- [P2] The assessment preview initially displayed only six module checks, so the graded quizzes, midterm, and final were not represented.
+- Fix: included all 16 assessment entries and added explicit labels for module checks, graded quizzes, the midterm, and the final.
+- No remaining actionable P0, P1, or P2 visual findings.
+
+## Interaction, accessibility, and runtime checks
+
+- Walked all 16 Introduction screens with Back/Next controls.
+- Verified Introduction completion unlocks and opens Module 1 without an Introduction assessment.
+- Verified locked module controls are disabled and expose clear accessible labels.
+- Verified the four course-area controls are keyboard-addressable buttons with visible active states.
+- Inspected the Learning, Assessments, Activities, and Assignments surfaces in the browser.
+- Browser console warning/error check returned no entries.
+- TypeScript, ESLint, course-content verification, and production build pass.
+- Live database seeding and authenticated new-content verification remain pending until local administrator credentials are supplied and migration 017 is applied.
+
+final result: blocked
+
+### Live student workspace verification update, 4 September 2026
+
+- Signed in through the Demo Student control and confirmed the named `Welcome, Demo.` start screen.
+- Confirmed the multi-course library, dashboard course context, 15% progress consistency, course announcements, upcoming work, and private performance summary.
+- Confirmed Introduction plus Modules 1-12 render as premium module cards. Each card shows learning progress and the latest assessment score; Introduction correctly shows `N/A` because it has no linked assessment.
+- Confirmed the bounded learning player keeps the module rail, explainer screen, percentage, and navigation controls within one stable desktop frame.
+- Confirmed the assessment player uses one question per screen, light unified chrome, live right/wrong feedback, explanations, review mode, and a persistent score rail.
+- Confirmed module checks display unlimited attempts and all graded quizzes and exams display one attempt.
+- Confirmed Assignments visually distinguish Homework from Capstone project work.
+- Confirmed Discussion Board reactions persist and can be removed; reply controls and emoji shortcuts open within each post.
+- Confirmed Messages defaults to Announcements and consolidates enrolled-course Q&A, private messages, and course updates. Q&A course choices are sourced only from active enrolments and database RLS provides the final cohort boundary.
+- Confirmed Course Home shows the latest announcement first and includes an instructor tile with a keyboard-dismissable profile dialog.
+- Confirmed Certificates displays `Digital Certificates Coming Soon` when no credential has been issued.
+- Confirmed the private student textbook appears with a working Open control in the local demo. Migration 019 replaces the temporary demo signed-link fallback in deployed environments.
+- Confirmed all eight course sections appear directly in the desktop tab bar. The compact More menu is reserved for narrower responsive layouts and renders above page content without clipping.
+- Confirmed module checks now appear inside completed Learning cards and launch in the Learning context. The Assessments tab contains only graded checkpoints, the midterm, and the final exam.
+- Confirmed the learning player has a screen-specific Notes modal with automatic saving. Local demo mode falls back to device storage until migration 021 is applied.
+- Confirmed the Profile screen provides validated profile-photo upload, replacement, and removal controls. The shared avatar component carries saved photos through the account header, discussion feed, message feed, and instructor surfaces.
+- Confirmed the dashboard learning-at-a-glance panel appears above the course chooser and uses a tinted visual band to separate live course context from the catalog.
+- Confirmed Messages defaults to Announcements and places Announcements first in the tab order.
+- TypeScript, ESLint, migration structure, curriculum verification, and production build pass after the final interface changes.
+
+final result: passed for the local authenticated student experience; migrations 017-021 remain required before production release

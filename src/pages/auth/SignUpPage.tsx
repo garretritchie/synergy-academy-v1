@@ -85,7 +85,7 @@ export function SignUpPage() {
           <div className="flex items-center gap-3">
             <CheckCircle2 size={18} className="text-brand-300" />
             <span className="text-xs">
-              Self-paced lessons with live recap sessions
+              eLearning lessons with live recap sessions
             </span>
           </div>
           <div className="flex items-center gap-3">

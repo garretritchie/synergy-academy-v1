@@ -12,11 +12,14 @@ import {
   HelpCircle,
   ListTree,
   LockKeyhole,
+  NotebookPen,
   PanelRight,
   PlayCircle,
+  Trash2,
   X,
 } from "lucide-react";
 import { CourseLayout } from "./CourseLayout";
+import { StoryboardScreen, type StoryboardContent } from "./StoryboardScreen";
 import { Alert, TableSkeleton } from "@/components/ui/Feedback";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
@@ -25,7 +28,13 @@ import type { Lesson, LessonBlock } from "@/types";
 
 type LessonRow = Lesson & {
   lesson_blocks: LessonBlock[];
-  module: { title: string; course_id: string };
+  module: {
+    id: string;
+    title: string;
+    course_id: string;
+    display_order: number;
+    metadata: Record<string, unknown>;
+  };
 };
 type LessonNavigation = { id: string; title: string };
 type OutlineLesson = LessonNavigation & {
@@ -44,6 +53,12 @@ type OutlineModule = {
   display_order: number;
   lessons: OutlineLesson[];
 };
+type AssessmentGate = {
+  id: string;
+  module_id: string | null;
+  passing_score: number | null;
+  assessment_attempts: Array<{ status: string; percentage: number | null }>;
+};
 export function LessonPage() {
   const { cohortId, lessonId } = useParams<{
     cohortId: string;
@@ -54,7 +69,9 @@ export function LessonPage() {
   const [lesson, setLesson] = useState<LessonRow | null>(null);
   const [enrolmentId, setEnrolmentId] = useState("");
   const [complete, setComplete] = useState(false);
-  const [previousLesson, setPreviousLesson] = useState<LessonNavigation | null>(null);
+  const [previousLesson, setPreviousLesson] = useState<LessonNavigation | null>(
+    null,
+  );
   const [nextLesson, setNextLesson] = useState<LessonNavigation | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -64,15 +81,24 @@ export function LessonPage() {
   const [outlineLessons, setOutlineLessons] = useState<OutlineLesson[]>([]);
   const [completedLessonIds, setCompletedLessonIds] = useState<string[]>([]);
   const [releasedLessonIds, setReleasedLessonIds] = useState<string[]>([]);
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [noteBody, setNoteBody] = useState("");
+  const [noteLoaded, setNoteLoaded] = useState(false);
+  const [noteBackendAvailable, setNoteBackendAvailable] = useState(true);
+  const [noteStatus, setNoteStatus] = useState("Saved");
+  const [moduleCheckId, setModuleCheckId] = useState("");
   useEffect(() => {
     if (!cohortId || !lessonId || !user) return;
+    setError("");
     setActiveNugget(0);
     setOutlineOpen(false);
     void (async () => {
       const [lessonResult, enrolmentResult] = await Promise.all([
         supabase
           .from("lessons")
-          .select("*,module:modules(title,course_id),lesson_blocks(*)")
+          .select(
+            "*,module:modules(id,title,course_id,display_order,metadata),lesson_blocks(*)",
+          )
           .eq("id", lessonId)
           .single(),
         supabase
@@ -117,57 +143,129 @@ export function LessonPage() {
           .eq("student_id", user.id)
           .maybeSingle();
         setComplete(progress?.status === "completed");
-        if (!progress) {
-          const { error: startError } = await supabase.from("progress_records").insert({
-            enrolment_id: enrolmentResult.data.id,
-            student_id: user.id,
-            lesson_id: lessonId,
-            cohort_id: cohortId,
-            status: "in_progress",
-            progress_percent: 0,
-            last_accessed_at: new Date().toISOString(),
-          });
-          if (startError) setError(startError.message);
-        }
-        const [navigationResult, courseProgressResult, releaseResult] =
-          await Promise.all([
-            supabase
-              .from("lessons")
-              .select(
-                "id,title,display_order,estimated_minutes,module:modules!inner(id,title,course_id,display_order)",
-              )
-              .eq("module.course_id", lessonRow.module.course_id)
-              .eq("is_published", true),
-            supabase
-              .from("progress_records")
-              .select("lesson_id,status")
-              .eq("cohort_id", cohortId)
-              .eq("student_id", user.id),
-            supabase.rpc("get_released_lesson_ids", {
-              cohort_uuid: cohortId,
-            }),
-          ]);
+        const [
+          navigationResult,
+          courseProgressResult,
+          releaseResult,
+          assessmentGateResult,
+        ] = await Promise.all([
+          supabase
+            .from("lessons")
+            .select(
+              "id,title,display_order,estimated_minutes,module:modules!inner(id,title,course_id,display_order)",
+            )
+            .eq("module.course_id", lessonRow.module.course_id)
+            .eq("is_published", true),
+          supabase
+            .from("progress_records")
+            .select("lesson_id,status")
+            .eq("cohort_id", cohortId)
+            .eq("student_id", user.id),
+          supabase.rpc("get_released_lesson_ids", {
+            cohort_uuid: cohortId,
+          }),
+          supabase
+            .from("assessments")
+            .select(
+              "id,module_id,passing_score,assessment_attempts(status,percentage)",
+            )
+            .eq("cohort_id", cohortId)
+            .eq("assessment_type", "practice")
+            .eq("assessment_attempts.student_id", user.id),
+        ]);
         if (!navigationResult.error && navigationResult.data) {
           const ordered = [...navigationResult.data].sort((left, right) => {
-            const leftModule = left.module as unknown as { display_order: number };
-            const rightModule = right.module as unknown as { display_order: number };
+            const leftModule = left.module as unknown as {
+              display_order: number;
+            };
+            const rightModule = right.module as unknown as {
+              display_order: number;
+            };
             return (
               leftModule.display_order - rightModule.display_order ||
               left.display_order - right.display_order
             );
           }) as unknown as OutlineLesson[];
-          const released = releaseResult.error
+          const databaseReleased = releaseResult.error
             ? ordered.map((item) => item.id)
             : ((releaseResult.data ?? []) as string[]);
-          const navigable = ordered.filter((item) => released.includes(item.id));
-          const currentIndex = navigable.findIndex((item) => item.id === lessonId);
-          setOutlineLessons(ordered);
-          setReleasedLessonIds(released);
-          setCompletedLessonIds(
+          const completedIds = new Set(
             (courseProgressResult.data ?? [])
               .filter((record) => record.status === "completed")
               .map((record) => record.lesson_id),
           );
+          const passedModuleIds = new Set(
+            ((assessmentGateResult.data ?? []) as unknown as AssessmentGate[])
+              .filter((assessment) =>
+                assessment.assessment_attempts.some(
+                  (attempt) =>
+                    attempt.status === "completed" &&
+                    Number(attempt.percentage) >=
+                      Number(assessment.passing_score ?? 0),
+                ),
+              )
+              .map((assessment) => assessment.module_id || ""),
+          );
+          const currentCheck = ((assessmentGateResult.data ?? []) as unknown as AssessmentGate[])
+            .find((assessment) => assessment.module_id === lessonRow.module.id);
+          setModuleCheckId(currentCheck?.id ?? "");
+          const modulesByOrder = new Map<number, string>();
+          for (const item of ordered)
+            modulesByOrder.set(item.module.display_order, item.module.id);
+          const introductionLesson = ordered.find(
+            (item) => item.module.display_order === 0,
+          );
+          const pathwayReleased = ordered
+            .filter((item) => {
+              const order = item.module.display_order;
+              if (order === 0) return true;
+              if (order === 1)
+                return Boolean(
+                  introductionLesson && completedIds.has(introductionLesson.id),
+                );
+              const previousModuleId = modulesByOrder.get(order - 1);
+              return Boolean(
+                previousModuleId && passedModuleIds.has(previousModuleId),
+              );
+            })
+            .map((item) => item.id);
+          const released = databaseReleased.filter((id) =>
+            pathwayReleased.includes(id),
+          );
+          if (!released.includes(lessonId)) {
+            setLesson(null);
+            setError(
+              "This module is locked. Complete the previous learning module and its module check first.",
+            );
+          } else if (!progress) {
+            const { error: startError } = await supabase
+              .from("progress_records")
+              .upsert(
+                {
+                  enrolment_id: enrolmentResult.data.id,
+                  student_id: user.id,
+                  lesson_id: lessonId,
+                  cohort_id: cohortId,
+                  status: "in_progress",
+                  progress_percent: 0,
+                  last_accessed_at: new Date().toISOString(),
+                },
+                {
+                  onConflict: "enrolment_id,lesson_id",
+                  ignoreDuplicates: true,
+                },
+              );
+            if (startError) setError(startError.message);
+          }
+          const navigable = ordered.filter((item) =>
+            released.includes(item.id),
+          );
+          const currentIndex = navigable.findIndex(
+            (item) => item.id === lessonId,
+          );
+          setOutlineLessons(ordered);
+          setReleasedLessonIds(released);
+          setCompletedLessonIds([...completedIds]);
           setPreviousLesson(
             currentIndex > 0 ? navigable[currentIndex - 1] : null,
           );
@@ -182,14 +280,85 @@ export function LessonPage() {
     })();
   }, [cohortId, lessonId, user]);
   useEffect(() => {
-    if (!outlineOpen) return;
+    if (!outlineOpen && !noteOpen) return;
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOutlineOpen(false);
+      if (event.key === "Escape") {
+        setOutlineOpen(false);
+        setNoteOpen(false);
+      }
     };
     document.addEventListener("keydown", closeOnEscape);
     return () => document.removeEventListener("keydown", closeOnEscape);
-  }, [outlineOpen]);
-  const markComplete = async (continueToNext = false) => {
+  }, [noteOpen, outlineOpen]);
+
+  const noteStorageKey = user && cohortId && lessonId
+    ? `synergy-lesson-note:${user.id}:${cohortId}:${lessonId}:${activeNugget}`
+    : "";
+
+  const openNotes = async () => {
+    if (!user || !cohortId || !lessonId || !noteStorageKey) return;
+    setNoteOpen(true);
+    setNoteLoaded(false);
+    setNoteStatus("Loading...");
+    const localDraft = window.localStorage.getItem(noteStorageKey) ?? "";
+    if (!noteBackendAvailable) {
+      setNoteBody(localDraft);
+      setNoteLoaded(true);
+      setNoteStatus("Saved on this device");
+      return;
+    }
+    const { data, error: noteError } = await supabase
+      .from("lesson_notes")
+      .select("body")
+      .eq("student_id", user.id)
+      .eq("cohort_id", cohortId)
+      .eq("lesson_id", lessonId)
+      .eq("screen_index", activeNugget)
+      .maybeSingle();
+    if (noteError) {
+      setNoteBackendAvailable(false);
+      setNoteBody(localDraft);
+      setNoteStatus("Saved on this device");
+    } else {
+      setNoteBody(data?.body ?? localDraft);
+      setNoteStatus("Saved to your account");
+    }
+    setNoteLoaded(true);
+  };
+
+  useEffect(() => {
+    if (!noteOpen || !noteLoaded || !noteStorageKey || !user || !cohortId || !lessonId) return;
+    window.localStorage.setItem(noteStorageKey, noteBody);
+    setNoteStatus("Saving...");
+    const timer = window.setTimeout(() => {
+      if (!noteBackendAvailable) {
+        setNoteStatus("Saved on this device");
+        return;
+      }
+      void supabase
+        .from("lesson_notes")
+        .upsert(
+          {
+            student_id: user.id,
+            cohort_id: cohortId,
+            lesson_id: lessonId,
+            screen_index: activeNugget,
+            body: noteBody,
+          },
+          { onConflict: "student_id,cohort_id,lesson_id,screen_index" },
+        )
+        .then(({ error: saveError }) => {
+          if (saveError) {
+            setNoteBackendAvailable(false);
+            setNoteStatus("Saved on this device");
+          } else {
+            setNoteStatus("Saved to your account");
+          }
+        });
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [activeNugget, cohortId, lessonId, noteBackendAvailable, noteBody, noteLoaded, noteOpen, noteStorageKey, user]);
+  const markComplete = async (destination?: string) => {
     if (!lessonId || !cohortId || !user) return;
     setSaving(true);
     setError("");
@@ -214,9 +383,7 @@ export function LessonPage() {
       setCompletedLessonIds((current) =>
         current.includes(lessonId) ? current : [...current, lessonId],
       );
-      if (continueToNext && nextLesson) {
-        navigate(`/student/courses/${cohortId}/learn/${nextLesson.id}`);
-      }
+      if (destination) navigate(destination);
     } catch (caught) {
       setError(getErrorMessage(caught));
     } finally {
@@ -232,10 +399,7 @@ export function LessonPage() {
     activeNugget === Math.max(0, lessonWorkspace.nuggets.length - 1);
   const lessonPartCount = Math.max(1, lessonWorkspace.nuggets.length);
   const outlineModules = useMemo(() => {
-    const groups = new Map<
-      string,
-      OutlineModule
-    >();
+    const groups = new Map<string, OutlineModule>();
     for (const outlineLesson of outlineLessons) {
       const module = outlineLesson.module;
       if (!groups.has(module.id)) {
@@ -258,6 +422,19 @@ export function LessonPage() {
   const completedOutlineCount = outlineLessons.filter((item) =>
     completedLessonIds.includes(item.id),
   ).length;
+  const isIntroduction = lesson?.module.display_order === 0;
+  const completionDestination =
+    isIntroduction && nextLesson
+      ? `/student/courses/${cohortId}/learn/${nextLesson.id}`
+      : moduleCheckId
+        ? `/student/courses/${cohortId}/learn/check/${moduleCheckId}`
+        : `/student/courses/${cohortId}/learn`;
+  const completionLabel = isIntroduction
+    ? "Complete and go to Module 1"
+    : "Complete and start module check";
+  const screenProgress = Math.round(
+    ((activeNugget + 1) / lessonPartCount) * 100,
+  );
   return (
     <CourseLayout>
       {loading ? (
@@ -267,19 +444,28 @@ export function LessonPage() {
       ) : !lesson ? (
         <Alert>{error || "Lesson not found."}</Alert>
       ) : (
-        <article className="mx-auto max-w-6xl space-y-5 pb-28 sm:pb-20">
+        <article className="mx-auto max-w-5xl space-y-4 pb-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={() => setOutlineOpen(true)}
-            >
-              <ListTree size={16} />
-              Course outline
-              <span className="rounded-md bg-brand-50 px-2 py-0.5 text-xs tabular-nums text-brand-700">
-                {completedOutlineCount}/{outlineLessons.length}
-              </span>
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setOutlineOpen(true)}
+              >
+                <ListTree size={16} />
+                Course outline
+                <span className="rounded-md bg-brand-50 px-2 py-0.5 text-xs tabular-nums text-brand-700">
+                  {completedOutlineCount}/{outlineLessons.length}
+                </span>
+              </button>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => void openNotes()}
+              >
+                <NotebookPen size={16} /> Notes
+              </button>
+            </div>
             {currentLessonIndex >= 0 && (
               <p className="text-xs font-medium text-ink-500">
                 Lesson {currentLessonIndex + 1} of {outlineLessons.length}
@@ -287,177 +473,165 @@ export function LessonPage() {
             )}
           </div>
           {error && <Alert>{error}</Alert>}
-          <header className="rounded-2xl border border-white/[0.06] bg-navy px-5 py-5 text-white shadow-[0_18px_45px_-32px_rgba(8,23,43,0.72)] sm:px-6 sm:py-6">
-            <p className="text-xs font-semibold text-brand-200">
-              {lesson.module.title}
-            </p>
-            <h1 className="mt-1.5 max-w-4xl text-2xl font-semibold tracking-[-0.025em] text-white">
-              {lesson.title}
-            </h1>
-            {lesson.description && (
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
-                {lesson.description}
-              </p>
-            )}
-          </header>
-          <div className="grid items-start gap-4 rounded-2xl border border-ink-200/80 bg-ink-100/70 p-3 sm:p-4 xl:grid-cols-[minmax(0,1fr)_19rem] xl:p-5">
-            <section
-              className="flex min-h-0 flex-col rounded-xl border border-ink-200/80 bg-white p-4 shadow-soft sm:min-h-[28rem] sm:p-6"
-              aria-label="Lesson content"
-            >
-              {lessonWorkspace.nuggets.length > 0 ? (
-                <>
-                  <div className="flex flex-col items-start gap-3 border-b border-ink-100 pb-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-                    <div>
-                      <p className="text-xs font-semibold text-ink-900">
-                        Part {activeNugget + 1} of {lessonWorkspace.nuggets.length}
+          <div className="grid h-[calc(100dvh-13.5rem)] min-h-[30rem] max-h-[42rem] overflow-hidden rounded-2xl bg-white shadow-elevated lg:grid-cols-[15rem_minmax(0,1fr)]">
+            <CourseModuleRail
+              modules={outlineModules}
+              currentLessonId={lessonId || ""}
+              cohortId={cohortId || ""}
+              completedLessonIds={completedLessonIds}
+              releasedLessonIds={releasedLessonIds}
+            />
+            <div className="flex min-h-0 min-w-0 flex-col">
+              <header className="border-b border-ink-200 bg-white px-5 py-3 sm:px-6">
+                <p className="text-xs font-semibold text-brand-700">
+                  {lesson.module.title}
+                </p>
+                <div className="mt-1 flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <h1 className="text-xl font-semibold tracking-[-0.025em] text-ink-950 sm:text-2xl">
+                      {lesson.title}
+                    </h1>
+                    {lesson.description && (
+                      <p className="mt-1 line-clamp-2 max-w-3xl text-sm leading-6 text-ink-500">
+                        {lesson.description}
                       </p>
-                      <p className="mt-0.5 text-xs text-ink-500">
-                        Focus on one idea, then continue when ready.
-                      </p>
-                    </div>
-                    <div
-                      className="flex w-full gap-1.5 sm:max-w-48 sm:flex-1"
-                      role="progressbar"
-                      aria-label="Lesson step progress"
-                      aria-valuemin={1}
-                      aria-valuemax={lessonWorkspace.nuggets.length}
-                      aria-valuenow={activeNugget + 1}
-                    >
-                      {lessonWorkspace.nuggets.map((_, index) => (
-                        <span
-                          key={index}
-                          className={`h-1.5 flex-1 rounded-full ${
-                            index <= activeNugget ? "bg-brand-600" : "bg-ink-100"
-                          }`}
-                        />
-                      ))}
-                    </div>
+                    )}
                   </div>
-                  <div className="flex-1 py-5 sm:py-6">
+                  <p className="shrink-0 text-sm font-semibold tabular-nums text-brand-700">
+                    {screenProgress}%
+                  </p>
+                </div>
+                <div
+                  className="mt-3 h-2 overflow-hidden rounded-full bg-ink-100"
+                  role="progressbar"
+                  aria-label="Module screen progress"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={screenProgress}
+                >
+                  <div
+                    className="h-full rounded-full bg-brand-600 transition-[width] duration-300"
+                    style={{ width: `${screenProgress}%` }}
+                  />
+                </div>
+              </header>
+
+              <section
+                className="scrollbar-thin min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6"
+                aria-label="Lesson content"
+              >
+                {lessonWorkspace.nuggets.length > 0 ? (
+                  <>
                     <LessonPartContent
                       blocks={activeBlocks}
                       cohortId={cohortId || ""}
                     />
+                    {lessonWorkspace.railBlocks.length > 0 && (
+                      <div className="mt-7 border-t border-ink-100 pt-6">
+                        <div className="mb-3 flex items-center gap-2">
+                          <PanelRight size={17} className="text-brand-600" />
+                          <h2 className="text-sm font-semibold text-ink-900">
+                            Activities and key points
+                          </h2>
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          {lessonWorkspace.railBlocks.map((block) => (
+                            <LessonBlockView
+                              key={block.id}
+                              block={block}
+                              cohortId={cohortId || ""}
+                              rail
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="flex h-full items-center justify-center text-center text-sm text-ink-500">
+                    This lesson has no main content yet.
                   </div>
-                </>
-              ) : (
-                <div className="flex flex-1 items-center justify-center text-center text-sm text-ink-500">
-                  This lesson has no main content yet.
-                </div>
-              )}
-            </section>
+                )}
+              </section>
 
-            <aside className="rounded-xl border border-ink-200/80 bg-white p-4 shadow-soft xl:sticky xl:top-4" aria-label="Lesson activities and supporting content">
-              <div className="mb-3 flex items-center gap-2 px-0.5">
-                <PanelRight size={17} className="text-brand-600" />
-                <h2 className="text-sm font-semibold text-ink-900">Activities and key points</h2>
-              </div>
-              {lessonWorkspace.railBlocks.length > 0 ? (
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-                  {lessonWorkspace.railBlocks.map((block) => (
-                    <LessonBlockView
-                      key={block.id}
-                      block={block}
-                      cohortId={cohortId || ""}
-                      rail
-                    />
-                  ))}
+              <footer className="border-t border-ink-200 bg-ink-50/90 px-4 py-3 sm:px-5">
+                <div className="grid grid-cols-2 items-center gap-2 sm:grid-cols-[1fr_auto_1fr] sm:gap-3">
+                  <div>
+                    {activeNugget > 0 ? (
+                      <button
+                        type="button"
+                        className="btn-secondary w-full sm:w-auto"
+                        onClick={() =>
+                          setActiveNugget((current) => Math.max(0, current - 1))
+                        }
+                      >
+                        <ArrowLeft size={16} /> Previous part
+                      </button>
+                    ) : previousLesson ? (
+                      <Link
+                        className="btn-secondary w-full sm:w-auto"
+                        to={`/student/courses/${cohortId}/learn/${previousLesson.id}`}
+                      >
+                        <ArrowLeft size={16} /> Previous lesson
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn-secondary w-full sm:w-auto"
+                        onClick={() => setOutlineOpen(true)}
+                      >
+                        <ListTree size={16} /> Course outline
+                      </button>
+                    )}
+                  </div>
+                  <div className="order-first col-span-2 text-center sm:order-none sm:col-span-1">
+                    <p className="text-xs font-semibold text-ink-700">
+                      Screen {activeNugget + 1} of {lessonPartCount}
+                    </p>
+                    <p className="mt-0.5 text-xs tabular-nums text-brand-700">
+                      {screenProgress}% complete
+                    </p>
+                  </div>
+                  <div className="flex justify-end">
+                    {!isLastNugget ? (
+                      <button
+                        type="button"
+                        className="btn-primary w-full sm:w-auto"
+                        onClick={() =>
+                          setActiveNugget((current) =>
+                            Math.min(
+                              lessonWorkspace.nuggets.length - 1,
+                              current + 1,
+                            ),
+                          )
+                        }
+                      >
+                        Next part <ArrowRight size={16} />
+                      </button>
+                    ) : !complete ? (
+                      <button
+                        type="button"
+                        disabled={saving}
+                        className="btn-primary w-full !bg-success-600 hover:!bg-success-700 sm:w-auto"
+                        onClick={() => void markComplete(completionDestination)}
+                      >
+                        {saving ? "Saving..." : completionLabel}
+                        {!saving && <ArrowRight size={16} />}
+                      </button>
+                    ) : (
+                      <Link
+                        className="btn-primary w-full sm:w-auto"
+                        to={completionDestination}
+                      >
+                        {isIntroduction ? "Go to Module 1" : "Go to module check"}{" "}
+                        <ArrowRight size={16} />
+                      </Link>
+                    )}
+                  </div>
                 </div>
-              ) : (
-                <div className="rounded-lg border border-dashed border-ink-300 bg-ink-50 p-4 text-xs leading-5 text-ink-500">
-                  No additional activities are attached to this lesson.
-                </div>
-              )}
-            </aside>
+              </footer>
+            </div>
           </div>
-          <footer className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-navy/95 px-3 py-3 shadow-elevated backdrop-blur-sm sm:px-6">
-            <div className="mx-auto grid max-w-6xl grid-cols-2 items-center gap-2 sm:grid-cols-[1fr_auto_1fr] sm:gap-3">
-            <div>
-              {activeNugget > 0 ? (
-                <button
-                  type="button"
-                  className="btn-secondary w-full sm:w-auto"
-                  onClick={() =>
-                    setActiveNugget((current) => Math.max(0, current - 1))
-                  }
-                >
-                  <ArrowLeft size={16} /> Previous part
-                </button>
-              ) : previousLesson ? (
-                <Link
-                  className="btn-secondary w-full sm:w-auto"
-                  to={`/student/courses/${cohortId}/learn/${previousLesson.id}`}
-                >
-                  <ArrowLeft size={16} /> Previous lesson
-                </Link>
-              ) : (
-                <button
-                  type="button"
-                  className="btn-secondary w-full sm:w-auto"
-                  onClick={() => setOutlineOpen(true)}
-                >
-                  <ListTree size={16} /> Course outline
-                </button>
-              )}
-            </div>
-            <div className="order-first col-span-2 text-center sm:order-none sm:col-span-1">
-              <p className="text-xs font-semibold text-white">
-                Part {activeNugget + 1} of {lessonPartCount}
-              </p>
-              <p className="mt-0.5 text-xs text-white/60">
-                {complete ? "Lesson completed" : "Lesson in progress"}
-              </p>
-            </div>
-            <div className="flex justify-end">
-              {!isLastNugget ? (
-                <button
-                  type="button"
-                  className="btn-primary w-full sm:w-auto"
-                  onClick={() =>
-                    setActiveNugget((current) =>
-                      Math.min(
-                        lessonWorkspace.nuggets.length - 1,
-                        current + 1,
-                      ),
-                    )
-                  }
-                >
-                  Next part <ArrowRight size={16} />
-                </button>
-              ) : !complete ? (
-                <button
-                  type="button"
-                  disabled={saving}
-                  className="btn-primary w-full !bg-success-600 hover:!bg-success-700 sm:w-auto"
-                  onClick={() => void markComplete(Boolean(nextLesson))}
-                >
-                  {saving
-                    ? "Saving..."
-                    : nextLesson
-                      ? "Complete and continue"
-                      : "Complete lesson"}
-                  {!saving && nextLesson && <ArrowRight size={16} />}
-                </button>
-              ) : nextLesson ? (
-                <Link
-                  className="btn-primary w-full sm:w-auto"
-                  to={`/student/courses/${cohortId}/learn/${nextLesson.id}`}
-                >
-                  Next lesson <ArrowRight size={16} />
-                </Link>
-              ) : (
-                <button
-                  type="button"
-                  className="btn-secondary w-full sm:w-auto"
-                  onClick={() => setOutlineOpen(true)}
-                >
-                  Review course outline
-                </button>
-              )}
-            </div>
-            </div>
-          </footer>
           {outlineOpen && (
             <CourseOutlineDrawer
               modules={outlineModules}
@@ -467,6 +641,77 @@ export function LessonPage() {
               releasedLessonIds={releasedLessonIds}
               onClose={() => setOutlineOpen(false)}
             />
+          )}
+          {noteOpen && (
+            <div className="fixed inset-0 z-[95] flex items-center justify-center p-4">
+              <button
+                type="button"
+                className="absolute inset-0 bg-navy/45 backdrop-blur-sm"
+                aria-label="Close notes"
+                onClick={() => setNoteOpen(false)}
+              />
+              <section
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="lesson-notes-title"
+                className="relative flex max-h-[85dvh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-brand-100 bg-white shadow-elevated"
+              >
+                <header className="border-b border-brand-100 bg-[linear-gradient(120deg,rgba(232,243,252,0.95),rgba(255,255,255,0.98))] px-6 py-5">
+                  <button
+                    type="button"
+                    className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-lg text-ink-500 hover:bg-white"
+                    aria-label="Close notes"
+                    onClick={() => setNoteOpen(false)}
+                  >
+                    <X size={18} />
+                  </button>
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-600 text-white shadow-soft">
+                      <NotebookPen size={19} />
+                    </span>
+                    <div className="min-w-0 pr-10">
+                      <p className="text-xs font-semibold uppercase tracking-[0.08em] text-brand-700">
+                        {lesson.module.title} · Screen {activeNugget + 1}
+                      </p>
+                      <h2 id="lesson-notes-title" className="truncate text-xl font-semibold text-ink-950">
+                        Study notes
+                      </h2>
+                    </div>
+                  </div>
+                </header>
+                <div className="min-h-0 flex-1 p-6">
+                  <label htmlFor="lesson-note" className="sr-only">
+                    Notes for this learning screen
+                  </label>
+                  <textarea
+                    id="lesson-note"
+                    autoFocus
+                    maxLength={20000}
+                    className="input min-h-[18rem] resize-none text-base leading-7"
+                    placeholder="Write key ideas, examples, questions, or reminders from this screen..."
+                    value={noteBody}
+                    disabled={!noteLoaded}
+                    onChange={(event) => setNoteBody(event.target.value)}
+                  />
+                </div>
+                <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-ink-100 bg-ink-50 px-6 py-4">
+                  <p className="text-xs font-medium text-ink-500">{noteStatus}</p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="btn-secondary text-danger-600"
+                      disabled={!noteBody}
+                      onClick={() => setNoteBody("")}
+                    >
+                      <Trash2 size={15} /> Clear note
+                    </button>
+                    <button type="button" className="btn-primary" onClick={() => setNoteOpen(false)}>
+                      Done
+                    </button>
+                  </div>
+                </footer>
+              </section>
+            </div>
           )}
         </article>
       )}
@@ -559,6 +804,107 @@ function LessonPartContent({
   return <div className="mx-auto max-w-[72ch]">{renderBlocks(blocks)}</div>;
 }
 
+function CourseModuleRail({
+  modules,
+  currentLessonId,
+  cohortId,
+  completedLessonIds,
+  releasedLessonIds,
+}: {
+  modules: OutlineModule[];
+  currentLessonId: string;
+  cohortId: string;
+  completedLessonIds: string[];
+  releasedLessonIds: string[];
+}) {
+  const lessons = modules.flatMap((module) => module.lessons);
+  const completedCount = lessons.filter((lesson) =>
+    completedLessonIds.includes(lesson.id),
+  ).length;
+  const courseProgress = lessons.length
+    ? Math.round((completedCount / lessons.length) * 100)
+    : 0;
+  return (
+    <aside
+      className="hidden min-h-0 flex-col border-r border-ink-200 bg-ink-50 text-ink-900 lg:flex"
+      aria-label="Course modules"
+    >
+      <div className="border-b border-ink-200 px-5 py-5">
+        <p className="text-sm font-semibold">Course progress</p>
+        <div className="mt-2 flex items-center gap-3">
+          <div className="h-2 flex-1 overflow-hidden rounded-full bg-ink-200">
+            <div
+              className="h-full rounded-full bg-brand-600"
+              style={{ width: `${courseProgress}%` }}
+            />
+          </div>
+          <span className="text-xs font-semibold tabular-nums text-brand-700">
+            {courseProgress}%
+          </span>
+        </div>
+      </div>
+      <nav
+        className="scrollbar-thin min-h-0 flex-1 overflow-y-auto px-3 py-3"
+        aria-label="Learning modules"
+      >
+        {modules.map((module) => {
+          const moduleLesson = module.lessons[0];
+          if (!moduleLesson) return null;
+          const released = releasedLessonIds.includes(moduleLesson.id);
+          const completed = completedLessonIds.includes(moduleLesson.id);
+          const current = moduleLesson.id === currentLessonId;
+          const label =
+            module.display_order === 0
+              ? "Introduction"
+              : `Module ${module.display_order}`;
+          const content = (
+            <>
+              <span
+                className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-xs font-semibold ${completed ? "bg-success-600 text-white" : current ? "bg-brand-600 text-white" : "border border-ink-200 bg-white text-ink-500"}`}
+              >
+                {completed ? (
+                  <CheckCircle2 size={15} />
+                ) : released ? (
+                  module.display_order || "I"
+                ) : (
+                  <LockKeyhole size={13} />
+                )}
+              </span>
+              <span className="min-w-0">
+                <span className="block text-xs font-semibold text-ink-900">
+                  {label}
+                </span>
+                <span className="mt-0.5 block line-clamp-2 text-[11px] leading-4 text-ink-500">
+                  {module.title.replace(/^Module \d+: /, "")}
+                </span>
+              </span>
+            </>
+          );
+          return released ? (
+            <Link
+              key={module.id}
+              to={`/student/courses/${cohortId}/learn/${moduleLesson.id}`}
+              className={`mb-1 flex min-h-14 gap-3 rounded-lg px-3 py-2.5 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand-500 ${current ? "bg-white shadow-[0_1px_3px_rgba(19,56,92,0.10)]" : "hover:bg-white/80"}`}
+            >
+              {content}
+            </Link>
+          ) : (
+            <div
+              key={module.id}
+              className="mb-1 flex min-h-14 cursor-not-allowed gap-3 rounded-lg px-3 py-2.5 opacity-55"
+            >
+              {content}
+            </div>
+          );
+        })}
+      </nav>
+      <div className="border-t border-ink-200 px-5 py-4 text-xs leading-5 text-ink-500">
+        Complete each module check to unlock the next module.
+      </div>
+    </aside>
+  );
+}
+
 function CourseOutlineDrawer({
   modules,
   currentLessonId,
@@ -605,7 +951,10 @@ function CourseOutlineDrawer({
               <p className="text-xs font-semibold uppercase tracking-[0.08em] text-brand-700">
                 Course progress
               </p>
-              <h2 id="course-outline-title" className="mt-1 text-xl text-ink-950">
+              <h2
+                id="course-outline-title"
+                className="mt-1 text-xl text-ink-950"
+              >
                 Course outline
               </h2>
               <p className="mt-1 text-sm text-ink-500">
@@ -718,9 +1067,7 @@ function CourseOutlineDrawer({
                           onClick={onClose}
                           aria-current={current ? "page" : undefined}
                           className={`flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors ${
-                            current
-                              ? "bg-brand-50"
-                              : "hover:bg-ink-50"
+                            current ? "bg-brand-50" : "hover:bg-ink-50"
                           }`}
                         >
                           {content}
@@ -765,45 +1112,52 @@ function LessonBlockView({
   embedded?: boolean;
   rail?: boolean;
 }) {
+  if (block.block_type === "storyboard_screen") {
+    return <StoryboardScreen content={block.content as StoryboardContent} />;
+  }
   const content = block.content as Record<string, string>;
   const mediaUrl = content.resolved_url || safeExternalUrl(content.url);
   if (block.block_type === "heading")
-    return <h2 className="pt-2 text-2xl font-semibold text-ink-900">{content.text}</h2>;
-  if (block.block_type === "divider")
-    return <hr className="border-ink-200" />;
+    return (
+      <h2 className="pt-2 text-2xl font-semibold text-ink-900">
+        {content.text}
+      </h2>
+    );
+  if (block.block_type === "divider") return <hr className="border-ink-200" />;
   if (block.block_type === "video")
     return (
       <div className="overflow-hidden rounded-xl bg-ink-950 text-white shadow-soft">
         {content.resolved_url ? (
-          <video className="aspect-video w-full bg-black" controls preload="metadata" src={mediaUrl}>
+          <video
+            className="aspect-video w-full bg-black"
+            controls
+            preload="metadata"
+            src={mediaUrl}
+          >
             Your browser does not support embedded video.
           </video>
         ) : (
-        <div className="flex items-center gap-3 p-5">
-          <PlayCircle size={24} />
-          <div>
-            <p className="font-medium">Video lesson</p>
-            <a
-              href={mediaUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-1 inline-flex items-center gap-1 text-sm text-brand-200 underline underline-offset-4"
-            >
-              Open video <ExternalLink size={14} />
-            </a>
+          <div className="flex items-center gap-3 p-5">
+            <PlayCircle size={24} />
+            <div>
+              <p className="font-medium">Video lesson</p>
+              <a
+                href={mediaUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-1 inline-flex items-center gap-1 text-sm text-brand-200 underline underline-offset-4"
+              >
+                Open video <ExternalLink size={14} />
+              </a>
+            </div>
           </div>
-        </div>
         )}
       </div>
     );
   if (block.block_type === "image")
     return (
       <figure className="overflow-hidden rounded-xl bg-white shadow-soft">
-        <img
-          src={mediaUrl}
-          alt={content.alt || ""}
-          className="h-auto w-full"
-        />
+        <img src={mediaUrl} alt={content.alt || ""} className="h-auto w-full" />
         {content.caption && (
           <figcaption className="px-4 py-3 text-sm text-ink-600">
             {content.caption}
@@ -813,9 +1167,15 @@ function LessonBlockView({
     );
   if (block.block_type === "callout")
     return (
-      <aside className={`rounded-xl border ${rail ? "border-accent-200 bg-accent-50 p-4 text-accent-900" : "border-brand-200 bg-brand-50 p-5 text-brand-950"}`}>
-        <h2 className={`${rail ? "text-sm" : ""} font-semibold`}>{content.title || "Key point"}</h2>
-        <p className={`mt-2 ${rail ? "text-xs leading-5" : "leading-7"}`}>{content.body}</p>
+      <aside
+        className={`rounded-xl border border-brand-200 bg-brand-50 text-brand-950 ${rail ? "p-4" : "p-5"}`}
+      >
+        <h2 className={`${rail ? "text-sm" : ""} font-semibold`}>
+          {content.title || "Key point"}
+        </h2>
+        <p className={`mt-2 ${rail ? "text-xs leading-5" : "leading-7"}`}>
+          {content.body}
+        </p>
       </aside>
     );
   if (block.block_type === "quote")
@@ -826,14 +1186,19 @@ function LessonBlockView({
     );
   if (block.block_type === "checklist")
     return (
-      <ul className={`space-y-2 rounded-xl p-6 ${embedded ? "bg-ink-50" : "bg-white shadow-soft"}`}>
+      <ul
+        className={`space-y-2 rounded-xl p-6 ${embedded ? "bg-ink-50" : "bg-white shadow-soft"}`}
+      >
         {(content.body || "")
           .split("\n")
           .map((item) => item.trim())
           .filter(Boolean)
           .map((item, index) => (
             <li key={`${item}-${index}`} className="flex gap-3 text-ink-700">
-              <CheckCircle2 size={18} className="mt-0.5 shrink-0 text-brand-600" />
+              <CheckCircle2
+                size={18}
+                className="mt-0.5 shrink-0 text-brand-600"
+              />
               <span>{item.replace(/^[-*]\s*/, "")}</span>
             </li>
           ))}
@@ -841,20 +1206,49 @@ function LessonBlockView({
     );
   if (block.block_type === "list")
     return (
-      <ul className={`list-disc space-y-2 rounded-xl p-6 pl-10 text-ink-700 ${embedded ? "bg-ink-50" : "bg-white shadow-soft"}`}>
-        {(content.body || "").split("\n").map((item) => item.trim()).filter(Boolean).map((item, index) => (
-          <li key={`${item}-${index}`}>{item.replace(/^[-*]\s*/, "")}</li>
-        ))}
+      <ul
+        className={`list-disc space-y-2 rounded-xl p-6 pl-10 text-ink-700 ${embedded ? "bg-ink-50" : "bg-white shadow-soft"}`}
+      >
+        {(content.body || "")
+          .split("\n")
+          .map((item) => item.trim())
+          .filter(Boolean)
+          .map((item, index) => (
+            <li key={`${item}-${index}`}>{item.replace(/^[-*]\s*/, "")}</li>
+          ))}
       </ul>
     );
   if (block.block_type === "table") {
-    const rows = (content.body || "").split("\n").map((row) => row.split("|").map((cell) => cell.trim())).filter((row) => row.some(Boolean));
+    const rows = (content.body || "")
+      .split("\n")
+      .map((row) => row.split("|").map((cell) => cell.trim()))
+      .filter((row) => row.some(Boolean));
     const [headings = [], ...body] = rows;
     return (
-      <div className={`overflow-x-auto rounded-xl ${embedded ? "border border-ink-100 bg-ink-50" : "bg-white shadow-soft"}`}>
+      <div
+        className={`overflow-x-auto rounded-xl ${embedded ? "border border-ink-100 bg-ink-50" : "bg-white shadow-soft"}`}
+      >
         <table className="min-w-full text-left text-sm">
-          <thead className="bg-ink-50 text-ink-900"><tr>{headings.map((heading, index) => <th key={index} className="px-4 py-3 font-semibold">{heading}</th>)}</tr></thead>
-          <tbody className="divide-y divide-ink-100">{body.map((row, rowIndex) => <tr key={rowIndex}>{row.map((cell, cellIndex) => <td key={cellIndex} className="px-4 py-3 text-ink-700">{cell}</td>)}</tr>)}</tbody>
+          <thead className="bg-ink-50 text-ink-900">
+            <tr>
+              {headings.map((heading, index) => (
+                <th key={index} className="px-4 py-3 font-semibold">
+                  {heading}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-ink-100">
+            {body.map((row, rowIndex) => (
+              <tr key={rowIndex}>
+                {row.map((cell, cellIndex) => (
+                  <td key={cellIndex} className="px-4 py-3 text-ink-700">
+                    {cell}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
         </table>
       </div>
     );
@@ -862,8 +1256,14 @@ function LessonBlockView({
   if (block.block_type === "resource") {
     const destination = content.resolved_url || safeLinkUrl(content.url);
     return (
-      <a href={destination} target="_blank" rel="noreferrer" className={`flex items-center justify-between gap-3 rounded-xl bg-white font-medium text-brand-700 shadow-soft hover:bg-brand-50 ${rail ? "p-4 text-xs" : "p-5"}`}>
-        <span>{content.title || content.file_name || "Download resource"}</span><Download size={18} />
+      <a
+        href={destination}
+        target="_blank"
+        rel="noreferrer"
+        className={`flex items-center justify-between gap-3 rounded-xl bg-white font-medium text-brand-700 shadow-soft hover:bg-brand-50 ${rail ? "p-4 text-xs" : "p-5"}`}
+      >
+        <span>{content.title || content.file_name || "Download resource"}</span>
+        <Download size={18} />
       </a>
     );
   }
@@ -873,13 +1273,24 @@ function LessonBlockView({
       content.title ||
       (block.block_type === "quiz_reference" ? "Open quiz" : "Open assignment");
     return (
-      <Link to={destination} className={`flex items-center justify-between gap-3 rounded-xl bg-white font-medium text-brand-700 shadow-soft hover:bg-brand-50 ${rail ? "p-4 text-xs" : "p-5"}`}>
-        <span>{label}</span><ArrowRight size={18} />
+      <Link
+        to={destination}
+        className={`flex items-center justify-between gap-3 rounded-xl bg-white font-medium text-brand-700 shadow-soft hover:bg-brand-50 ${rail ? "p-4 text-xs" : "p-5"}`}
+      >
+        <span>{label}</span>
+        <ArrowRight size={18} />
       </Link>
     );
   }
   if (block.block_type === "knowledge_check")
-    return <KnowledgeCheck title={content.title} question={content.body} answer={content.answer} compact={rail} />;
+    return (
+      <KnowledgeCheck
+        title={content.title}
+        question={content.body}
+        answer={content.answer}
+        compact={rail}
+      />
+    );
   if (block.block_type === "external_link")
     return (
       <a
@@ -902,7 +1313,9 @@ function LessonBlockView({
           <button
             type="button"
             className="inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-2 text-xs font-medium hover:bg-white/20"
-            onClick={() => void navigator.clipboard.writeText(content.body || "")}
+            onClick={() =>
+              void navigator.clipboard.writeText(content.body || "")
+            }
           >
             <Copy size={14} /> Copy
           </button>
@@ -919,16 +1332,46 @@ function LessonBlockView({
   );
 }
 
-function KnowledgeCheck({ title, question, answer, compact = false }: { title?: string; question?: string; answer?: string; compact?: boolean }) {
+function KnowledgeCheck({
+  title,
+  question,
+  answer,
+  compact = false,
+}: {
+  title?: string;
+  question?: string;
+  answer?: string;
+  compact?: boolean;
+}) {
   const [revealed, setRevealed] = useState(false);
   return (
-    <section className={`rounded-xl border border-brand-200 bg-brand-50/70 text-brand-950 ${compact ? "p-4" : "p-6"}`}>
-      <div className="flex items-center gap-2"><HelpCircle size={compact ? 17 : 20} /><h2 className={`${compact ? "text-sm" : ""} font-semibold`}>{title || "Check your understanding"}</h2></div>
-      <p className={`mt-3 ${compact ? "text-xs leading-5" : "leading-7"}`}>{question}</p>
-      <button type="button" className={`${compact ? "mt-3 min-h-10 w-full rounded-lg border border-brand-200 bg-white px-3 py-2 text-xs font-semibold text-brand-700 transition-colors hover:bg-brand-100" : "btn-secondary mt-4"}`} aria-expanded={revealed} onClick={() => setRevealed((value) => !value)}>
+    <section
+      className={`rounded-xl border border-brand-200 bg-brand-50/70 text-brand-950 ${compact ? "p-4" : "p-6"}`}
+    >
+      <div className="flex items-center gap-2">
+        <HelpCircle size={compact ? 17 : 20} />
+        <h2 className={`${compact ? "text-sm" : ""} font-semibold`}>
+          {title || "Check your understanding"}
+        </h2>
+      </div>
+      <p className={`mt-3 ${compact ? "text-xs leading-5" : "leading-7"}`}>
+        {question}
+      </p>
+      <button
+        type="button"
+        className={`${compact ? "mt-3 min-h-10 w-full rounded-lg border border-brand-200 bg-white px-3 py-2 text-xs font-semibold text-brand-700 transition-colors hover:bg-brand-100" : "btn-secondary mt-4"}`}
+        aria-expanded={revealed}
+        onClick={() => setRevealed((value) => !value)}
+      >
         {revealed ? "Hide suggested answer" : "Reveal suggested answer"}
       </button>
-      {revealed && <div className={`mt-3 rounded-lg bg-white text-ink-700 ${compact ? "p-3 text-xs" : "p-4 text-sm"}`}><SafeRichText text={answer || ""} density="compact" /></div>}
+      {revealed && (
+        <div
+          className={`mt-3 rounded-lg bg-white text-ink-700 ${compact ? "p-3 text-xs" : "p-4 text-sm"}`}
+        >
+          <SafeRichText text={answer || ""} density="compact" />
+        </div>
+      )}
     </section>
   );
 }
@@ -948,9 +1391,17 @@ function safeLinkUrl(value: string | undefined) {
   return safeExternalUrl(value);
 }
 
-function SafeRichText({ text, density = "default" }: { text: string; density?: "default" | "compact" }) {
+function SafeRichText({
+  text,
+  density = "default",
+}: {
+  text: string;
+  density?: "default" | "compact";
+}) {
   return (
-    <div className={`${density === "compact" ? "space-y-2 leading-5" : "space-y-4 leading-7"} text-ink-700`}>
+    <div
+      className={`${density === "compact" ? "space-y-2 leading-5" : "space-y-4 leading-7"} text-ink-700`}
+    >
       {text
         .split(/\n\s*\n/)
         .map((section) => section.trim())

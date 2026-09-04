@@ -110,7 +110,7 @@ function getReadinessSteps(course: CourseReadiness): ReadinessStep[] {
     {
       label: "Delivery and learners",
       description: course.is_self_paced
-        ? "Self-paced access is enabled. Cohorts can still be added later."
+        ? "eLearning access is enabled. Cohorts can still be added later."
         : "Create a cohort before enrolling learners into live delivery.",
       complete: course.is_self_paced || course.cohortCount > 0,
       path: `/admin/cohorts?course=${course.id}`,
@@ -541,7 +541,7 @@ export function AdminCourseStudio() {
                           />
                           <span>
                             <span className="block text-sm font-semibold text-ink-900">
-                              Self-paced access
+                              eLearning access
                             </span>
                             <span className="mt-1 block text-xs leading-5 text-ink-600">
                               Learners can work through available lessons on their own schedule.
@@ -748,7 +748,7 @@ export function AdminCourseStudio() {
                       <div className="flex justify-between gap-3">
                         <dt className="text-ink-500">Format</dt>
                         <dd className="text-right font-semibold text-ink-900">
-                          {selfPaced ? "Self-paced" : "Guided cohort"}
+                          {selfPaced ? "eLearning" : "Guided cohort"}
                         </dd>
                       </div>
                     </dl>
@@ -832,7 +832,7 @@ export function AdminCourseStudio() {
                         {selectedCourse.is_published ? "Published" : "Private draft"}
                       </span>
                       <span className="text-xs text-ink-500">
-                        {selectedCourse.is_self_paced ? "Self-paced" : "Cohort delivery"}
+                        {selectedCourse.is_self_paced ? "eLearning" : "Cohort delivery"}
                       </span>
                     </div>
                     <h2 className="mt-3 font-display text-xl font-semibold text-ink-950">

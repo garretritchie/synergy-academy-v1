@@ -1,29 +1,40 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, BarChart3, BookOpen, CheckCircle2, ClipboardList, Mail, Megaphone, UserCheck, Video } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
+import {
+  ArrowRight,
+  Award,
+  BarChart3,
+  BookOpen,
+  CalendarDays,
+  Library,
+  Mail,
+  Megaphone,
+} from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { PageHeader } from "@/components/ui/PageHeader";
-import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Alert, TableSkeleton } from "@/components/ui/Feedback";
+import { ProgressBar } from "@/components/ui/ProgressBar";
 import { EmptyState } from "@/components/ui/Spinner";
-import { StatCard } from "@/components/ui/StatCard";
+import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
-import { formatDateTime, fullName } from "@/lib/format";
-import type { Announcement, Assignment, AttendanceRecord, Cohort, Course, DirectMessage, Enrolment, Grade, LiveSession, Notification, Profile, ProgressRecord } from "@/types";
+import { formatDateTime } from "@/lib/format";
+import type { Announcement, Cohort, Course, Enrolment } from "@/types";
 
 type EnrolmentRow = Enrolment & { cohort: Cohort & { course: Course } };
-type CourseMetric = { enrolment: EnrolmentRow; progress: number; grade: number | null; attendance: number | null };
-type MessageRow = DirectMessage & { sender: Profile };
+type CourseChoice = {
+  enrolment: EnrolmentRow;
+  progress: number;
+  gradeAverage: number | null;
+  nextEvent: { title: string; date: string; type: string } | null;
+  latestAnnouncement: Announcement | null;
+};
 
 export function StudentDashboard() {
   const { user, profile } = useAuth();
-  const [courses, setCourses] = useState<CourseMetric[]>([]);
-  const [session, setSession] = useState<LiveSession | null>(null);
-  const [assignment, setAssignment] = useState<Assignment | null>(null);
-  const [announcement, setAnnouncement] = useState<Announcement | null>(null);
-  const [messages, setMessages] = useState<MessageRow[]>([]);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const firstName =
+    profile?.first_name ||
+    String(user?.user_metadata?.first_name || "").trim() ||
+    "Student";
+  const [courses, setCourses] = useState<CourseChoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -36,171 +47,359 @@ export function StudentDashboard() {
         .from("enrolments")
         .select("*,cohort:cohorts(*,course:courses(*))")
         .eq("student_id", user.id)
-        .eq("status", "active");
+        .eq("status", "active")
+        .order("enrolled_at", { ascending: false });
       if (enrolmentResult.error) {
         setError(enrolmentResult.error.message);
         setLoading(false);
         return;
       }
-      const enrolments = (enrolmentResult.data ?? []) as unknown as EnrolmentRow[];
+
+      const enrolments = (enrolmentResult.data ??
+        []) as unknown as EnrolmentRow[];
       if (!enrolments.length) {
         setCourses([]);
         setLoading(false);
         return;
       }
-
-      const enrolmentIds = enrolments.map((row) => row.id);
-      const cohortIds = enrolments.map((row) => row.cohort_id);
-      const courseIds = Array.from(new Set(enrolments.map((row) => row.cohort.course_id)));
       const now = new Date().toISOString();
-      const [moduleResult, progressResult, gradeResult, attendanceResult, sessionResult, assignmentResult, announcementResult, messageResult, notificationResult] = await Promise.all([
-        supabase.from("modules").select("id,course_id").in("course_id", courseIds).eq("is_published", true),
-        supabase.from("progress_records").select("*").in("enrolment_id", enrolmentIds),
-        supabase.from("grades").select("*").in("enrolment_id", enrolmentIds).eq("is_excused", false),
-        supabase.from("attendance_records").select("*").in("enrolment_id", enrolmentIds),
-        supabase.from("live_sessions").select("*").in("cohort_id", cohortIds).eq("is_cancelled", false).gte("scheduled_start", now).order("scheduled_start").limit(1).maybeSingle(),
-        supabase.from("assignments").select("*").in("cohort_id", cohortIds).eq("is_published", true).or(`due_date.is.null,due_date.gte.${now}`).order("due_date", { ascending: true, nullsFirst: false }).limit(1).maybeSingle(),
-        supabase.from("announcements").select("*").in("cohort_id", cohortIds).eq("is_published", true).order("published_at", { ascending: false }).limit(1).maybeSingle(),
-        supabase.from("direct_messages").select("*,sender:profiles!direct_messages_sender_id_fkey(*)").eq("recipient_id", user.id).order("created_at", { ascending: false }).limit(3),
-        supabase.from("notifications").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(3),
+      const cohortIds = enrolments.map((item) => item.cohort_id);
+      const enrolmentIds = enrolments.map((item) => item.id);
+      const courseIds = enrolments.map((item) => item.cohort.course_id);
+      const [
+        lessonResult,
+        progressResult,
+        gradeResult,
+        sessionResult,
+        assignmentResult,
+        announcementResult,
+      ] = await Promise.all([
+        supabase
+          .from("lessons")
+          .select("id,module:modules!inner(course_id)")
+          .in("module.course_id", courseIds)
+          .eq("is_published", true),
+        supabase
+          .from("progress_records")
+          .select("enrolment_id,lesson_id,progress_percent")
+          .in("enrolment_id", enrolmentIds),
+        supabase
+          .from("grades")
+          .select("enrolment_id,percentage")
+          .in("enrolment_id", enrolmentIds)
+          .not("percentage", "is", null),
+        supabase
+          .from("live_sessions")
+          .select("cohort_id,title,scheduled_start")
+          .in("cohort_id", cohortIds)
+          .eq("is_cancelled", false)
+          .gte("scheduled_start", now)
+          .order("scheduled_start"),
+        supabase
+          .from("assignments")
+          .select("cohort_id,title,due_date")
+          .in("cohort_id", cohortIds)
+          .eq("is_published", true)
+          .not("due_date", "is", null)
+          .gte("due_date", now)
+          .order("due_date"),
+        supabase
+          .from("announcements")
+          .select("*")
+          .in("cohort_id", cohortIds)
+          .eq("is_published", true)
+          .order("published_at", { ascending: false }),
       ]);
-      const firstError = moduleResult.error || progressResult.error || gradeResult.error || attendanceResult.error || sessionResult.error || assignmentResult.error || announcementResult.error || notificationResult.error;
-      if (firstError) {
-        setError(firstError.message);
+      const dashboardError =
+        lessonResult.error ||
+        progressResult.error ||
+        gradeResult.error ||
+        sessionResult.error ||
+        assignmentResult.error ||
+        announcementResult.error;
+      if (dashboardError) {
+        setError(dashboardError.message);
         setLoading(false);
         return;
       }
-
-      const modules = moduleResult.data ?? [];
-      const lessonResult = modules.length
-        ? await supabase.from("lessons").select("id,module_id").in("module_id", modules.map((module) => module.id)).eq("is_published", true)
-        : { data: [], error: null };
-      if (lessonResult.error) {
-        setError(lessonResult.error.message);
-        setLoading(false);
-        return;
-      }
-      const moduleCourse = new Map(modules.map((module) => [module.id, module.course_id]));
-      const lessonCounts = new Map<string, number>();
-      for (const lesson of lessonResult.data ?? []) {
-        const courseId = moduleCourse.get(lesson.module_id);
-        if (courseId) lessonCounts.set(courseId, (lessonCounts.get(courseId) ?? 0) + 1);
-      }
-      const progress = (progressResult.data ?? []) as ProgressRecord[];
-      const grades = (gradeResult.data ?? []) as Grade[];
-      const attendance = (attendanceResult.data ?? []) as AttendanceRecord[];
-      setCourses(enrolments.map((enrolment) => {
-        const courseProgress = progress.filter((record) => record.enrolment_id === enrolment.id);
-        const totalLessons = lessonCounts.get(enrolment.cohort.course_id) ?? 0;
-        const learnerGrades = grades.filter((grade) => grade.enrolment_id === enrolment.id && grade.percentage !== null);
-        const learnerAttendance = attendance.filter((record) => record.enrolment_id === enrolment.id && record.status !== "excused");
+      const lessonRows = (lessonResult.data ?? []) as unknown as Array<{
+        id: string;
+        module: { course_id: string };
+      }>;
+      const progressResults = enrolments.map((enrolment) => {
+        const courseLessonIds = lessonRows
+          .filter(
+            (lesson) => lesson.module.course_id === enrolment.cohort.course_id,
+          )
+          .map((lesson) => lesson.id);
+        const records = (progressResult.data ?? []).filter(
+          (record) => record.enrolment_id === enrolment.id,
+        );
+        const total = courseLessonIds.length || 1;
+        const earned = records
+          .filter((record) => courseLessonIds.includes(record.lesson_id))
+          .reduce(
+            (sum, record) => sum + Number(record.progress_percent ?? 0),
+            0,
+          );
+        const scored = (gradeResult.data ?? []).filter(
+          (grade) => grade.enrolment_id === enrolment.id,
+        );
+        const gradeAverage = scored.length
+          ? Math.round(
+              scored.reduce(
+                (sum, grade) => sum + Number(grade.percentage ?? 0),
+                0,
+              ) / scored.length,
+            )
+          : null;
+        const events = [
+          ...(sessionResult.data ?? [])
+            .filter((session) => session.cohort_id === enrolment.cohort_id)
+            .map((session) => ({
+              title: session.title,
+              date: session.scheduled_start,
+              type: "Live meeting",
+            })),
+          ...(assignmentResult.data ?? [])
+            .filter(
+              (assignment) => assignment.cohort_id === enrolment.cohort_id,
+            )
+            .map((assignment) => ({
+              title: assignment.title,
+              date: assignment.due_date || "",
+              type: "Assignment due",
+            })),
+        ].sort(
+          (left, right) =>
+            new Date(left.date).getTime() - new Date(right.date).getTime(),
+        );
         return {
           enrolment,
-          progress: totalLessons ? Math.min(100, Math.round(courseProgress.reduce((sum, record) => sum + Number(record.progress_percent ?? 0), 0) / totalLessons)) : 0,
-          grade: learnerGrades.length ? Math.round(learnerGrades.reduce((sum, grade) => sum + Number(grade.percentage), 0) / learnerGrades.length) : null,
-          attendance: learnerAttendance.length ? Math.round((learnerAttendance.filter((record) => ["present", "late", "left_early"].includes(record.status)).length / learnerAttendance.length) * 100) : null,
+          progress: Math.min(100, Math.round(earned / total)),
+          gradeAverage,
+          nextEvent: events[0] ?? null,
+          latestAnnouncement:
+            ((announcementResult.data ?? []).find(
+              (announcement) => announcement.cohort_id === enrolment.cohort_id,
+            ) as Announcement | undefined) ?? null,
         };
-      }).sort((left, right) => {
-        const leftActive = left.progress > 0 && left.progress < 100 ? 1 : 0;
-        const rightActive = right.progress > 0 && right.progress < 100 ? 1 : 0;
-        return rightActive - leftActive || right.progress - left.progress;
-      }));
-      setSession(sessionResult.data as LiveSession | null);
-      setAssignment(assignmentResult.data as Assignment | null);
-      setAnnouncement(announcementResult.data as Announcement | null);
-      setNotifications((notificationResult.data ?? []) as Notification[]);
-      if (!messageResult.error) setMessages((messageResult.data ?? []) as unknown as MessageRow[]);
+      });
+      setCourses(progressResults);
       setLoading(false);
     })();
   }, [user]);
 
-  const overview = useMemo(() => {
-    const gradeValues = courses.flatMap((course) => course.grade === null ? [] : [course.grade]);
-    const attendanceValues = courses.flatMap((course) => course.attendance === null ? [] : [course.attendance]);
-    return {
-      progress: courses.length ? Math.round(courses.reduce((sum, course) => sum + course.progress, 0) / courses.length) : 0,
-      grade: gradeValues.length ? Math.round(gradeValues.reduce((sum, value) => sum + value, 0) / gradeValues.length) : null,
-      attendance: attendanceValues.length ? Math.round(attendanceValues.reduce((sum, value) => sum + value, 0) / attendanceValues.length) : null,
-      unread: messages.filter((message) => !message.is_read).length + notifications.filter((item) => !item.is_read).length,
-    };
-  }, [courses, messages, notifications]);
-  const current = courses[0];
-
   return (
     <AppLayout>
-      <PageHeader title={`Welcome back, ${profile?.first_name || "there"}`} subtitle="Your learning progress, academic standing, attendance, and messages at a glance." />
-      <div className="mt-6 space-y-5">
-        {error && <Alert>{error}</Alert>}
-        {loading ? <div className="page-section"><TableSkeleton /></div> : courses.length === 0 ? (
-          <div className="page-section"><EmptyState icon={<BookOpen size={30} />} title="No active courses" description="An administrator will enrol you into your first course or cohort." /></div>
-        ) : (
-          <>
-            <section aria-label="Learning overview" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <StatCard label="Overall progress" value={`${overview.progress}%`} icon={<BarChart3 size={19} />} hint={`${courses.length} active ${courses.length === 1 ? "course" : "courses"}`} />
-              <StatCard label="Current grade" value={overview.grade === null ? "Not graded" : `${overview.grade}%`} icon={<CheckCircle2 size={19} />} accent="success" />
-              <StatCard label="Attendance" value={overview.attendance === null ? "Not recorded" : `${overview.attendance}%`} icon={<UserCheck size={19} />} accent="warning" />
-              <StatCard label="Unread updates" value={String(overview.unread)} icon={<Mail size={19} />} accent={overview.unread ? "brand" : "success"} />
-            </section>
-            <div className="grid gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(19rem,.5fr)]">
-              <div className="space-y-5">
-                <section className="overflow-hidden rounded-xl bg-ink-950 p-6 text-white shadow-elevated">
-                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-brand-200">Continue learning</p>
-                  <h2 className="mt-3 font-display text-2xl font-semibold">{current.enrolment.cohort.course.title}</h2>
-                  <p className="mt-1 text-sm text-ink-300">{current.enrolment.cohort.name}</p>
-                  <div className="mt-5 max-w-xl">
-                    <div className="mb-2 flex justify-between text-xs text-ink-300"><span>Course progress</span><span>{current.progress}%</span></div>
-                    <ProgressBar value={current.progress} />
-                  </div>
-                  <Link to={`/student/courses/${current.enrolment.cohort_id}/learn`} className="btn-primary mt-6">{current.progress ? "Continue course" : "Start course"} <ArrowRight size={16} /></Link>
-                </section>
-                <section className="page-section overflow-hidden">
-                  <div className="flex items-center justify-between gap-3 border-b border-ink-100 px-5 py-4">
-                    <div><h2 className="font-display text-sm font-semibold text-ink-950">My courses</h2><p className="mt-1 text-xs text-ink-500">A focused view of your active enrolments.</p></div>
-                    <Link to="/student/courses" className="text-xs font-semibold text-brand-700">View all</Link>
-                  </div>
-                  <div className="divide-y divide-ink-100">
-                    {courses.slice(0, 5).map((course) => (
-                      <article key={course.enrolment.id} className="grid gap-4 px-5 py-4 md:grid-cols-[minmax(0,1fr)_8rem_7rem_auto] md:items-center">
-                        <div className="min-w-0"><h3 className="truncate text-sm font-semibold text-ink-900">{course.enrolment.cohort.course.title}</h3><p className="mt-0.5 truncate text-xs text-ink-500">{course.enrolment.cohort.name}</p></div>
-                        <Metric label="Progress" value={`${course.progress}%`} />
-                        <Metric label="Grade" value={course.grade === null ? "Not graded" : `${course.grade}%`} />
-                        <Link to={`/student/courses/${course.enrolment.cohort_id}/home`} className="btn-secondary">Open</Link>
-                      </article>
-                    ))}
-                  </div>
-                </section>
-              </div>
-              <aside className="space-y-5">
-                <section className="page-section overflow-hidden">
-                  <div className="flex items-center justify-between border-b border-ink-100 px-5 py-4">
-                    <div className="flex items-center gap-2"><Mail size={17} className="text-brand-600" /><h2 className="font-display text-sm font-semibold text-ink-950">Messages & updates</h2></div>
-                    <Link to="/student/messages" className="text-xs font-semibold text-brand-700">Open inbox</Link>
-                  </div>
-                  <div className="divide-y divide-ink-100">
-                    {messages.length === 0 && notifications.length === 0 ? <p className="px-5 py-6 text-xs leading-5 text-ink-500">Messages from your administrators and instructors will appear here.</p> : (
-                      <>
-                        {messages.map((message) => <article key={message.id} className="px-5 py-4"><div className="flex items-center gap-2">{!message.is_read && <span className="h-2 w-2 rounded-full bg-brand-600" aria-label="Unread" />}<p className="text-xs font-semibold text-ink-900">{fullName(message.sender)}</p></div><p className="mt-1 line-clamp-2 text-xs leading-5 text-ink-600">{message.body}</p><p className="mt-2 text-[11px] text-ink-400">{formatDateTime(message.created_at)}</p></article>)}
-                        {notifications.slice(0, Math.max(0, 3 - messages.length)).map((item) => <article key={item.id} className="px-5 py-4"><div className="flex items-center gap-2">{!item.is_read && <span className="h-2 w-2 rounded-full bg-brand-600" aria-label="Unread" />}<p className="text-xs font-semibold text-ink-900">{item.title}</p></div>{item.body && <p className="mt-1 line-clamp-2 text-xs leading-5 text-ink-600">{item.body}</p>}</article>)}
-                      </>
-                    )}
-                  </div>
-                </section>
-                <DashboardItem icon={Video} title="Next live class" primary={session?.title || "Nothing scheduled"} secondary={session ? formatDateTime(session.scheduled_start) : "Your instructor will publish sessions here."} />
-                <DashboardItem icon={ClipboardList} title="Next assignment" primary={assignment?.title || "No work due"} secondary={assignment?.due_date ? `Due ${formatDateTime(assignment.due_date)}` : assignment ? "No due date" : "You are all caught up."} />
-                <DashboardItem icon={Megaphone} title="Latest announcement" primary={announcement?.title || "No updates"} secondary={announcement?.body || "Course updates will appear here."} />
-              </aside>
-            </div>
-          </>
+      <section className="mx-auto max-w-6xl">
+        <div className="flex flex-col gap-5 border-b border-ink-200 pb-7 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="font-display text-3xl font-semibold tracking-[-0.03em] text-navy sm:text-4xl">
+              Welcome, {firstName}.
+            </h1>
+            <p className="mt-3 max-w-2xl text-base leading-7 text-ink-600">
+              Choose a course to begin learning or continue where you stopped.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Link to="/student/messages" className="btn-secondary">
+              <Mail size={16} /> Messages
+            </Link>
+            <Link to="/student/certificates" className="btn-secondary">
+              <Award size={16} /> Certificates
+            </Link>
+          </div>
+        </div>
+
+        {!loading && courses.length > 0 && (
+          <LearningAtGlance courses={courses} />
         )}
-      </div>
+
+        <div className="mt-8">
+          <div className="flex items-center justify-between gap-4">
+            <h2 className="font-display text-xl font-semibold text-ink-950">
+              Choose a course
+            </h2>
+            <Link
+              to="/student/courses"
+              className="text-sm font-semibold text-brand-700 hover:text-brand-800"
+            >
+              View course library
+            </Link>
+          </div>
+          {error && (
+            <div className="mt-5">
+              <Alert>{error}</Alert>
+            </div>
+          )}
+          {loading ? (
+            <div className="mt-5 rounded-xl bg-white shadow-soft">
+              <TableSkeleton />
+            </div>
+          ) : courses.length === 0 ? (
+            <div className="mt-5 rounded-xl bg-white shadow-soft">
+              <EmptyState
+                icon={<BookOpen size={30} />}
+                title="No active courses"
+                description="An administrator will enrol you in your first course."
+              />
+            </div>
+          ) : (
+            <div className="mt-5 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+              {courses.map(({ enrolment, progress }) => {
+                const course = enrolment.cohort.course;
+                return (
+                  <article
+                    key={enrolment.id}
+                    className="group flex min-h-[25rem] flex-col overflow-hidden rounded-2xl bg-white shadow-card transition-[transform,box-shadow] duration-200 hover:-translate-y-1 hover:shadow-elevated"
+                  >
+                    <div className="relative aspect-[16/8] overflow-hidden bg-navy">
+                      {course.cover_image_url ? (
+                        <img
+                          src={course.cover_image_url}
+                          alt=""
+                          className="h-full w-full object-cover opacity-80 transition-transform duration-300 group-hover:scale-[1.03]"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center text-brand-200">
+                          <Library size={42} />
+                        </div>
+                      )}
+                      <span className="absolute left-4 top-4 rounded-md bg-white/95 px-2.5 py-1 text-xs font-semibold text-navy shadow-soft">
+                        {String(course.metadata?.course_id || "Course")}
+                      </span>
+                    </div>
+                    <div className="flex flex-1 flex-col p-6">
+                      <h3 className="font-display text-lg font-semibold leading-6 text-ink-950">
+                        {course.title}
+                      </h3>
+                      <p className="mt-2 text-sm text-ink-500">
+                        {enrolment.cohort.name}
+                      </p>
+                      <div className="mt-auto pt-6">
+                        <div className="mb-2 flex items-center justify-between text-xs font-semibold text-ink-600">
+                          <span>Course progress</span>
+                          <span className="tabular-nums text-brand-700">
+                            {progress}% complete
+                          </span>
+                        </div>
+                        <ProgressBar value={progress} />
+                        <Link
+                          to={`/student/courses/${enrolment.cohort_id}/learn`}
+                          className="btn-primary mt-5 w-full"
+                        >
+                          {progress > 0 ? "Continue course" : "Start course"}{" "}
+                          <ArrowRight size={16} />
+                        </Link>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </section>
     </AppLayout>
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
-  return <div><p className="text-[11px] font-medium uppercase tracking-wide text-ink-400">{label}</p><p className="mt-1 text-sm font-semibold tabular-nums text-ink-900">{value}</p></div>;
+function LearningAtGlance({ courses }: { courses: CourseChoice[] }) {
+  return (
+    <section className="mt-7 rounded-2xl border border-brand-100 bg-[linear-gradient(120deg,rgba(230,242,253,0.92),rgba(255,255,255,0.88))] p-5 shadow-soft sm:p-6">
+      <div>
+        <h2 className="font-display text-xl font-semibold text-ink-950">
+          Your learning at a glance
+        </h2>
+        <p className="mt-1 text-sm text-ink-500">
+          Performance, upcoming dates, and announcements stay labeled by course.
+        </p>
+      </div>
+      <div className="mt-5 grid gap-4 lg:grid-cols-3">
+        <DashboardPanel icon={BarChart3} title="Performance">
+          {courses.map((item) => (
+            <DashboardRow
+              key={item.enrolment.id}
+              course={item.enrolment.cohort.course.title}
+              primary={`${item.progress}% learning complete`}
+              secondary={item.gradeAverage === null ? "Grade not available" : `${item.gradeAverage}% grade average`}
+            />
+          ))}
+        </DashboardPanel>
+        <DashboardPanel icon={CalendarDays} title="Upcoming">
+          {courses.map((item) => (
+            <DashboardRow
+              key={item.enrolment.id}
+              course={item.enrolment.cohort.course.title}
+              primary={item.nextEvent?.title || "Nothing scheduled"}
+              secondary={item.nextEvent ? `${item.nextEvent.type}, ${formatDateTime(item.nextEvent.date)}` : "Check back for course dates"}
+            />
+          ))}
+        </DashboardPanel>
+        <DashboardPanel icon={Megaphone} title="Announcements">
+          {courses.map((item) => (
+            <DashboardRow
+              key={item.enrolment.id}
+              course={item.enrolment.cohort.course.title}
+              primary={item.latestAnnouncement?.title || "No announcements"}
+              secondary={item.latestAnnouncement ? formatDateTime(item.latestAnnouncement.published_at) : "Your course is up to date"}
+            />
+          ))}
+          <Link
+            to="/student/messages?tab=announcements"
+            className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:text-brand-800"
+          >
+            View all in Messages <ArrowRight size={15} />
+          </Link>
+        </DashboardPanel>
+      </div>
+    </section>
+  );
 }
 
-function DashboardItem({ icon: Icon, title, primary, secondary }: { icon: typeof Video; title: string; primary: string; secondary: string }) {
-  return <section className="page-section p-5"><div className="flex items-center gap-2 text-brand-700"><Icon size={17} /><h2 className="text-xs font-semibold text-ink-900">{title}</h2></div><p className="mt-3 text-sm font-semibold text-ink-900">{primary}</p><p className="mt-1 line-clamp-3 text-xs leading-5 text-ink-500">{secondary}</p></section>;
+function DashboardPanel({
+  icon: Icon,
+  title,
+  children,
+}: {
+  icon: typeof BarChart3;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-2xl border border-ink-200/80 bg-white p-5 shadow-soft">
+      <div className="flex items-center gap-2.5">
+        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
+          <Icon size={18} />
+        </span>
+        <h3 className="font-semibold text-ink-950">{title}</h3>
+      </div>
+      <div className="mt-4 space-y-3">{children}</div>
+    </section>
+  );
+}
+
+function DashboardRow({
+  course,
+  primary,
+  secondary,
+}: {
+  course: string;
+  primary: string;
+  secondary: string;
+}) {
+  return (
+    <article className="rounded-xl bg-ink-50 px-3.5 py-3">
+      <p className="line-clamp-1 text-xs font-semibold text-brand-700">
+        {course}
+      </p>
+      <p className="mt-1 line-clamp-1 text-sm font-medium text-ink-900">
+        {primary}
+      </p>
+      <p className="mt-0.5 line-clamp-2 text-xs leading-5 text-ink-500">
+        {secondary}
+      </p>
+    </article>
+  );
 }

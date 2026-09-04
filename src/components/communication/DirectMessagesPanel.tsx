@@ -7,6 +7,7 @@ import type { DirectMessage, Profile, UserRole } from "@/types";
 import { Alert, SubmitButton, TableSkeleton } from "@/components/ui/Feedback";
 import { EmptyState } from "@/components/ui/Spinner";
 import { Field } from "@/components/ui/FormPanel";
+import { UserAvatar } from "@/components/ui/UserAvatar";
 
 type MessageRow = DirectMessage & {
   sender: Profile;
@@ -132,7 +133,8 @@ export function DirectMessagesPanel({ role }: { role: UserRole }) {
     if (insertError && isMissingDirectMessagesTable(insertError.message)) {
       setMessagingAvailable(false);
       setError("");
-    } else if (insertError) setError("Your message could not be sent. Please try again.");
+    } else if (insertError)
+      setError("Your message could not be sent. Please try again.");
     else {
       setBody("");
       await load();
@@ -141,7 +143,7 @@ export function DirectMessagesPanel({ role }: { role: UserRole }) {
   };
 
   return (
-    <section className="rounded-xl bg-white p-5 shadow-soft">
+    <section className="rounded-2xl border border-ink-200/80 bg-white p-5 shadow-soft sm:p-6">
       <div className="flex items-center gap-2">
         <MessageCircle size={18} className="text-brand-600" />
         <div>
@@ -158,12 +160,13 @@ export function DirectMessagesPanel({ role }: { role: UserRole }) {
       )}
       {!messagingAvailable && (
         <div className="mt-4 rounded-lg border border-warning-200 bg-warning-50 px-4 py-3 text-sm text-warning-900">
-          Private messaging is not enabled in the connected academy database yet. Apply migration 012 in Bolt Supabase, then refresh this page.
+          Private messaging is not enabled in the connected academy database
+          yet. Apply migration 012 in Bolt Supabase, then refresh this page.
         </div>
       )}
       <form
         onSubmit={send}
-        className={`mt-5 grid gap-4 lg:grid-cols-[15rem_minmax(0,1fr)_auto] lg:items-end ${messagingAvailable ? "" : "hidden"}`}
+        className={`mt-5 grid gap-4 rounded-xl bg-ink-50 p-4 lg:grid-cols-[15rem_minmax(0,1fr)_auto] lg:items-end ${messagingAvailable ? "" : "hidden"}`}
       >
         <Field label="Recipient">
           <select
@@ -208,24 +211,35 @@ export function DirectMessagesPanel({ role }: { role: UserRole }) {
             {messages.map((message) => {
               const outgoing = message.sender_id === user?.id;
               return (
-                <article
+                <div
                   key={message.id}
-                  className={`max-w-2xl rounded-xl px-4 py-3 ${
-                    outgoing ? "ml-auto bg-brand-50" : "bg-ink-50"
-                  }`}
+                  className={`flex max-w-2xl items-end gap-2 ${outgoing ? "ml-auto flex-row-reverse" : ""}`}
                 >
-                  <p className="text-xs font-semibold text-ink-600">
-                    {outgoing
-                      ? `To ${fullName(message.recipient)}`
-                      : fullName(message.sender)}
-                  </p>
-                  <p className="mt-1 whitespace-pre-wrap text-sm text-ink-800">
-                    {message.body}
-                  </p>
-                  <p className="mt-2 text-xs text-ink-500">
-                    {formatDateTime(message.created_at)}
-                  </p>
-                </article>
+                  <UserAvatar
+                    profile={message.sender}
+                    size="sm"
+                    decorative
+                  />
+                  <article
+                    className={`min-w-0 flex-1 rounded-xl border px-4 py-3 ${
+                      outgoing
+                        ? "border-brand-100 bg-brand-50"
+                        : "border-ink-200 bg-ink-50"
+                    }`}
+                  >
+                    <p className="text-xs font-semibold text-ink-600">
+                      {outgoing
+                        ? `To ${fullName(message.recipient)}`
+                        : fullName(message.sender)}
+                    </p>
+                    <p className="mt-1 whitespace-pre-wrap text-sm text-ink-800">
+                      {message.body}
+                    </p>
+                    <p className="mt-2 text-xs text-ink-500">
+                      {formatDateTime(message.created_at)}
+                    </p>
+                  </article>
+                </div>
               );
             })}
           </div>
@@ -239,6 +253,7 @@ function isMissingDirectMessagesTable(message: string) {
   const normalized = message.toLowerCase();
   return (
     normalized.includes("direct_messages") &&
-    (normalized.includes("schema cache") || normalized.includes("does not exist"))
+    (normalized.includes("schema cache") ||
+      normalized.includes("does not exist"))
   );
 }

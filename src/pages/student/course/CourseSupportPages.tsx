@@ -20,6 +20,7 @@ import { Field, FormPanel } from "@/components/ui/FormPanel";
 import { EmptyState } from "@/components/ui/Spinner";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
+import { UserAvatar } from "@/components/ui/UserAvatar";
 import { formatDateTime, fullName } from "@/lib/format";
 import type {
   Announcement,
@@ -140,7 +141,7 @@ function DiscussionPage({ questions }: { questions: boolean }) {
   return (
     <CourseLayout>
       <PageHeader
-        title={questions ? "Q&A" : "Discussions"}
+        title={questions ? "Q&A" : "Discussion Board"}
         subtitle={
           questions
             ? "Ask your teaching team and follow resolved answers."
@@ -340,10 +341,7 @@ export function CourseInstructor() {
       >
         {rows.map((row) => (
           <article key={row.id} className="flex items-center gap-4 px-5 py-5">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-50 font-semibold text-brand-700">
-              {row.instructor.first_name?.[0]}
-              {row.instructor.last_name?.[0]}
-            </div>
+            <UserAvatar profile={row.instructor} size="lg" decorative />
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="font-semibold text-ink-900">
