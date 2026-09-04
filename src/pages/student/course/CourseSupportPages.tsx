@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useParams } from "react-router-dom";
 import {
   CalendarDays,
+  Clock3,
   Download,
   ExternalLink,
   FolderOpen,
@@ -11,6 +12,7 @@ import {
   HelpCircle,
   Megaphone,
   MessageSquare,
+  LockKeyhole,
   Pin,
 } from "lucide-react";
 import { CourseLayout } from "./CourseLayout";
@@ -216,6 +218,15 @@ export function CourseQA() {
 export function CourseResources() {
   const { cohortId } = useParams<{ cohortId: string }>();
   const [rows, setRows] = useState<Resource[]>([]);
+  const [upcoming, setUpcoming] = useState<Array<{
+    id: string;
+    title: string;
+    description: string | null;
+    resource_type: string;
+    release_mode: string;
+    release_at: string | null;
+    release_checkpoint_type: string | null;
+  }>>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   useEffect(() => {
@@ -231,11 +242,11 @@ export function CourseResources() {
         setLoading(false);
         return;
       }
-      const { data, error: queryError } = await supabase
-        .from("resources")
-        .select("*")
-        .eq("course_id", cohort.course_id)
-        .order("display_order");
+      const [resourceResult, upcomingResult] = await Promise.all([
+        supabase.from("resources").select("*").eq("course_id", cohort.course_id).order("display_order"),
+        supabase.rpc("get_upcoming_course_resources", { cohort_uuid: cohortId }),
+      ]);
+      const { data, error: queryError } = resourceResult;
       if (queryError) setError(queryError.message);
       else {
         const resolved = await Promise.all(
@@ -249,6 +260,7 @@ export function CourseResources() {
           }),
         );
         setRows(resolved);
+        if (!upcomingResult.error) setUpcoming(upcomingResult.data ?? []);
       }
       setLoading(false);
     })();
@@ -294,6 +306,24 @@ export function CourseResources() {
           </article>
         ))}
       </SupportList>
+      {upcoming.length > 0 && (
+        <section className="mt-5 rounded-2xl border border-accent-200 bg-gradient-to-br from-accent-50 to-white p-5 shadow-soft">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-100 text-accent-800"><LockKeyhole size={18} /></span>
+            <div><h2 className="font-semibold text-ink-950">Coming later</h2><p className="text-xs text-ink-500">These files will open when you reach their release point.</p></div>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            {upcoming.map((row) => (
+              <article key={row.id} className="rounded-xl border border-white bg-white/80 p-4">
+                <div className="flex items-start gap-3">
+                  <Clock3 size={16} className="mt-0.5 shrink-0 text-accent-700" />
+                  <div><h3 className="text-sm font-semibold text-ink-900">{row.title}</h3><p className="mt-1 text-xs leading-5 text-ink-500">{row.description || row.resource_type}</p><p className="mt-2 text-[11px] font-medium text-accent-800">{row.release_mode === "scheduled" && row.release_at ? `Opens ${formatDateTime(row.release_at)}` : row.release_checkpoint_type === "lesson" ? "Opens after learning completion" : row.release_checkpoint_type === "activity" ? "Opens after an activity" : "Opens after an assessment"}</p></div>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
     </CourseLayout>
   );
 }

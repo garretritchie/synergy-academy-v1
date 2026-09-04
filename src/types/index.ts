@@ -151,6 +151,13 @@ export interface Resource {
   file_size: number | null;
   is_downloadable: boolean;
   display_order: number;
+  cohort_id: string | null;
+  release_mode: "immediate" | "scheduled" | "checkpoint";
+  release_at: string | null;
+  release_checkpoint_type: "lesson" | "assessment" | "activity" | null;
+  release_checkpoint_id: string | null;
+  checkpoint_requires_pass: boolean;
+  show_before_release: boolean;
 }
 
 export interface ContentReleaseRule {

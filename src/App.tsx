@@ -1,5 +1,5 @@
 import { lazy, Suspense, type ComponentType } from "react";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useParams } from "react-router-dom";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AcademyBrandMark } from "@/components/brand/AcademyBrandMark";
 import { FullPageSpinner } from "@/components/ui/Spinner";
@@ -240,6 +240,7 @@ const studentRoutes: AppRoute[] = [
   { path: "/student/courses/:cohortId/home", Component: CourseHome },
   { path: "/student/courses/:cohortId/learn", Component: CourseLearn },
   { path: "/student/courses/:cohortId/learn/:lessonId", Component: LessonPage },
+  { path: "/student/courses/:cohortId/learn/activity/:activityId", Component: CourseActivities },
   {
     path: "/student/courses/:cohortId/learn/check/:assessmentId",
     Component: CourseAssessments,
@@ -250,7 +251,7 @@ const studentRoutes: AppRoute[] = [
   },
   {
     path: "/student/courses/:cohortId/activities",
-    Component: CourseActivities,
+    Component: CourseActivitiesRedirect,
   },
   { path: "/student/courses/:cohortId/live", Component: CourseLive },
   {
@@ -283,6 +284,7 @@ const instructorRoutes: AppRoute[] = [
   { path: "/instructor/courses", Component: InstructorCourses },
   { path: "/instructor/live-sessions", Component: InstructorLiveSessions },
   { path: "/instructor/assignments", Component: InstructorAssignments },
+  { path: "/instructor/resources", Component: AdminResources },
   { path: "/instructor/attendance", Component: InstructorAttendance },
   { path: "/instructor/gradebook", Component: InstructorGradebook },
   { path: "/instructor/students", Component: InstructorStudents },
@@ -317,6 +319,11 @@ const protectedRoutes = [
   ...instructorRoutes,
   ...adminRoutes,
 ];
+
+function CourseActivitiesRedirect() {
+  const { cohortId } = useParams<{ cohortId: string }>();
+  return <Navigate replace to={`/student/courses/${cohortId}/learn`} />;
+}
 
 function RoleRedirect() {
   const { user, profile, roles, loading } = useAuth();

@@ -1,17 +1,22 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
   ArrowRight,
   BrainCircuit,
   CheckCircle2,
+  ChevronDown,
   Clock3,
+  ClipboardCheck,
+  BookOpen,
   LockKeyhole,
+  ListChecks,
   RotateCcw,
   X,
   XCircle,
 } from "lucide-react";
 import { CourseLayout } from "./CourseLayout";
+import { LearningFlow } from "./LearningFlow";
 import { moduleLabel } from "./courseFormatting";
 import { Alert, TableSkeleton } from "@/components/ui/Feedback";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -19,7 +24,7 @@ import { EmptyState } from "@/components/ui/Spinner";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import courseContent from "@/content/ai-business-essentials.json";
-import type { Assessment, ProgressRecord } from "@/types";
+import type { Assessment, Lesson, Module, ProgressRecord } from "@/types";
 
 type AssessmentModule = { id: string; title: string; display_order: number };
 type Attempt = {
@@ -33,6 +38,8 @@ type AssessmentRow = Assessment & {
   module: AssessmentModule | null;
   assessment_attempts: Attempt[];
 };
+type PathModule = Module & { lessons: Lesson[] };
+type PathActivity = { id: string; title: string; module_id: string | null; submissions: Array<{ status: string }> };
 type SafeQuestion = {
   id: string;
   question_type: string;
@@ -74,6 +81,9 @@ export function CourseAssessments() {
   const [enrolmentId, setEnrolmentId] = useState("");
   const [assessments, setAssessments] = useState<AssessmentRow[]>([]);
   const [progress, setProgress] = useState<ProgressRecord[]>([]);
+  const [pathModules, setPathModules] = useState<PathModule[]>([]);
+  const [pathActivities, setPathActivities] = useState<PathActivity[]>([]);
+  const [releasedLessonIds, setReleasedLessonIds] = useState<string[]>([]);
   const [quiz, setQuiz] = useState<StudentAssessment | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [result, setResult] = useState<AssessmentResult | null>(null);
@@ -92,7 +102,7 @@ export function CourseAssessments() {
     setLoading(true);
     const enrolmentResult = await supabase
       .from("enrolments")
-      .select("id")
+      .select("id,cohort:cohorts(course_id)")
       .eq("cohort_id", cohortId)
       .eq("student_id", user.id)
       .eq("status", "active")
@@ -103,7 +113,8 @@ export function CourseAssessments() {
       return;
     }
     setEnrolmentId(enrolmentResult.data.id);
-    const [assessmentResult, progressResult] = await Promise.all([
+    const courseId = (enrolmentResult.data.cohort as unknown as { course_id: string }).course_id;
+    const [assessmentResult, progressResult, moduleResult, releaseResult, activityResult] = await Promise.all([
       supabase
         .from("assessments")
         .select(
@@ -117,8 +128,17 @@ export function CourseAssessments() {
         .select("*")
         .eq("cohort_id", cohortId)
         .eq("student_id", user.id),
+      supabase
+        .from("modules")
+        .select("*,lessons(*)")
+        .eq("course_id", courseId)
+        .eq("is_published", true)
+        .order("display_order")
+        .order("display_order", { referencedTable: "lessons" }),
+      supabase.rpc("get_released_lesson_ids", { cohort_uuid: cohortId }),
+      supabase.from("assignments").select("id,title,module_id,submissions(status)").eq("cohort_id", cohortId).eq("assignment_type", "activity").eq("is_published", true).eq("submissions.student_id", user.id),
     ]);
-    const queryError = assessmentResult.error || progressResult.error;
+    const queryError = assessmentResult.error || progressResult.error || moduleResult.error || activityResult.error;
     if (queryError) setError(queryError.message);
     else {
       setAssessments(
@@ -129,6 +149,17 @@ export function CourseAssessments() {
         ),
       );
       setProgress((progressResult.data ?? []) as ProgressRecord[]);
+      setPathModules((moduleResult.data ?? []) as unknown as PathModule[]);
+      setPathActivities((activityResult.data ?? []) as unknown as PathActivity[]);
+      setReleasedLessonIds(
+        releaseResult.error
+          ? (moduleResult.data ?? []).flatMap((module) =>
+              (module.lessons as unknown as Lesson[])
+                .filter((lesson) => lesson.is_published)
+                .map((lesson) => lesson.id),
+            )
+          : ((releaseResult.data ?? []) as string[]),
+      );
     }
     setLoading(false);
   }, [cohortId, user]);
@@ -168,7 +199,10 @@ export function CourseAssessments() {
   const available = (assessment: AssessmentRow) => {
     if (assessment.lesson_id && !completedLessonIds.has(assessment.lesson_id))
       return false;
-    if (isModuleCheck(assessment)) return true;
+    if (isModuleCheck(assessment)) {
+      const activity = pathActivities.find((item) => item.module_id === assessment.module_id);
+      return !activity || activity.submissions.some((submission) => ["submitted", "graded"].includes(submission.status));
+    }
     if (assessment.title.includes("Graded Quiz 1"))
       return [1, 2, 3].every((item) => passedModuleOrders.has(item));
     if (assessment.title.includes("Midterm"))
@@ -183,7 +217,10 @@ export function CourseAssessments() {
   };
 
   const start = async (assessment: AssessmentRow, review = false) => {
-    if (!available(assessment) && !review) return;
+    if (!available(assessment) && !review) {
+      setError(isModuleCheck(assessment) ? "Complete and submit the matching activity before starting this module check." : "Complete the required course steps before starting this assessment.");
+      return;
+    }
     setSaving(true);
     setError("");
     const { data, error: rpcError } = await supabase.rpc(
@@ -283,7 +320,12 @@ export function CourseAssessments() {
     setSaving(false);
   };
 
+  const practiceChecks = assessments.filter(isModuleCheck);
   const graded = assessments.filter((item) => !isModuleCheck(item));
+  const learningCheckActive = Boolean(
+    assessmentId && quiz && practiceChecks.some((item) => item.id === quiz.id),
+  );
+  const activeAssessment = quiz ? assessments.find((item) => item.id === quiz.id) : null;
   return (
     <CourseLayout>
       {!quiz && (
@@ -298,6 +340,8 @@ export function CourseAssessments() {
         </div>
       )}
       {quiz && (
+        <>
+        {learningCheckActive && <div className="mb-4"><LearningFlow active="assess" hasActivity={pathActivities.some((activity) => activity.module_id === activeAssessment?.module_id)} hasAssessment /></div>}
         <AssessmentWorkspace
           quiz={quiz}
           answers={answers}
@@ -324,7 +368,22 @@ export function CourseAssessments() {
           }}
           onSubmit={() => void submit()}
           cohortId={cohortId || ""}
+          learningFrame={learningCheckActive}
+          learningRail={
+            learningCheckActive ? (
+              <AssessmentLearningRail
+                modules={pathModules}
+                assessments={practiceChecks}
+                activities={pathActivities}
+                progress={progress}
+                releasedLessonIds={releasedLessonIds}
+                cohortId={cohortId || ""}
+                currentAssessmentId={quiz.id}
+              />
+            ) : undefined
+          }
         />
+        </>
       )}
       {!quiz &&
         (loading ? (
@@ -484,6 +543,140 @@ function AssessmentGroup({
   );
 }
 
+function AssessmentLearningRail({
+  modules,
+  assessments,
+  activities,
+  progress,
+  releasedLessonIds,
+  cohortId,
+  currentAssessmentId,
+}: {
+  modules: PathModule[];
+  assessments: AssessmentRow[];
+  activities: PathActivity[];
+  progress: ProgressRecord[];
+  releasedLessonIds: string[];
+  cohortId: string;
+  currentAssessmentId: string;
+}) {
+  const completedLessonIds = new Set(
+    progress
+      .filter((record) => record.status === "completed")
+      .map((record) => record.lesson_id),
+  );
+  const publishedLessons = modules.flatMap((module) =>
+    module.lessons.filter((lesson) => lesson.is_published),
+  );
+  const passedChecks = assessments.filter((assessment) =>
+    assessment.assessment_attempts.some(
+      (attempt) =>
+        attempt.status === "completed" &&
+        Number(attempt.percentage) >= Number(assessment.passing_score ?? 0),
+    ),
+  );
+  const completedActivities = activities.filter((activity) => activity.submissions.some((submission) => ["submitted", "graded"].includes(submission.status)));
+  const totalSteps = publishedLessons.length + assessments.length + activities.length;
+  const completedSteps =
+    publishedLessons.filter((lesson) => completedLessonIds.has(lesson.id)).length +
+    passedChecks.length + completedActivities.length;
+  const courseProgress = totalSteps
+    ? Math.round((completedSteps / totalSteps) * 100)
+    : 0;
+
+  return (
+    <aside
+      className="hidden min-h-0 flex-col border-r border-ink-200 bg-ink-50 text-ink-900 lg:flex"
+      aria-label="Course modules and module checks"
+    >
+      <div className="border-b border-ink-200 px-5 py-5">
+        <p className="text-sm font-semibold">Course progress</p>
+        <div className="mt-2 flex items-center gap-3">
+          <div className="h-2 flex-1 overflow-hidden rounded-full bg-ink-200">
+            <div
+              className="h-full rounded-full bg-brand-600"
+              style={{ width: `${courseProgress}%` }}
+            />
+          </div>
+          <span className="text-xs font-semibold tabular-nums text-brand-700">
+            {courseProgress}%
+          </span>
+        </div>
+      </div>
+      <nav className="scrollbar-thin min-h-0 flex-1 overflow-y-auto px-3 py-3" aria-label="Learning pathway">
+        {modules.map((module) => {
+          const lesson = module.lessons.find((item) => item.is_published);
+          if (!lesson) return null;
+          const previousModule = modules.find((item) => item.display_order === module.display_order - 1);
+          const previousCheck = previousModule ? assessments.find((item) => item.module_id === previousModule.id) : null;
+          const previousActivity = previousModule ? activities.find((item) => item.module_id === previousModule.id) : null;
+          const previousLesson = previousModule?.lessons.find((item) => item.is_published);
+          const pathwayReleased = module.display_order === 0 || (module.display_order === 1
+            ? Boolean(previousLesson && completedLessonIds.has(previousLesson.id))
+            : Boolean(previousModule && (previousCheck
+            ? passedChecks.some((item) => item.id === previousCheck.id)
+            : previousActivity
+              ? completedActivities.some((item) => item.id === previousActivity.id)
+              : previousLesson && completedLessonIds.has(previousLesson.id))));
+          const released = releasedLessonIds.includes(lesson.id) && pathwayReleased;
+          const completed = completedLessonIds.has(lesson.id);
+          const check = assessments.find((item) => item.module_id === module.id);
+          const activity = activities.find((item) => item.module_id === module.id);
+          const activityComplete = activity ? completedActivities.some((item) => item.id === activity.id) : true;
+          const checkPassed = check
+            ? passedChecks.some((item) => item.id === check.id)
+            : false;
+          const checkCurrent = check?.id === currentAssessmentId;
+          const moduleLabel = module.display_order === 0 ? "Introduction" : `Module ${module.display_order}`;
+          const current = checkCurrent;
+          const finishedSteps = Number(completed) + Number(activity ? activityComplete : false) + Number(check ? checkPassed : false);
+          const stepCount = 1 + Number(Boolean(activity)) + Number(Boolean(check));
+          return (
+            <details key={module.id} name="assessment-pathway" open={current || undefined} className={`group mb-1 rounded-lg ${current ? "bg-white shadow-[0_1px_3px_rgba(19,56,92,0.10)]" : "open:bg-white/70"}`}>
+              <summary className={`flex min-h-12 cursor-pointer list-none items-center gap-2 rounded-lg px-3 py-2 outline-none focus-visible:ring-2 focus-visible:ring-brand-500 [&::-webkit-details-marker]:hidden ${released ? "hover:bg-white/80" : "opacity-55"}`}><span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${completed ? "bg-success-600 text-white" : released ? "border border-brand-100 bg-brand-50 text-brand-700" : "bg-ink-100 text-ink-400"}`}>{completed ? <CheckCircle2 size={15} /> : released ? <BookOpen size={14} /> : <LockKeyhole size={13} />}</span><span className="min-w-0 flex-1"><span className="block text-xs font-semibold text-ink-900">{moduleLabel}</span><span className="mt-0.5 block truncate text-[11px] text-ink-500">{module.title.replace(/^Module \d+: /, "")}</span></span><span className="text-[10px] font-semibold tabular-nums text-ink-400">{finishedSteps}/{stepCount}</span><ChevronDown size={14} className="text-ink-400 transition-transform group-open:rotate-180" /></summary>
+              <div className="pb-2">
+              {released ? <Link to={`/student/courses/${cohortId}/learn/${lesson.id}`} className="ml-8 flex min-h-9 items-center gap-2 rounded-md border-l-2 border-brand-200 px-2 py-1 text-[11px] font-medium text-brand-700 hover:bg-brand-50"><BookOpen size={12} className="shrink-0" /><span className="min-w-0 flex-1 truncate">Learn it</span><span className="shrink-0 text-[10px] text-ink-500">{completed ? "Completed" : "In progress"}</span></Link> : <div className="ml-8 flex min-h-9 items-center gap-2 rounded-md border-l-2 border-ink-200 px-2 py-1 text-[11px] text-ink-400"><LockKeyhole size={11} className="shrink-0" /><span className="truncate">Learn it</span></div>}
+              {activity && (() => {
+                const content = <><span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md ${activityComplete ? "bg-success-100 text-success-700" : completed ? "bg-violet-100 text-violet-700" : "bg-ink-100 text-ink-400"}`}>{activityComplete ? <CheckCircle2 size={12} /> : completed ? <ListChecks size={12} /> : <LockKeyhole size={11} />}</span><span className="min-w-0"><span className={`block truncate text-[11px] font-medium ${completed ? "text-violet-900" : "text-ink-500"}`}>Do it</span><span className="mt-0.5 block truncate text-[10px] leading-4 text-ink-500">{activityComplete ? "Activity submitted" : completed ? "Ready to practice" : "Finish learning first"}</span></span></>;
+                const className = `ml-8 mt-0 flex min-h-9 items-center gap-2 rounded-md border-l-2 px-2 py-1 transition-colors ${completed ? "border-violet-300 bg-violet-50/55 hover:bg-violet-100/70" : "border-ink-200 bg-ink-50/50 opacity-60"}`;
+                return completed ? <Link to={`/student/courses/${cohortId}/learn/activity/${activity.id}`} className={`${className} outline-none focus-visible:ring-2 focus-visible:ring-violet-400`}>{content}</Link> : <div className={className}>{content}</div>;
+              })()}
+              {check && (() => {
+                const checkAvailable = completed && activityComplete;
+                const checkContent = (
+                  <>
+                    <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md ${checkPassed ? "bg-success-100 text-success-700" : checkAvailable ? "bg-accent-100 text-accent-800" : "bg-ink-100 text-ink-400"}`}>
+                      {checkPassed ? <CheckCircle2 size={12} /> : checkAvailable ? <ClipboardCheck size={12} /> : <LockKeyhole size={11} />}
+                    </span>
+                    <span className="min-w-0">
+                      <span className={`block truncate text-[11px] font-medium ${checkAvailable ? "text-accent-900" : "text-ink-500"}`}>Assess it</span>
+                      <span className="mt-0.5 block text-[10px] leading-4 text-ink-500">{checkCurrent ? "Current check" : checkPassed ? "Passed · Retake anytime" : checkAvailable ? "Ready · Unlimited attempts" : completed && activity ? "Finish the activity first" : "Finish learning first"}</span>
+                    </span>
+                  </>
+                );
+                const checkClass = `ml-8 mt-0 flex min-h-9 items-center gap-2 rounded-md border-l-2 px-2 py-1 transition-colors ${checkCurrent ? "border-accent-500 bg-accent-100/80" : checkPassed ? "border-success-300 bg-success-50/55" : completed ? "border-accent-300 bg-accent-50/55 hover:bg-accent-100/70" : "border-ink-200 bg-ink-50/50 opacity-60"}`;
+                return checkAvailable ? (
+                  <Link
+                    to={`/student/courses/${cohortId}/learn/check/${check.id}`}
+                    aria-current={checkCurrent ? "page" : undefined}
+                    className={`${checkClass} outline-none focus-visible:ring-2 focus-visible:ring-accent-400`}
+                  >
+                    {checkContent}
+                  </Link>
+                ) : <div className={checkClass}>{checkContent}</div>;
+              })()}
+              </div>
+            </details>
+          );
+        })}
+      </nav>
+      <div className="border-t border-ink-200 px-5 py-4 text-xs leading-5 text-ink-500">
+        Pass this check to unlock the next module.
+      </div>
+    </aside>
+  );
+}
+
 function AssessmentWorkspace({
   quiz,
   answers,
@@ -499,6 +692,8 @@ function AssessmentWorkspace({
   onClose,
   onSubmit,
   cohortId,
+  learningFrame = false,
+  learningRail,
 }: {
   quiz: StudentAssessment;
   answers: Record<string, string>;
@@ -514,6 +709,8 @@ function AssessmentWorkspace({
   onClose: () => void;
   onSubmit: () => void;
   cohortId: string;
+  learningFrame?: boolean;
+  learningRail?: ReactNode;
 }) {
   const question = quiz.questions[currentQuestion];
   const checked = feedback[question?.id];
@@ -521,6 +718,7 @@ function AssessmentWorkspace({
   const correctCount = Object.values(feedback).filter(
     (item) => item.correct,
   ).length;
+  const incorrectCount = checkedCount - correctCount;
   const progressPercent = Math.round(
     ((currentQuestion + 1) / quiz.questions.length) * 100,
   );
@@ -529,18 +727,18 @@ function AssessmentWorkspace({
   return (
     <section
       id="assessment-workspace"
-      className="mt-6 overflow-hidden rounded-2xl border border-ink-200 bg-white shadow-elevated"
+      className={`overflow-hidden rounded-2xl border border-ink-200 bg-white shadow-elevated ${learningFrame ? "mt-4 flex h-[calc(100dvh-13.5rem)] min-h-[30rem] max-h-[42rem] flex-col" : "mt-6"}`}
       aria-labelledby="assessment-title"
     >
-      <header className="border-b border-ink-200 px-5 py-4 sm:px-6">
+      <header className={`border-b border-ink-200 px-5 sm:px-6 ${learningFrame ? "py-2" : "py-4"}`}>
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="text-xs font-semibold text-brand-700">
-              {reviewMode ? "Review mode" : "Assessment attempt"}
+              {reviewMode ? "Review mode" : learningFrame ? "Learning pathway · Module check" : "Assessment attempt"}
             </p>
             <h2
               id="assessment-title"
-              className="mt-1 truncate text-xl font-semibold text-ink-950"
+              className={`${learningFrame ? "mt-0.5 text-lg sm:text-xl" : "mt-1 text-xl"} truncate font-semibold text-ink-950`}
             >
               {quiz.title}
             </h2>
@@ -554,16 +752,27 @@ function AssessmentWorkspace({
             <X size={19} />
           </button>
         </div>
-        <div className="mt-3 flex items-center gap-3">
+        <div className={`${learningFrame ? "mt-2" : "mt-3"} flex items-center gap-3`}>
           <div className="h-2 flex-1 overflow-hidden rounded-full bg-ink-100">
             <div
               className="h-full rounded-full bg-brand-600 transition-[width]"
               style={{ width: `${progressPercent}%` }}
             />
           </div>
-          <span className="text-xs font-semibold tabular-nums text-brand-700">
-            {progressPercent}%
-          </span>
+          {learningFrame ? (
+            <span className="flex shrink-0 items-center gap-1.5 text-xs font-semibold tabular-nums">
+              <span className="rounded-md bg-success-50 px-2 py-0.5 text-success-700" aria-label={`${correctCount} correct`}>
+                ✓ {correctCount}
+              </span>
+              <span className="rounded-md bg-danger-50 px-2 py-0.5 text-danger-700" aria-label={`${incorrectCount} incorrect`}>
+                ✕ {incorrectCount}
+              </span>
+            </span>
+          ) : (
+            <span className="text-xs font-semibold tabular-nums text-brand-700">
+              {progressPercent}%
+            </span>
+          )}
         </div>
       </header>
       {result ? (
@@ -591,27 +800,29 @@ function AssessmentWorkspace({
         </div>
       ) : (
         <>
-          <div className="grid min-h-[24rem] lg:h-[24rem] lg:grid-cols-[13rem_minmax(0,1fr)]">
-            <aside className="hidden border-r border-ink-200 bg-ink-50 p-5 text-ink-900 lg:block">
-              <p className="text-xs font-semibold text-brand-700">Live score</p>
-              <p className="mt-2 text-3xl font-semibold tabular-nums">
-                {correctCount}/{checkedCount || 0}
-              </p>
-              <p className="mt-1 text-xs text-ink-500">
-                correct answers checked
-              </p>
-              <div className="mt-6 grid grid-cols-5 gap-2">
-                {quiz.questions.map((item, index) => (
-                  <span
-                    key={item.id}
-                    className={`flex h-7 w-7 items-center justify-center rounded-md border text-xs font-semibold ${index === currentQuestion ? "border-brand-600 bg-brand-600 text-white" : feedback[item.id]?.correct ? "border-success-200 bg-success-50 text-success-700" : feedback[item.id] ? "border-danger-200 bg-danger-50 text-danger-700" : "border-ink-200 bg-white text-ink-500"}`}
-                  >
-                    {index + 1}
-                  </span>
-                ))}
-              </div>
-            </aside>
-            <div className="flex min-w-0 flex-col p-5 sm:p-7">
+          <div className={`grid min-h-[24rem] ${learningFrame ? "min-h-0 flex-1 lg:grid-cols-[15rem_minmax(0,1fr)]" : "lg:h-[24rem] lg:grid-cols-[13rem_minmax(0,1fr)]"}`}>
+            {learningFrame ? learningRail : (
+              <aside className="hidden border-r border-ink-200 bg-ink-50 p-5 text-ink-900 lg:block">
+                <p className="text-xs font-semibold text-brand-700">Live score</p>
+                <p className="mt-2 text-3xl font-semibold tabular-nums">
+                  {correctCount}/{checkedCount || 0}
+                </p>
+                <p className="mt-1 text-xs text-ink-500">
+                  correct answers checked
+                </p>
+                <div className="mt-6 grid grid-cols-5 gap-2">
+                  {quiz.questions.map((item, index) => (
+                    <span
+                      key={item.id}
+                      className={`flex h-7 w-7 items-center justify-center rounded-md border text-xs font-semibold ${index === currentQuestion ? "border-brand-600 bg-brand-600 text-white" : feedback[item.id]?.correct ? "border-success-200 bg-success-50 text-success-700" : feedback[item.id] ? "border-danger-200 bg-danger-50 text-danger-700" : "border-ink-200 bg-white text-ink-500"}`}
+                    >
+                      {index + 1}
+                    </span>
+                  ))}
+                </div>
+              </aside>
+            )}
+            <div className={`flex min-w-0 flex-col p-5 sm:p-7 ${learningFrame ? "scrollbar-thin min-h-0 overflow-y-auto" : ""}`}>
               <div className="flex items-center justify-between gap-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.08em] text-ink-500">
                   Question {currentQuestion + 1} of {quiz.questions.length}

@@ -8,7 +8,6 @@ import {
   ClipboardList,
   ExternalLink,
   FileText,
-  ListChecks,
   LockKeyhole,
   MessageSquare,
   Video,
@@ -16,12 +15,11 @@ import {
 import courseContent from "@/content/ai-business-essentials.json";
 import { StoryboardScreen, type StoryboardContent } from "@/pages/student/course/StoryboardScreen";
 
-type Section = "learning" | "assessments" | "activities" | "assignments" | "discussions" | "resources" | "live";
+type Section = "learning" | "assessments" | "assignments" | "discussions" | "resources" | "live";
 
 const courseTabs = [
   ["learning", "Learning", BookOpen],
   ["assessments", "Assessments", BrainCircuit],
-  ["activities", "Activities", ListChecks],
   ["assignments", "Assignments", ClipboardList],
   ["discussions", "Discussion Board", MessageSquare],
   ["resources", "Resources", FileText],
@@ -135,7 +133,6 @@ export function DevCoursePreview() {
         </main>
       )}
       {section === "assessments" && <CardGrid title="Assessments" subtitle="Module checks and major exams unlock at the right time.">{courseContent.assessments.slice(0, 8).map((item) => <PreviewCard key={item.id} icon={LockKeyhole} title={item.title} body={`${item.questions.length} questions · ${item.passingScore}% pass mark`} />)}</CardGrid>}
-      {section === "activities" && <CardGrid title="Activities" subtitle="Practise each module skill, then complete its self-check.">{courseContent.activities.slice(0, 6).map((item) => <PreviewCard key={item.id} icon={ListChecks} title={item.title} body={`${item.instructions.length} guided steps · ${item.selfCheck.length}-point self-check`} />)}</CardGrid>}
       {section === "assignments" && <CardGrid title="Assignments" subtitle="Homework and every capstone stage stay together.">{courseContent.assignments.map((item) => <PreviewCard key={item.id} icon={ClipboardList} title={item.title} body={`${item.instructions.length} instructions · ${item.checklist.length}-point submission check`} />)}</CardGrid>}
       {section === "discussions" && <CardGrid title="Discussion Board" subtitle="Ask questions, share examples, and learn with your cohort."><PreviewCard icon={MessageSquare} title="Welcome to AI Business Essentials" body="Introduce yourself and share one work task you hope AI can help improve." /><PreviewCard icon={MessageSquare} title="Module conversations" body="Each discussion keeps ideas, replies, and instructor guidance together." /></CardGrid>}
       {section === "resources" && <CardGrid title="Resources" subtitle="Open course slides, eBooks, templates, and supporting references."><PreviewCard icon={FileText} title="AI Business Essentials student eBook" body="Complete course reference · PDF" /><PreviewCard icon={FileText} title="Module slides and downloads" body="Instructor-posted files appear here as they are released." /></CardGrid>}

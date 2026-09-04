@@ -23,6 +23,7 @@ type AssessmentGate = Pick<Assessment, "id" | "module_id" | "passing_score"> & {
     completed_at: string | null;
   }>;
 };
+type ActivityGate = { id: string; module_id: string | null; submissions: Array<{ status: string }> };
 
 export function CourseLearn() {
   const { cohortId } = useParams<{ cohortId: string }>();
@@ -32,6 +33,7 @@ export function CourseLearn() {
   const [released, setReleased] = useState<string[]>([]);
   const [passedChecks, setPassedChecks] = useState<string[]>([]);
   const [moduleChecks, setModuleChecks] = useState<AssessmentGate[]>([]);
+  const [moduleActivities, setModuleActivities] = useState<ActivityGate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -48,7 +50,7 @@ export function CourseLearn() {
         setLoading(false);
         return;
       }
-      const [moduleResult, progressResult, releaseResult, assessmentResult] =
+      const [moduleResult, progressResult, releaseResult, assessmentResult, activityResult] =
         await Promise.all([
           supabase
             .from("modules")
@@ -71,12 +73,14 @@ export function CourseLearn() {
             .eq("cohort_id", cohortId)
             .eq("assessment_type", "practice")
             .eq("assessment_attempts.student_id", user.id),
+          supabase.from("assignments").select("id,module_id,submissions(status)").eq("cohort_id", cohortId).eq("assignment_type", "activity").eq("is_published", true).eq("submissions.student_id", user.id),
         ]);
       const queryError =
         moduleResult.error ||
         progressResult.error ||
         releaseResult.error ||
-        assessmentResult.error;
+        assessmentResult.error ||
+        activityResult.error;
       if (queryError) setError(queryError.message);
       else {
         setModules((moduleResult.data ?? []) as unknown as ModuleRow[]);
@@ -85,6 +89,7 @@ export function CourseLearn() {
         const checks = (assessmentResult.data ??
           []) as unknown as AssessmentGate[];
         setModuleChecks(checks);
+        setModuleActivities((activityResult.data ?? []) as unknown as ActivityGate[]);
         setPassedChecks(
           checks
             .filter((assessment) =>
@@ -114,8 +119,11 @@ export function CourseLearn() {
       (item) => item.lesson_id === lesson.id && item.status === "completed",
     ),
   ).length;
-  const coursePercent = publishedLessons.length
-    ? Math.round((completedCount / publishedLessons.length) * 100)
+  const completedActivityCount = moduleActivities.filter((activity) => activity.submissions.some((submission) => ["submitted", "graded"].includes(submission.status))).length;
+  const courseStepCount = publishedLessons.length + moduleChecks.length + moduleActivities.length;
+  const completedStepCount = completedCount + passedChecks.length + completedActivityCount;
+  const coursePercent = courseStepCount
+    ? Math.round((completedStepCount / courseStepCount) * 100)
     : 0;
   const assessmentStatusByModule = useMemo(() => {
     const statuses = new Map<
@@ -179,15 +187,15 @@ export function CourseLearn() {
                 value={publishedLessons.length}
               >
                 <p className="mt-2 text-xs text-ink-500">
-                  Introduction plus 12 modules
+                  The steps published for this course
                 </p>
               </SummaryTile>
               <SummaryTile
                 label="Completed"
-                value={`${completedCount}/${publishedLessons.length}`}
+                value={`${completedStepCount}/${courseStepCount}`}
               >
                 <p className="mt-2 text-xs text-ink-500">
-                  Checks unlock the next module
+                  Learn, Do, and Assess steps
                 </p>
               </SummaryTile>
             </section>
@@ -204,14 +212,20 @@ export function CourseLearn() {
                       item.lesson_id === previousLesson.id &&
                       item.status === "completed",
                   );
-                const pathwayUnlocked =
-                  module.display_order === 0 ||
-                  (module.display_order === 1
-                    ? previousLearningComplete
-                    : Boolean(
-                        previousModule &&
-                          passedChecks.includes(previousModule.id),
-                      ));
+                const previousCheck = previousModule
+                  ? moduleChecks.find((item) => item.module_id === previousModule.id)
+                  : null;
+                const previousActivity = previousModule
+                  ? moduleActivities.find((item) => item.module_id === previousModule.id)
+                  : null;
+                const previousActivityComplete = !previousActivity || previousActivity.submissions.some((submission) => ["submitted", "graded"].includes(submission.status));
+                const pathwayUnlocked = module.display_order === 0 || (module.display_order === 1
+                  ? previousLearningComplete
+                  : Boolean(previousModule && (previousCheck
+                    ? passedChecks.includes(previousModule.id)
+                    : previousActivity
+                      ? previousActivityComplete
+                      : previousLearningComplete)));
                 const lesson = module.lessons.find((item) => item.is_published);
                 if (!lesson) return null;
                 const available =
@@ -257,17 +271,6 @@ export function CourseLearn() {
                     >
                       {cardBody}
                     </Link>
-                    {!isIntroduction && complete && assessmentStatus?.hasAssessment && (
-                      <div className="border-t border-brand-100 bg-brand-50/60 p-3">
-                        <Link
-                          to={`/student/courses/${cohortId}/learn/check/${moduleChecks.find((check) => check.module_id === module.id)?.id}`}
-                          className="btn-primary w-full"
-                        >
-                          {assessmentStatus.latestScore === null ? "Take module check" : "Review or retake module check"}
-                          <ArrowRight size={16} />
-                        </Link>
-                      </div>
-                    )}
                   </article>
                 ) : (
                   <article

@@ -19,7 +19,6 @@ import {
   Layers,
   ClipboardCheck,
   BrainCircuit,
-  ListChecks,
   Clock3,
   Building2,
   WandSparkles,
@@ -53,7 +52,6 @@ export const studentCourseNav: NavItem[] = [
   { label: "Home", path: "home", icon: LayoutDashboard },
   { label: "Learning", path: "learn", icon: BookOpen },
   { label: "Assessments", path: "assessments", icon: BrainCircuit },
-  { label: "Activities", path: "activities", icon: ListChecks },
   { label: "Assignments", path: "assignments", icon: ClipboardList },
   { label: "Discussion Board", path: "discussions", icon: MessageSquare },
   { label: "Resources", path: "resources", icon: FolderOpen },
@@ -76,6 +74,7 @@ export const instructorNav: NavSection[] = [
         path: "/instructor/assignments",
         icon: ClipboardList,
       },
+      { label: "Course Resources", path: "/instructor/resources", icon: FolderOpen },
       {
         label: "Attendance",
         path: "/instructor/attendance",

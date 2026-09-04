@@ -9,7 +9,6 @@ import {
   GraduationCap,
   Mail,
   Megaphone,
-  ListChecks,
   Pin,
   TrendingUp,
   Video,
@@ -247,26 +246,20 @@ export function CourseHome() {
                 Course workspace
               </h2>
               <p className="mt-1 text-sm text-ink-500">
-                Everything for this course is organized into four clear areas.
+                Everything for this course is organized into three clear areas.
               </p>
-              <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 <CourseArea
                   icon={BookOpen}
                   title="Learning"
-                  description="Read one focused eLearning screen at a time."
+                  description="Move naturally through Learn, Do, and Assess in one guided experience."
                   to={`/student/courses/${cohortId}/learn`}
                 />
                 <CourseArea
                   icon={BrainCircuit}
                   title="Assessments"
-                  description="Take module checks, quizzes, the midterm, and final exam."
+                  description="Take graded checkpoints, the midterm, and the final exam."
                   to={`/student/courses/${cohortId}/assessments`}
-                />
-                <CourseArea
-                  icon={ListChecks}
-                  title="Activities"
-                  description="Practise each skill and complete the built-in self-check."
-                  to={`/student/courses/${cohortId}/activities`}
                 />
                 <CourseArea
                   icon={ClipboardList}

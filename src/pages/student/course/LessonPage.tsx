@@ -5,11 +5,14 @@ import {
   ArrowRight,
   BookOpen,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
+  ClipboardCheck,
   Copy,
   Download,
   ExternalLink,
   HelpCircle,
+  ListChecks,
   ListTree,
   LockKeyhole,
   NotebookPen,
@@ -19,6 +22,7 @@ import {
   X,
 } from "lucide-react";
 import { CourseLayout } from "./CourseLayout";
+import { LearningFlow } from "./LearningFlow";
 import { StoryboardScreen, type StoryboardContent } from "./StoryboardScreen";
 import { Alert, TableSkeleton } from "@/components/ui/Feedback";
 import { supabase } from "@/lib/supabase";
@@ -55,9 +59,16 @@ type OutlineModule = {
 };
 type AssessmentGate = {
   id: string;
+  title: string;
   module_id: string | null;
   passing_score: number | null;
   assessment_attempts: Array<{ status: string; percentage: number | null }>;
+};
+type ActivityGate = {
+  id: string;
+  title: string;
+  module_id: string | null;
+  submissions: Array<{ status: string }>;
 };
 export function LessonPage() {
   const { cohortId, lessonId } = useParams<{
@@ -87,6 +98,9 @@ export function LessonPage() {
   const [noteBackendAvailable, setNoteBackendAvailable] = useState(true);
   const [noteStatus, setNoteStatus] = useState("Saved");
   const [moduleCheckId, setModuleCheckId] = useState("");
+  const [activityId, setActivityId] = useState("");
+  const [moduleChecks, setModuleChecks] = useState<AssessmentGate[]>([]);
+  const [moduleActivities, setModuleActivities] = useState<ActivityGate[]>([]);
   useEffect(() => {
     if (!cohortId || !lessonId || !user) return;
     setError("");
@@ -148,6 +162,7 @@ export function LessonPage() {
           courseProgressResult,
           releaseResult,
           assessmentGateResult,
+          activityResult,
         ] = await Promise.all([
           supabase
             .from("lessons")
@@ -167,11 +182,18 @@ export function LessonPage() {
           supabase
             .from("assessments")
             .select(
-              "id,module_id,passing_score,assessment_attempts(status,percentage)",
+              "id,title,module_id,passing_score,assessment_attempts(status,percentage)",
             )
             .eq("cohort_id", cohortId)
             .eq("assessment_type", "practice")
             .eq("assessment_attempts.student_id", user.id),
+          supabase
+            .from("assignments")
+            .select("id,title,module_id,submissions(status)")
+            .eq("cohort_id", cohortId)
+            .eq("assignment_type", "activity")
+            .eq("is_published", true)
+            .eq("submissions.student_id", user.id),
         ]);
         if (!navigationResult.error && navigationResult.data) {
           const ordered = [...navigationResult.data].sort((left, right) => {
@@ -194,8 +216,10 @@ export function LessonPage() {
               .filter((record) => record.status === "completed")
               .map((record) => record.lesson_id),
           );
+          const checks = (assessmentGateResult.data ?? []) as unknown as AssessmentGate[];
+          setModuleChecks(checks);
           const passedModuleIds = new Set(
-            ((assessmentGateResult.data ?? []) as unknown as AssessmentGate[])
+            checks
               .filter((assessment) =>
                 assessment.assessment_attempts.some(
                   (attempt) =>
@@ -206,27 +230,32 @@ export function LessonPage() {
               )
               .map((assessment) => assessment.module_id || ""),
           );
-          const currentCheck = ((assessmentGateResult.data ?? []) as unknown as AssessmentGate[])
+          const currentCheck = checks
             .find((assessment) => assessment.module_id === lessonRow.module.id);
           setModuleCheckId(currentCheck?.id ?? "");
+          const activities = (activityResult.data ?? []) as unknown as ActivityGate[];
+          setModuleActivities(activities);
+          setActivityId(activities.find((activity) => activity.module_id === lessonRow.module.id)?.id ?? "");
           const modulesByOrder = new Map<number, string>();
           for (const item of ordered)
             modulesByOrder.set(item.module.display_order, item.module.id);
-          const introductionLesson = ordered.find(
-            (item) => item.module.display_order === 0,
-          );
+          const completedActivityModuleIds = new Set(activities.filter((activity) => activity.submissions.some((submission) => ["submitted", "graded"].includes(submission.status))).map((activity) => activity.module_id || ""));
           const pathwayReleased = ordered
             .filter((item) => {
               const order = item.module.display_order;
               if (order === 0) return true;
-              if (order === 1)
-                return Boolean(
-                  introductionLesson && completedIds.has(introductionLesson.id),
-                );
               const previousModuleId = modulesByOrder.get(order - 1);
-              return Boolean(
-                previousModuleId && passedModuleIds.has(previousModuleId),
-              );
+              if (!previousModuleId) return true;
+              if (order === 1) {
+                const introductionLesson = ordered.find((lesson) => lesson.module.id === previousModuleId);
+                return Boolean(introductionLesson && completedIds.has(introductionLesson.id));
+              }
+              const previousCheck = checks.find((check) => check.module_id === previousModuleId);
+              if (previousCheck) return passedModuleIds.has(previousModuleId);
+              const previousActivity = activities.find((activity) => activity.module_id === previousModuleId);
+              if (previousActivity) return completedActivityModuleIds.has(previousModuleId);
+              const previousLesson = ordered.find((lesson) => lesson.module.id === previousModuleId);
+              return Boolean(previousLesson && completedIds.has(previousLesson.id));
             })
             .map((item) => item.id);
           const released = databaseReleased.filter((id) =>
@@ -235,7 +264,7 @@ export function LessonPage() {
           if (!released.includes(lessonId)) {
             setLesson(null);
             setError(
-              "This module is locked. Complete the previous learning module and its module check first.",
+              "This module is locked. Complete the previous available learning steps first.",
             );
           } else if (!progress) {
             const { error: startError } = await supabase
@@ -422,16 +451,33 @@ export function LessonPage() {
   const completedOutlineCount = outlineLessons.filter((item) =>
     completedLessonIds.includes(item.id),
   ).length;
+  const completedCheckCount = moduleChecks.filter(moduleCheckPassed).length;
+  const completedActivityCount = moduleActivities.filter((activity) => activity.submissions.some((submission) => ["submitted", "graded"].includes(submission.status))).length;
+  const completedCourseStepCount = completedOutlineCount + completedCheckCount + completedActivityCount;
+  const totalCourseSteps = outlineLessons.length + moduleChecks.length + moduleActivities.length;
   const isIntroduction = lesson?.module.display_order === 0;
   const completionDestination =
     isIntroduction && nextLesson
       ? `/student/courses/${cohortId}/learn/${nextLesson.id}`
+      : activityId
+        ? `/student/courses/${cohortId}/learn/activity/${activityId}`
       : moduleCheckId
         ? `/student/courses/${cohortId}/learn/check/${moduleCheckId}`
         : `/student/courses/${cohortId}/learn`;
   const completionLabel = isIntroduction
     ? "Complete and go to Module 1"
-    : "Complete and start module check";
+    : activityId
+      ? "Complete and start activity"
+      : moduleCheckId
+        ? "Complete and start module check"
+        : "Complete module";
+  const completionLinkLabel = isIntroduction
+    ? "Go to Module 1"
+    : activityId
+      ? "Go to activity"
+      : moduleCheckId
+        ? "Go to module check"
+        : "Return to learning path";
   const screenProgress = Math.round(
     ((activeNugget + 1) / lessonPartCount) * 100,
   );
@@ -455,7 +501,7 @@ export function LessonPage() {
                 <ListTree size={16} />
                 Course outline
                 <span className="rounded-md bg-brand-50 px-2 py-0.5 text-xs tabular-nums text-brand-700">
-                  {completedOutlineCount}/{outlineLessons.length}
+                  {completedCourseStepCount}/{totalCourseSteps}
                 </span>
               </button>
               <button
@@ -467,11 +513,12 @@ export function LessonPage() {
               </button>
             </div>
             {currentLessonIndex >= 0 && (
-              <p className="text-xs font-medium text-ink-500">
-                Lesson {currentLessonIndex + 1} of {outlineLessons.length}
-              </p>
+              <div className="text-right">
+                <p className="text-xs font-medium text-ink-500">Lesson {currentLessonIndex + 1} of {outlineLessons.length}</p>
+              </div>
             )}
           </div>
+          {!isIntroduction && <LearningFlow active="learn" hasActivity={Boolean(activityId)} hasAssessment={Boolean(moduleCheckId)} />}
           {error && <Alert>{error}</Alert>}
           <div className="grid h-[calc(100dvh-13.5rem)] min-h-[30rem] max-h-[42rem] overflow-hidden rounded-2xl bg-white shadow-elevated lg:grid-cols-[15rem_minmax(0,1fr)]">
             <CourseModuleRail
@@ -480,19 +527,21 @@ export function LessonPage() {
               cohortId={cohortId || ""}
               completedLessonIds={completedLessonIds}
               releasedLessonIds={releasedLessonIds}
+              moduleChecks={moduleChecks}
+              moduleActivities={moduleActivities}
             />
             <div className="flex min-h-0 min-w-0 flex-col">
-              <header className="border-b border-ink-200 bg-white px-5 py-3 sm:px-6">
+              <header className="border-b border-ink-200 bg-white px-5 py-2 sm:px-6">
                 <p className="text-xs font-semibold text-brand-700">
                   {lesson.module.title}
                 </p>
                 <div className="mt-1 flex items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <h1 className="text-xl font-semibold tracking-[-0.025em] text-ink-950 sm:text-2xl">
+                    <h1 className="text-lg font-semibold tracking-[-0.025em] text-ink-950 sm:text-xl">
                       {lesson.title}
                     </h1>
                     {lesson.description && (
-                      <p className="mt-1 line-clamp-2 max-w-3xl text-sm leading-6 text-ink-500">
+                      <p className="mt-0.5 line-clamp-1 max-w-3xl text-xs leading-5 text-ink-500 sm:text-sm">
                         {lesson.description}
                       </p>
                     )}
@@ -502,7 +551,7 @@ export function LessonPage() {
                   </p>
                 </div>
                 <div
-                  className="mt-3 h-2 overflow-hidden rounded-full bg-ink-100"
+                  className="mt-2 h-1.5 overflow-hidden rounded-full bg-ink-100"
                   role="progressbar"
                   aria-label="Module screen progress"
                   aria-valuemin={0}
@@ -623,7 +672,7 @@ export function LessonPage() {
                         className="btn-primary w-full sm:w-auto"
                         to={completionDestination}
                       >
-                        {isIntroduction ? "Go to Module 1" : "Go to module check"}{" "}
+                        {completionLinkLabel}{" "}
                         <ArrowRight size={16} />
                       </Link>
                     )}
@@ -639,6 +688,7 @@ export function LessonPage() {
               cohortId={cohortId || ""}
               completedLessonIds={completedLessonIds}
               releasedLessonIds={releasedLessonIds}
+              moduleChecks={moduleChecks}
               onClose={() => setOutlineOpen(false)}
             />
           )}
@@ -810,19 +860,26 @@ function CourseModuleRail({
   cohortId,
   completedLessonIds,
   releasedLessonIds,
+  moduleChecks,
+  moduleActivities,
 }: {
   modules: OutlineModule[];
   currentLessonId: string;
   cohortId: string;
   completedLessonIds: string[];
   releasedLessonIds: string[];
+  moduleChecks: AssessmentGate[];
+  moduleActivities: ActivityGate[];
 }) {
   const lessons = modules.flatMap((module) => module.lessons);
   const completedCount = lessons.filter((lesson) =>
     completedLessonIds.includes(lesson.id),
   ).length;
-  const courseProgress = lessons.length
-    ? Math.round((completedCount / lessons.length) * 100)
+  const passedCheckCount = moduleChecks.filter(moduleCheckPassed).length;
+  const completedActivityCount = moduleActivities.filter((activity) => activity.submissions.some((submission) => ["submitted", "graded"].includes(submission.status))).length;
+  const courseStepCount = lessons.length + moduleChecks.length + moduleActivities.length;
+  const courseProgress = courseStepCount
+    ? Math.round(((completedCount + passedCheckCount + completedActivityCount) / courseStepCount) * 100)
     : 0;
   return (
     <aside
@@ -850,6 +907,10 @@ function CourseModuleRail({
         {modules.map((module) => {
           const moduleLesson = module.lessons[0];
           if (!moduleLesson) return null;
+          const moduleCheck = moduleChecks.find(
+            (assessment) => assessment.module_id === module.id,
+          );
+          const moduleActivity = moduleActivities.find((activity) => activity.module_id === module.id);
           const released = releasedLessonIds.includes(moduleLesson.id);
           const completed = completedLessonIds.includes(moduleLesson.id);
           const current = moduleLesson.id === currentLessonId;
@@ -857,6 +918,7 @@ function CourseModuleRail({
             module.display_order === 0
               ? "Introduction"
               : `Module ${module.display_order}`;
+          const topic = module.title.replace(/^Module \d+: /, "");
           const content = (
             <>
               <span
@@ -874,34 +936,113 @@ function CourseModuleRail({
                 <span className="block text-xs font-semibold text-ink-900">
                   {label}
                 </span>
-                <span className="mt-0.5 block line-clamp-2 text-[11px] leading-4 text-ink-500">
-                  {module.title.replace(/^Module \d+: /, "")}
+                <span className="mt-0.5 block truncate text-[11px] leading-4 text-ink-500">
+                  {topic}
                 </span>
               </span>
             </>
           );
-          return released ? (
-            <Link
-              key={module.id}
-              to={`/student/courses/${cohortId}/learn/${moduleLesson.id}`}
-              className={`mb-1 flex min-h-14 gap-3 rounded-lg px-3 py-2.5 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand-500 ${current ? "bg-white shadow-[0_1px_3px_rgba(19,56,92,0.10)]" : "hover:bg-white/80"}`}
-            >
-              {content}
-            </Link>
-          ) : (
-            <div
-              key={module.id}
-              className="mb-1 flex min-h-14 cursor-not-allowed gap-3 rounded-lg px-3 py-2.5 opacity-55"
-            >
-              {content}
-            </div>
+          const activityComplete = moduleActivity?.submissions.some((submission) => ["submitted", "graded"].includes(submission.status)) ?? false;
+          const finishedSteps = Number(completed) + Number(activityComplete) + Number(moduleCheck ? moduleCheckPassed(moduleCheck) : false);
+          const stepCount = 1 + Number(Boolean(moduleActivity)) + Number(Boolean(moduleCheck));
+          return (
+            <details key={module.id} name="lesson-pathway" open={current || undefined} className={`group mb-1 rounded-lg ${current ? "bg-white shadow-[0_1px_3px_rgba(19,56,92,0.10)]" : "open:bg-white/70"}`}>
+              <summary className={`flex min-h-12 cursor-pointer list-none items-center gap-2 rounded-lg px-3 py-2 outline-none focus-visible:ring-2 focus-visible:ring-brand-500 [&::-webkit-details-marker]:hidden ${released ? "hover:bg-white/80" : "opacity-55"}`}>
+                <span className="flex min-w-0 flex-1 gap-3">{content}</span>
+                <span className="shrink-0 text-[10px] font-semibold tabular-nums text-ink-400">{finishedSteps}/{stepCount}</span>
+                <ChevronDown size={14} className="shrink-0 text-ink-400 transition-transform group-open:rotate-180" />
+              </summary>
+              <div className="pb-2">
+                {released ? <Link to={`/student/courses/${cohortId}/learn/${moduleLesson.id}`} aria-current={current ? "page" : undefined} className={`ml-8 flex min-h-9 items-center gap-2 rounded-md border-l-2 px-2 py-1 text-[11px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand-400 ${current ? "border-brand-500 bg-brand-50 text-brand-800" : "border-brand-200 text-brand-700 hover:bg-brand-50"}`}><BookOpen size={12} className="shrink-0" /><span className="min-w-0 flex-1 truncate">Learn it</span><span className="shrink-0 text-[10px] text-ink-500">{completed ? "Completed" : "In progress"}</span></Link> : <div className="ml-8 flex min-h-9 items-center gap-2 rounded-md border-l-2 border-ink-200 px-2 py-1 text-[11px] text-ink-400"><LockKeyhole size={11} className="shrink-0" /><span className="truncate">Learn it</span></div>}
+                {moduleActivity && <ActivityRailItem activity={moduleActivity} cohortId={cohortId} available={completed} />}
+                {moduleCheck && <ModuleCheckRailItem assessment={moduleCheck} cohortId={cohortId} available={completed && (!moduleActivity || activityComplete)} lockedLabel={completed && moduleActivity ? "Finish the activity first" : "Finish learning first"} />}
+              </div>
+            </details>
           );
         })}
       </nav>
       <div className="border-t border-ink-200 px-5 py-4 text-xs leading-5 text-ink-500">
-        Complete each module check to unlock the next module.
+        Complete the available steps in order. Activities and checks appear only when included.
       </div>
     </aside>
+  );
+}
+
+function ActivityRailItem({ activity, cohortId, available }: { activity: ActivityGate; cohortId: string; available: boolean }) {
+  const complete = activity.submissions.some((submission) => ["submitted", "graded"].includes(submission.status));
+  const content = <><span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md ${complete ? "bg-success-100 text-success-700" : available ? "bg-violet-100 text-violet-700" : "bg-ink-100 text-ink-400"}`}>{complete ? <CheckCircle2 size={12} /> : available ? <ListChecks size={12} /> : <LockKeyhole size={11} />}</span><span className="min-w-0"><span className={`block truncate text-[11px] font-medium ${available ? "text-violet-900" : "text-ink-500"}`}>Do it</span><span className="mt-0.5 block truncate text-[10px] leading-4 text-ink-500">{complete ? "Activity submitted" : available ? "Ready to practice" : "Finish learning first"}</span></span></>;
+  const className = `ml-8 mt-0 flex min-h-9 items-center gap-2 rounded-md border-l-2 px-2 py-1 transition-colors ${available ? "border-violet-300 bg-violet-50/55 hover:bg-violet-100/70" : "border-ink-200 bg-ink-50/50 opacity-60"}`;
+  return available ? <Link to={`/student/courses/${cohortId}/learn/activity/${activity.id}`} className={`${className} outline-none focus-visible:ring-2 focus-visible:ring-violet-400`}>{content}</Link> : <div className={className}>{content}</div>;
+}
+
+function moduleCheckPassed(assessment: AssessmentGate) {
+  return assessment.assessment_attempts.some(
+    (attempt) =>
+      attempt.status === "completed" &&
+      Number(attempt.percentage) >= Number(assessment.passing_score ?? 0),
+  );
+}
+
+function ModuleCheckRailItem({
+  assessment,
+  cohortId,
+  available,
+  expanded = false,
+  onNavigate,
+  lockedLabel = "Complete the module first",
+}: {
+  assessment: AssessmentGate;
+  cohortId: string;
+  available: boolean;
+  expanded?: boolean;
+  onNavigate?: () => void;
+  lockedLabel?: string;
+}) {
+  const passed = moduleCheckPassed(assessment);
+  const completedAttempts = assessment.assessment_attempts.filter(
+    (attempt) => attempt.status === "completed",
+  );
+  const bestScore = completedAttempts.length
+    ? Math.max(
+        ...completedAttempts.map((attempt) => Number(attempt.percentage ?? 0)),
+      )
+    : null;
+  const content = (
+    <>
+      <span
+        className={`flex shrink-0 items-center justify-center rounded-md ${expanded ? "h-7 w-7" : "h-5 w-5"} ${passed ? "bg-success-100 text-success-700" : available ? "bg-accent-100 text-accent-800" : "bg-ink-100 text-ink-400"}`}
+      >
+        {passed ? <CheckCircle2 size={expanded ? 14 : 12} /> : available ? <ClipboardCheck size={expanded ? 14 : 12} /> : <LockKeyhole size={11} />}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className={`block ${expanded ? "text-xs font-semibold" : "text-[11px] font-medium"} ${available ? "text-accent-900" : "text-ink-500"}`}>
+          Assess it
+        </span>
+        <span className={`mt-0.5 block leading-4 text-ink-500 ${expanded ? "text-[11px]" : "text-[10px]"}`}>
+          {!available
+            ? lockedLabel
+            : passed
+            ? `Passed${bestScore === null ? "" : ` · Best ${Math.round(bestScore)}%`}`
+            : bestScore !== null
+              ? `Best ${Math.round(bestScore)}% · Retake anytime`
+              : "Ready · Unlimited attempts"}
+        </span>
+      </span>
+      {available && expanded && <ChevronRight size={16} className="text-accent-500" />}
+    </>
+  );
+  const className = `${expanded ? "mx-2 ml-6 mt-0.5 min-h-10 gap-2.5 px-2.5 py-1.5" : "ml-8 mt-0 min-h-9 gap-2 px-2 py-1"} flex items-center rounded-md border-l-2 transition-colors ${available ? "border-accent-300 bg-accent-50/55 hover:bg-accent-100/70" : "border-ink-200 bg-ink-50/50 opacity-60"}`;
+
+  return available ? (
+    <Link
+      to={`/student/courses/${cohortId}/learn/check/${assessment.id}`}
+      onClick={onNavigate}
+      className={`${className} outline-none focus-visible:ring-2 focus-visible:ring-accent-400`}
+    >
+      {content}
+    </Link>
+  ) : (
+    <div className={className}>{content}</div>
   );
 }
 
@@ -911,6 +1052,7 @@ function CourseOutlineDrawer({
   cohortId,
   completedLessonIds,
   releasedLessonIds,
+  moduleChecks,
   onClose,
 }: {
   modules: OutlineModule[];
@@ -918,6 +1060,7 @@ function CourseOutlineDrawer({
   cohortId: string;
   completedLessonIds: string[];
   releasedLessonIds: string[];
+  moduleChecks: AssessmentGate[];
   onClose: () => void;
 }) {
   const totalLessons = modules.reduce(
@@ -927,8 +1070,10 @@ function CourseOutlineDrawer({
   const completedLessons = modules
     .flatMap((module) => module.lessons)
     .filter((lesson) => completedLessonIds.includes(lesson.id)).length;
-  const completionPercent = totalLessons
-    ? Math.round((completedLessons / totalLessons) * 100)
+  const completedChecks = moduleChecks.filter(moduleCheckPassed).length;
+  const totalSteps = totalLessons + moduleChecks.length;
+  const completionPercent = totalSteps
+    ? Math.round(((completedLessons + completedChecks) / totalSteps) * 100)
     : 0;
 
   return (
@@ -958,7 +1103,7 @@ function CourseOutlineDrawer({
                 Course outline
               </h2>
               <p className="mt-1 text-sm text-ink-500">
-                {completedLessons} of {totalLessons} lessons complete
+                {completedLessons + completedChecks} of {totalSteps} course steps complete
               </p>
             </div>
             <button
@@ -991,6 +1136,12 @@ function CourseOutlineDrawer({
               const moduleCompleted = module.lessons.filter((lesson) =>
                 completedLessonIds.includes(lesson.id),
               ).length;
+              const moduleCheck = moduleChecks.find(
+                (assessment) => assessment.module_id === module.id,
+              );
+              const moduleLearningComplete = module.lessons.every((lesson) =>
+                completedLessonIds.includes(lesson.id),
+              );
               return (
                 <section
                   key={module.id}
@@ -1081,6 +1232,15 @@ function CourseOutlineDrawer({
                         </div>
                       );
                     })}
+                    {moduleCheck && (
+                      <ModuleCheckRailItem
+                        assessment={moduleCheck}
+                        cohortId={cohortId}
+                        available={moduleLearningComplete}
+                        expanded
+                        onNavigate={onClose}
+                      />
+                    )}
                   </div>
                 </section>
               );

@@ -1265,6 +1265,19 @@ type ReviewQuestion = {
   question_text: string;
   points: number;
 };
+function StructuredSubmission({ row }: { row: SubmissionRow }) {
+  if (row.assignment.assignment_type !== "activity")
+    return <div className="mt-4 whitespace-pre-wrap rounded-lg bg-ink-50 p-4 text-sm leading-6 text-ink-700">{row.content || "No written response."}</div>;
+  let response: { work?: string; notes?: string; evidenceSummary?: string; selfCheck?: boolean[]; selfCheckItems?: string[] } = {};
+  try { response = JSON.parse(row.content || "{}"); } catch { response = { work: row.content || "" }; }
+  const fields = [["Student work", response.work], ["Notes and reflection", response.notes], ["Evidence summary", response.evidenceSummary]].filter((item) => item[1]);
+  return (
+    <div className="mt-4 grid gap-3 lg:grid-cols-3">
+      {fields.map(([label, value]) => <section key={label} className="rounded-xl border border-ink-200 bg-ink-50/70 p-4"><p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-brand-700">{label}</p><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-ink-700">{value}</p></section>)}
+      {response.selfCheck && <section className="rounded-xl border border-accent-200 bg-accent-50/60 p-4"><p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-accent-800">Standardized self-check</p><p className="mt-2 text-sm font-semibold text-ink-900">{response.selfCheck.filter(Boolean).length} of {response.selfCheck.length} confirmed</p>{response.selfCheckItems?.map((item, index) => <p key={item} className="mt-2 flex gap-2 text-xs leading-5 text-ink-700"><CheckCircle2 size={14} className={response.selfCheck?.[index] ? "mt-0.5 shrink-0 text-success-600" : "mt-0.5 shrink-0 text-ink-300"} />{item}</p>)}</section>}
+    </div>
+  );
+}
 export function InstructorGradebook() {
   const { user } = useAuth();
   const { cohorts, loading: cohortLoading } = useInstructorCohorts();
@@ -1996,9 +2009,7 @@ export function InstructorGradebook() {
                       {fullName(row.student)} · submitted{" "}
                       {formatDateTime(row.submitted_at)}
                     </p>
-                    <div className="mt-4 rounded-lg bg-ink-50 p-4 whitespace-pre-wrap text-sm leading-6 text-ink-700">
-                      {row.content || "No written response."}
-                    </div>
+                    <StructuredSubmission row={row} />
                     {row.submission_files?.length > 0 && (
                       <div className="mt-3 flex flex-wrap gap-2">
                         {row.submission_files.map((file) => (

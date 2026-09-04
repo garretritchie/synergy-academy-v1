@@ -11,7 +11,6 @@ const COURSE_PRIMARY_PATHS = new Set([
   "home",
   "learn",
   "assessments",
-  "activities",
   "assignments",
 ]);
 
