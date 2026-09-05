@@ -23,6 +23,7 @@ import {
   Users,
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { DeliveryReadiness } from '@/components/ui/DeliveryReadiness';
 import { CreationWizard } from "@/components/ui/CreationWizard";
 import { Alert, TableSkeleton } from "@/components/ui/Feedback";
 import { Field, FormPanel } from "@/components/ui/FormPanel";
@@ -406,6 +407,7 @@ export function AdminCourseStudio() {
 
   return (
     <AppLayout>
+      {selectedCourse&&<DeliveryReadiness courseId={selectedCourse.id}/>}
       <PageHeader
         title="Course Studio"
         subtitle="Create, prepare, and publish a course with one guided workspace. Advanced tools remain available when you need them."
@@ -891,7 +893,7 @@ export function AdminCourseStudio() {
                   <div className="flex items-center gap-3 bg-success-50 px-5 py-4 text-success-800">
                     <CheckCircle2 size={18} />
                     <p className="text-sm font-semibold">
-                      This course is ready for learners.
+                      Course structure is complete. Confirm the delivery checks before launch.
                     </p>
                   </div>
                 )}

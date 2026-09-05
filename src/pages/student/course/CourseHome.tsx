@@ -14,6 +14,7 @@ import {
   Video,
   X,
 } from "lucide-react";
+import { useLearningPath } from "@/hooks/useLearningPath";
 import { CourseLayout } from "./CourseLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Alert, TableSkeleton } from "@/components/ui/Feedback";
@@ -40,6 +41,7 @@ type InstructorRow = {
 export function CourseHome() {
   const { cohortId } = useParams<{ cohortId: string }>();
   const { user } = useAuth();
+  const path=useLearningPath(cohortId);
   const [progress, setProgress] = useState<ProgressRecord[]>([]);
   const [releasedLessonIds, setReleasedLessonIds] = useState<string[]>([]);
   const [sessions, setSessions] = useState<LiveSession[]>([]);
@@ -146,18 +148,7 @@ export function CourseHome() {
     document.addEventListener("keydown", closeOnEscape);
     return () => document.removeEventListener("keydown", closeOnEscape);
   }, [selectedInstructor]);
-  const completion = useMemo(
-    () =>
-      releasedLessonIds.length
-        ? Math.round(
-            progress
-              .filter((item) => releasedLessonIds.includes(item.lesson_id))
-              .reduce((sum, item) => sum + Number(item.progress_percent), 0) /
-              releasedLessonIds.length,
-          )
-        : 0,
-    [progress, releasedLessonIds],
-  );
+  const completion = path.percentage;
   const average = useMemo(
     () =>
       grades.length
@@ -253,7 +244,7 @@ export function CourseHome() {
                   icon={BookOpen}
                   title="Learning"
                   description="Move naturally through Learn, Do, and Assess in one guided experience."
-                  to={`/student/courses/${cohortId}/learn`}
+                  to={path.next?.href ?? `/student/courses/${cohortId}/learn`}
                 />
                 <CourseArea
                   icon={BrainCircuit}

@@ -12,9 +12,11 @@
     "seed:course": "node scripts/seed-ai-business-essentials.mjs",
     "seed:demo-student": "node scripts/ensure-demo-student.mjs",
     "verify:course": "node scripts/verify-ai-business-content.mjs",
-    "verify:migrations": "node scripts/sql-static-check.mjs supabase/migrations/20260818204500_012_beta_readiness.sql && node scripts/sql-static-check.mjs supabase/migrations/20260819104500_013_access_entitlements.sql && node scripts/sql-static-check.mjs supabase/migrations/20260819193000_014_email_delivery_and_manual_users.sql && node scripts/sql-static-check.mjs supabase/migrations/20260819221500_015_digital_certificates.sql && node scripts/sql-static-check.mjs supabase/migrations/20260819233000_016_certificate_directory_scaling.sql && node scripts/sql-static-check.mjs supabase/migrations/20260904193000_017_practice_checks_do_not_affect_grades.sql && node scripts/sql-static-check.mjs supabase/migrations/20260904210000_018_live_assessment_feedback.sql && node scripts/sql-static-check.mjs supabase/migrations/20260904220000_019_student_course_asset_access.sql && node scripts/sql-static-check.mjs supabase/migrations/20260904223000_020_profile_avatars.sql && node scripts/sql-static-check.mjs supabase/migrations/20260904224500_021_student_lesson_notes.sql && node scripts/sql-static-check.mjs supabase/migrations/20260904231500_022_resource_drip_release.sql",
+    "verify:migrations": "node scripts/sql-static-check.mjs supabase/migrations/20260818204500_012_beta_readiness.sql && node scripts/sql-static-check.mjs supabase/migrations/20260819104500_013_access_entitlements.sql && node scripts/sql-static-check.mjs supabase/migrations/20260819193000_014_email_delivery_and_manual_users.sql && node scripts/sql-static-check.mjs supabase/migrations/20260819221500_015_digital_certificates.sql && node scripts/sql-static-check.mjs supabase/migrations/20260819233000_016_certificate_directory_scaling.sql && node scripts/sql-static-check.mjs supabase/migrations/20260904193000_017_practice_checks_do_not_affect_grades.sql && node scripts/sql-static-check.mjs supabase/migrations/20260904210000_018_live_assessment_feedback.sql && node scripts/sql-static-check.mjs supabase/migrations/20260904220000_019_student_course_asset_access.sql && node scripts/sql-static-check.mjs supabase/migrations/20260904223000_020_profile_avatars.sql && node scripts/sql-static-check.mjs supabase/migrations/20260904224500_021_student_lesson_notes.sql && node scripts/sql-static-check.mjs supabase/migrations/20260904231500_022_resource_drip_release.sql && node scripts/sql-static-check.mjs supabase/migrations/20260905000100_023_assessment_sessions.sql && node scripts/sql-static-check.mjs supabase/migrations/20260905000200_024_curriculum_revision.sql && node scripts/sql-static-check.mjs supabase/migrations/20260905000300_025_submission_and_review_integrity.sql && node scripts/sql-static-check.mjs supabase/migrations/20260905000400_026_discussion_moderation.sql",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit -p tsconfig.app.json"
+    "typecheck": "tsc --noEmit -p tsconfig.app.json",
+    "verify:path": "node scripts/verify-learning-path.mjs",
+    "verify:sessions": "node scripts/verify-assessment-sessions.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
@@ -26,6 +28,7 @@
     "react-router-dom": "^6.30.6"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@eslint/js": "^9.9.1",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",

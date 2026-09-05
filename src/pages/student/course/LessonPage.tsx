@@ -1,27 +1,23 @@
+import { Modal } from '@/components/ui/Modal';
+import { buildLearningPath } from '@/lib/learningPath';
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   ArrowRight,
-  BookOpen,
   CheckCircle2,
-  ChevronDown,
-  ChevronRight,
-  ClipboardCheck,
   Copy,
   Download,
   ExternalLink,
   HelpCircle,
-  ListChecks,
   ListTree,
-  LockKeyhole,
-  NotebookPen,
   PanelRight,
   PlayCircle,
-  Trash2,
-  X,
 } from "lucide-react";
 import { CourseLayout } from "./CourseLayout";
+import { StudyNotes } from "./StudyNotes";
+import { useLearningPath } from "@/hooks/useLearningPath";
+import { PathNavigation } from "./PathNavigation";
 import { LearningFlow } from "./LearningFlow";
 import { StoryboardScreen, type StoryboardContent } from "./StoryboardScreen";
 import { Alert, TableSkeleton } from "@/components/ui/Feedback";
@@ -51,12 +47,6 @@ type OutlineLesson = LessonNavigation & {
     display_order: number;
   };
 };
-type OutlineModule = {
-  id: string;
-  title: string;
-  display_order: number;
-  lessons: OutlineLesson[];
-};
 type AssessmentGate = {
   id: string;
   title: string;
@@ -77,6 +67,7 @@ export function LessonPage() {
   }>();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const path=useLearningPath(cohortId);
   const [lesson, setLesson] = useState<LessonRow | null>(null);
   const [enrolmentId, setEnrolmentId] = useState("");
   const [complete, setComplete] = useState(false);
@@ -90,21 +81,17 @@ export function LessonPage() {
   const [activeNugget, setActiveNugget] = useState(0);
   const [outlineOpen, setOutlineOpen] = useState(false);
   const [outlineLessons, setOutlineLessons] = useState<OutlineLesson[]>([]);
-  const [completedLessonIds, setCompletedLessonIds] = useState<string[]>([]);
-  const [releasedLessonIds, setReleasedLessonIds] = useState<string[]>([]);
-  const [noteOpen, setNoteOpen] = useState(false);
-  const [noteBody, setNoteBody] = useState("");
-  const [noteLoaded, setNoteLoaded] = useState(false);
-  const [noteBackendAvailable, setNoteBackendAvailable] = useState(true);
-  const [noteStatus, setNoteStatus] = useState("Saved");
+  const [, setCompletedLessonIds] = useState<string[]>([]);
+  const [, setReleasedLessonIds] = useState<string[]>([]);
   const [moduleCheckId, setModuleCheckId] = useState("");
   const [activityId, setActivityId] = useState("");
-  const [moduleChecks, setModuleChecks] = useState<AssessmentGate[]>([]);
-  const [moduleActivities, setModuleActivities] = useState<ActivityGate[]>([]);
+  const [, setModuleChecks] = useState<AssessmentGate[]>([]);
+  const [, setModuleActivities] = useState<ActivityGate[]>([]);
   useEffect(() => {
     if (!cohortId || !lessonId || !user) return;
     setError("");
-    setActiveNugget(0);
+    setLoading(true);
+    setActiveNugget(Number(localStorage.getItem(`academy-position:${user.id}:${cohortId}:${lessonId}`) ?? 0));
     setOutlineOpen(false);
     void (async () => {
       const [lessonResult, enrolmentResult] = await Promise.all([
@@ -209,7 +196,7 @@ export function LessonPage() {
             );
           }) as unknown as OutlineLesson[];
           const databaseReleased = releaseResult.error
-            ? ordered.map((item) => item.id)
+            ? []
             : ((releaseResult.data ?? []) as string[]);
           const completedIds = new Set(
             (courseProgressResult.data ?? [])
@@ -218,49 +205,15 @@ export function LessonPage() {
           );
           const checks = (assessmentGateResult.data ?? []) as unknown as AssessmentGate[];
           setModuleChecks(checks);
-          const passedModuleIds = new Set(
-            checks
-              .filter((assessment) =>
-                assessment.assessment_attempts.some(
-                  (attempt) =>
-                    attempt.status === "completed" &&
-                    Number(attempt.percentage) >=
-                      Number(assessment.passing_score ?? 0),
-                ),
-              )
-              .map((assessment) => assessment.module_id || ""),
-          );
           const currentCheck = checks
             .find((assessment) => assessment.module_id === lessonRow.module.id);
           setModuleCheckId(currentCheck?.id ?? "");
           const activities = (activityResult.data ?? []) as unknown as ActivityGate[];
           setModuleActivities(activities);
           setActivityId(activities.find((activity) => activity.module_id === lessonRow.module.id)?.id ?? "");
-          const modulesByOrder = new Map<number, string>();
-          for (const item of ordered)
-            modulesByOrder.set(item.module.display_order, item.module.id);
-          const completedActivityModuleIds = new Set(activities.filter((activity) => activity.submissions.some((submission) => ["submitted", "graded"].includes(submission.status))).map((activity) => activity.module_id || ""));
-          const pathwayReleased = ordered
-            .filter((item) => {
-              const order = item.module.display_order;
-              if (order === 0) return true;
-              const previousModuleId = modulesByOrder.get(order - 1);
-              if (!previousModuleId) return true;
-              if (order === 1) {
-                const introductionLesson = ordered.find((lesson) => lesson.module.id === previousModuleId);
-                return Boolean(introductionLesson && completedIds.has(introductionLesson.id));
-              }
-              const previousCheck = checks.find((check) => check.module_id === previousModuleId);
-              if (previousCheck) return passedModuleIds.has(previousModuleId);
-              const previousActivity = activities.find((activity) => activity.module_id === previousModuleId);
-              if (previousActivity) return completedActivityModuleIds.has(previousModuleId);
-              const previousLesson = ordered.find((lesson) => lesson.module.id === previousModuleId);
-              return Boolean(previousLesson && completedIds.has(previousLesson.id));
-            })
-            .map((item) => item.id);
-          const released = databaseReleased.filter((id) =>
-            pathwayReleased.includes(id),
-          );
+          const groups=Array.from(new Map(ordered.map(l=>[l.module.id,{id:l.module.id,title:l.module.title,display_order:l.module.display_order,lessons:ordered.filter(x=>x.module.id===l.module.id)}])).values());
+          const localPath=buildLearningPath(cohortId,groups,activities,checks,completedIds,new Set(databaseReleased));
+          const released=localPath.filter(s=>s.kind==='learn'&&s.available).map(s=>s.id);
           if (!released.includes(lessonId)) {
             setLesson(null);
             setError(
@@ -308,85 +261,6 @@ export function LessonPage() {
       setLoading(false);
     })();
   }, [cohortId, lessonId, user]);
-  useEffect(() => {
-    if (!outlineOpen && !noteOpen) return;
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setOutlineOpen(false);
-        setNoteOpen(false);
-      }
-    };
-    document.addEventListener("keydown", closeOnEscape);
-    return () => document.removeEventListener("keydown", closeOnEscape);
-  }, [noteOpen, outlineOpen]);
-
-  const noteStorageKey = user && cohortId && lessonId
-    ? `synergy-lesson-note:${user.id}:${cohortId}:${lessonId}:${activeNugget}`
-    : "";
-
-  const openNotes = async () => {
-    if (!user || !cohortId || !lessonId || !noteStorageKey) return;
-    setNoteOpen(true);
-    setNoteLoaded(false);
-    setNoteStatus("Loading...");
-    const localDraft = window.localStorage.getItem(noteStorageKey) ?? "";
-    if (!noteBackendAvailable) {
-      setNoteBody(localDraft);
-      setNoteLoaded(true);
-      setNoteStatus("Saved on this device");
-      return;
-    }
-    const { data, error: noteError } = await supabase
-      .from("lesson_notes")
-      .select("body")
-      .eq("student_id", user.id)
-      .eq("cohort_id", cohortId)
-      .eq("lesson_id", lessonId)
-      .eq("screen_index", activeNugget)
-      .maybeSingle();
-    if (noteError) {
-      setNoteBackendAvailable(false);
-      setNoteBody(localDraft);
-      setNoteStatus("Saved on this device");
-    } else {
-      setNoteBody(data?.body ?? localDraft);
-      setNoteStatus("Saved to your account");
-    }
-    setNoteLoaded(true);
-  };
-
-  useEffect(() => {
-    if (!noteOpen || !noteLoaded || !noteStorageKey || !user || !cohortId || !lessonId) return;
-    window.localStorage.setItem(noteStorageKey, noteBody);
-    setNoteStatus("Saving...");
-    const timer = window.setTimeout(() => {
-      if (!noteBackendAvailable) {
-        setNoteStatus("Saved on this device");
-        return;
-      }
-      void supabase
-        .from("lesson_notes")
-        .upsert(
-          {
-            student_id: user.id,
-            cohort_id: cohortId,
-            lesson_id: lessonId,
-            screen_index: activeNugget,
-            body: noteBody,
-          },
-          { onConflict: "student_id,cohort_id,lesson_id,screen_index" },
-        )
-        .then(({ error: saveError }) => {
-          if (saveError) {
-            setNoteBackendAvailable(false);
-            setNoteStatus("Saved on this device");
-          } else {
-            setNoteStatus("Saved to your account");
-          }
-        });
-    }, 700);
-    return () => window.clearTimeout(timer);
-  }, [activeNugget, cohortId, lessonId, noteBackendAvailable, noteBody, noteLoaded, noteOpen, noteStorageKey, user]);
   const markComplete = async (destination?: string) => {
     if (!lessonId || !cohortId || !user) return;
     setSaving(true);
@@ -409,6 +283,7 @@ export function LessonPage() {
         );
       if (upsertError) throw upsertError;
       setComplete(true);
+      await path.refresh();
       setCompletedLessonIds((current) =>
         current.includes(lessonId) ? current : [...current, lessonId],
       );
@@ -423,41 +298,21 @@ export function LessonPage() {
     () => buildLessonWorkspace(lesson?.lesson_blocks ?? []),
     [lesson?.lesson_blocks],
   );
+  useEffect(()=>{if(user&&cohortId&&lessonId&&lesson?.id===lessonId&&!loading)localStorage.setItem(`academy-position:${user.id}:${cohortId}:${lessonId}`,String(activeNugget));},[activeNugget,user,cohortId,lessonId,lesson?.id,loading]);
+  useEffect(()=>{if(!loading)setActiveNugget(n=>Number.isFinite(n)?Math.max(0,Math.min(n,Math.max(0,lessonWorkspace.nuggets.length-1))):0);},[loading,lessonWorkspace.nuggets.length]);
   const activeBlocks = lessonWorkspace.nuggets[activeNugget] ?? [];
   const isLastNugget =
     activeNugget === Math.max(0, lessonWorkspace.nuggets.length - 1);
   const lessonPartCount = Math.max(1, lessonWorkspace.nuggets.length);
-  const outlineModules = useMemo(() => {
-    const groups = new Map<string, OutlineModule>();
-    for (const outlineLesson of outlineLessons) {
-      const module = outlineLesson.module;
-      if (!groups.has(module.id)) {
-        groups.set(module.id, {
-          id: module.id,
-          title: module.title,
-          display_order: module.display_order,
-          lessons: [],
-        });
-      }
-      groups.get(module.id)?.lessons.push(outlineLesson);
-    }
-    return [...groups.values()].sort(
-      (left, right) => left.display_order - right.display_order,
-    );
-  }, [outlineLessons]);
   const currentLessonIndex = outlineLessons.findIndex(
     (item) => item.id === lessonId,
   );
-  const completedOutlineCount = outlineLessons.filter((item) =>
-    completedLessonIds.includes(item.id),
-  ).length;
-  const completedCheckCount = moduleChecks.filter(moduleCheckPassed).length;
-  const completedActivityCount = moduleActivities.filter((activity) => activity.submissions.some((submission) => ["submitted", "graded"].includes(submission.status))).length;
-  const completedCourseStepCount = completedOutlineCount + completedCheckCount + completedActivityCount;
-  const totalCourseSteps = outlineLessons.length + moduleChecks.length + moduleActivities.length;
+  const completedCourseStepCount=path.completed, totalCourseSteps=path.total;
   const isIntroduction = lesson?.module.display_order === 0;
   const completionDestination =
-    isIntroduction && nextLesson
+    path.steps.find(s=>s.id===lessonId) && path.steps[path.steps.findIndex(s=>s.id===lessonId)+1]
+      ? path.steps[path.steps.findIndex(s=>s.id===lessonId)+1].href
+      : isIntroduction && nextLesson
       ? `/student/courses/${cohortId}/learn/${nextLesson.id}`
       : activityId
         ? `/student/courses/${cohortId}/learn/activity/${activityId}`
@@ -495,7 +350,7 @@ export function LessonPage() {
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                className="btn-secondary"
+                className="btn-secondary hidden lg:inline-flex"
                 onClick={() => setOutlineOpen(true)}
               >
                 <ListTree size={16} />
@@ -504,13 +359,7 @@ export function LessonPage() {
                   {completedCourseStepCount}/{totalCourseSteps}
                 </span>
               </button>
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => void openNotes()}
-              >
-                <NotebookPen size={16} /> Notes
-              </button>
+              <StudyNotes cohortId={cohortId ?? ""} lessonId={lessonId ?? ""} screen={activeNugget}/>
             </div>
             {currentLessonIndex >= 0 && (
               <div className="text-right">
@@ -520,25 +369,17 @@ export function LessonPage() {
           </div>
           {!isIntroduction && <LearningFlow active="learn" hasActivity={Boolean(activityId)} hasAssessment={Boolean(moduleCheckId)} />}
           {error && <Alert>{error}</Alert>}
-          <div className="grid h-[calc(100dvh-13.5rem)] min-h-[30rem] max-h-[42rem] overflow-hidden rounded-2xl bg-white shadow-elevated lg:grid-cols-[15rem_minmax(0,1fr)]">
-            <CourseModuleRail
-              modules={outlineModules}
-              currentLessonId={lessonId || ""}
-              cohortId={cohortId || ""}
-              completedLessonIds={completedLessonIds}
-              releasedLessonIds={releasedLessonIds}
-              moduleChecks={moduleChecks}
-              moduleActivities={moduleActivities}
-            />
+          <div className="learning-player grid overflow-hidden rounded-2xl bg-white shadow-elevated lg:grid-cols-[15rem_minmax(0,1fr)]">
+            <PathNavigation cohortId={cohortId ?? ""} />
             <div className="flex min-h-0 min-w-0 flex-col">
               <header className="border-b border-ink-200 bg-white px-5 py-2 sm:px-6">
                 <p className="text-xs font-semibold text-brand-700">
-                  {lesson.module.title}
+                  {lesson.module.title.split(":")[0]}
                 </p>
                 <div className="mt-1 flex items-start justify-between gap-4">
                   <div className="min-w-0">
                     <h1 className="text-lg font-semibold tracking-[-0.025em] text-ink-950 sm:text-xl">
-                      {lesson.title}
+                      {lesson.module.title.replace(/^Module \d+: /, "")}
                     </h1>
                     {lesson.description && (
                       <p className="mt-0.5 line-clamp-1 max-w-3xl text-xs leading-5 text-ink-500 sm:text-sm">
@@ -682,87 +523,9 @@ export function LessonPage() {
             </div>
           </div>
           {outlineOpen && (
-            <CourseOutlineDrawer
-              modules={outlineModules}
-              currentLessonId={lessonId || ""}
-              cohortId={cohortId || ""}
-              completedLessonIds={completedLessonIds}
-              releasedLessonIds={releasedLessonIds}
-              moduleChecks={moduleChecks}
-              onClose={() => setOutlineOpen(false)}
-            />
+            <Modal title="Course outline" onClose={()=>setOutlineOpen(false)}><PathNavigation cohortId={cohortId??""} contentOnly onNavigate={()=>setOutlineOpen(false)}/></Modal>
           )}
-          {noteOpen && (
-            <div className="fixed inset-0 z-[95] flex items-center justify-center p-4">
-              <button
-                type="button"
-                className="absolute inset-0 bg-navy/45 backdrop-blur-sm"
-                aria-label="Close notes"
-                onClick={() => setNoteOpen(false)}
-              />
-              <section
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="lesson-notes-title"
-                className="relative flex max-h-[85dvh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-brand-100 bg-white shadow-elevated"
-              >
-                <header className="border-b border-brand-100 bg-[linear-gradient(120deg,rgba(232,243,252,0.95),rgba(255,255,255,0.98))] px-6 py-5">
-                  <button
-                    type="button"
-                    className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-lg text-ink-500 hover:bg-white"
-                    aria-label="Close notes"
-                    onClick={() => setNoteOpen(false)}
-                  >
-                    <X size={18} />
-                  </button>
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-600 text-white shadow-soft">
-                      <NotebookPen size={19} />
-                    </span>
-                    <div className="min-w-0 pr-10">
-                      <p className="text-xs font-semibold uppercase tracking-[0.08em] text-brand-700">
-                        {lesson.module.title} · Screen {activeNugget + 1}
-                      </p>
-                      <h2 id="lesson-notes-title" className="truncate text-xl font-semibold text-ink-950">
-                        Study notes
-                      </h2>
-                    </div>
-                  </div>
-                </header>
-                <div className="min-h-0 flex-1 p-6">
-                  <label htmlFor="lesson-note" className="sr-only">
-                    Notes for this learning screen
-                  </label>
-                  <textarea
-                    id="lesson-note"
-                    autoFocus
-                    maxLength={20000}
-                    className="input min-h-[18rem] resize-none text-base leading-7"
-                    placeholder="Write key ideas, examples, questions, or reminders from this screen..."
-                    value={noteBody}
-                    disabled={!noteLoaded}
-                    onChange={(event) => setNoteBody(event.target.value)}
-                  />
-                </div>
-                <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-ink-100 bg-ink-50 px-6 py-4">
-                  <p className="text-xs font-medium text-ink-500">{noteStatus}</p>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      className="btn-secondary text-danger-600"
-                      disabled={!noteBody}
-                      onClick={() => setNoteBody("")}
-                    >
-                      <Trash2 size={15} /> Clear note
-                    </button>
-                    <button type="button" className="btn-primary" onClick={() => setNoteOpen(false)}>
-                      Done
-                    </button>
-                  </div>
-                </footer>
-              </section>
-            </div>
-          )}
+
         </article>
       )}
     </CourseLayout>
@@ -854,412 +617,6 @@ function LessonPartContent({
   return <div className="mx-auto max-w-[72ch]">{renderBlocks(blocks)}</div>;
 }
 
-function CourseModuleRail({
-  modules,
-  currentLessonId,
-  cohortId,
-  completedLessonIds,
-  releasedLessonIds,
-  moduleChecks,
-  moduleActivities,
-}: {
-  modules: OutlineModule[];
-  currentLessonId: string;
-  cohortId: string;
-  completedLessonIds: string[];
-  releasedLessonIds: string[];
-  moduleChecks: AssessmentGate[];
-  moduleActivities: ActivityGate[];
-}) {
-  const lessons = modules.flatMap((module) => module.lessons);
-  const completedCount = lessons.filter((lesson) =>
-    completedLessonIds.includes(lesson.id),
-  ).length;
-  const passedCheckCount = moduleChecks.filter(moduleCheckPassed).length;
-  const completedActivityCount = moduleActivities.filter((activity) => activity.submissions.some((submission) => ["submitted", "graded"].includes(submission.status))).length;
-  const courseStepCount = lessons.length + moduleChecks.length + moduleActivities.length;
-  const courseProgress = courseStepCount
-    ? Math.round(((completedCount + passedCheckCount + completedActivityCount) / courseStepCount) * 100)
-    : 0;
-  return (
-    <aside
-      className="hidden min-h-0 flex-col border-r border-ink-200 bg-ink-50 text-ink-900 lg:flex"
-      aria-label="Course modules"
-    >
-      <div className="border-b border-ink-200 px-5 py-5">
-        <p className="text-sm font-semibold">Course progress</p>
-        <div className="mt-2 flex items-center gap-3">
-          <div className="h-2 flex-1 overflow-hidden rounded-full bg-ink-200">
-            <div
-              className="h-full rounded-full bg-brand-600"
-              style={{ width: `${courseProgress}%` }}
-            />
-          </div>
-          <span className="text-xs font-semibold tabular-nums text-brand-700">
-            {courseProgress}%
-          </span>
-        </div>
-      </div>
-      <nav
-        className="scrollbar-thin min-h-0 flex-1 overflow-y-auto px-3 py-3"
-        aria-label="Learning modules"
-      >
-        {modules.map((module) => {
-          const moduleLesson = module.lessons[0];
-          if (!moduleLesson) return null;
-          const moduleCheck = moduleChecks.find(
-            (assessment) => assessment.module_id === module.id,
-          );
-          const moduleActivity = moduleActivities.find((activity) => activity.module_id === module.id);
-          const released = releasedLessonIds.includes(moduleLesson.id);
-          const completed = completedLessonIds.includes(moduleLesson.id);
-          const current = moduleLesson.id === currentLessonId;
-          const label =
-            module.display_order === 0
-              ? "Introduction"
-              : `Module ${module.display_order}`;
-          const topic = module.title.replace(/^Module \d+: /, "");
-          const content = (
-            <>
-              <span
-                className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-xs font-semibold ${completed ? "bg-success-600 text-white" : current ? "bg-brand-600 text-white" : "border border-ink-200 bg-white text-ink-500"}`}
-              >
-                {completed ? (
-                  <CheckCircle2 size={15} />
-                ) : released ? (
-                  module.display_order || "I"
-                ) : (
-                  <LockKeyhole size={13} />
-                )}
-              </span>
-              <span className="min-w-0">
-                <span className="block text-xs font-semibold text-ink-900">
-                  {label}
-                </span>
-                <span className="mt-0.5 block truncate text-[11px] leading-4 text-ink-500">
-                  {topic}
-                </span>
-              </span>
-            </>
-          );
-          const activityComplete = moduleActivity?.submissions.some((submission) => ["submitted", "graded"].includes(submission.status)) ?? false;
-          const finishedSteps = Number(completed) + Number(activityComplete) + Number(moduleCheck ? moduleCheckPassed(moduleCheck) : false);
-          const stepCount = 1 + Number(Boolean(moduleActivity)) + Number(Boolean(moduleCheck));
-          return (
-            <details key={module.id} name="lesson-pathway" open={current || undefined} className={`group mb-1 rounded-lg ${current ? "bg-white shadow-[0_1px_3px_rgba(19,56,92,0.10)]" : "open:bg-white/70"}`}>
-              <summary className={`flex min-h-12 cursor-pointer list-none items-center gap-2 rounded-lg px-3 py-2 outline-none focus-visible:ring-2 focus-visible:ring-brand-500 [&::-webkit-details-marker]:hidden ${released ? "hover:bg-white/80" : "opacity-55"}`}>
-                <span className="flex min-w-0 flex-1 gap-3">{content}</span>
-                <span className="shrink-0 text-[10px] font-semibold tabular-nums text-ink-400">{finishedSteps}/{stepCount}</span>
-                <ChevronDown size={14} className="shrink-0 text-ink-400 transition-transform group-open:rotate-180" />
-              </summary>
-              <div className="pb-2">
-                {released ? <Link to={`/student/courses/${cohortId}/learn/${moduleLesson.id}`} aria-current={current ? "page" : undefined} className={`ml-8 flex min-h-9 items-center gap-2 rounded-md border-l-2 px-2 py-1 text-[11px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand-400 ${current ? "border-brand-500 bg-brand-50 text-brand-800" : "border-brand-200 text-brand-700 hover:bg-brand-50"}`}><BookOpen size={12} className="shrink-0" /><span className="min-w-0 flex-1 truncate">Learn it</span><span className="shrink-0 text-[10px] text-ink-500">{completed ? "Completed" : "In progress"}</span></Link> : <div className="ml-8 flex min-h-9 items-center gap-2 rounded-md border-l-2 border-ink-200 px-2 py-1 text-[11px] text-ink-400"><LockKeyhole size={11} className="shrink-0" /><span className="truncate">Learn it</span></div>}
-                {moduleActivity && <ActivityRailItem activity={moduleActivity} cohortId={cohortId} available={completed} />}
-                {moduleCheck && <ModuleCheckRailItem assessment={moduleCheck} cohortId={cohortId} available={completed && (!moduleActivity || activityComplete)} lockedLabel={completed && moduleActivity ? "Finish the activity first" : "Finish learning first"} />}
-              </div>
-            </details>
-          );
-        })}
-      </nav>
-      <div className="border-t border-ink-200 px-5 py-4 text-xs leading-5 text-ink-500">
-        Complete the available steps in order. Activities and checks appear only when included.
-      </div>
-    </aside>
-  );
-}
-
-function ActivityRailItem({ activity, cohortId, available }: { activity: ActivityGate; cohortId: string; available: boolean }) {
-  const complete = activity.submissions.some((submission) => ["submitted", "graded"].includes(submission.status));
-  const content = <><span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md ${complete ? "bg-success-100 text-success-700" : available ? "bg-violet-100 text-violet-700" : "bg-ink-100 text-ink-400"}`}>{complete ? <CheckCircle2 size={12} /> : available ? <ListChecks size={12} /> : <LockKeyhole size={11} />}</span><span className="min-w-0"><span className={`block truncate text-[11px] font-medium ${available ? "text-violet-900" : "text-ink-500"}`}>Do it</span><span className="mt-0.5 block truncate text-[10px] leading-4 text-ink-500">{complete ? "Activity submitted" : available ? "Ready to practice" : "Finish learning first"}</span></span></>;
-  const className = `ml-8 mt-0 flex min-h-9 items-center gap-2 rounded-md border-l-2 px-2 py-1 transition-colors ${available ? "border-violet-300 bg-violet-50/55 hover:bg-violet-100/70" : "border-ink-200 bg-ink-50/50 opacity-60"}`;
-  return available ? <Link to={`/student/courses/${cohortId}/learn/activity/${activity.id}`} className={`${className} outline-none focus-visible:ring-2 focus-visible:ring-violet-400`}>{content}</Link> : <div className={className}>{content}</div>;
-}
-
-function moduleCheckPassed(assessment: AssessmentGate) {
-  return assessment.assessment_attempts.some(
-    (attempt) =>
-      attempt.status === "completed" &&
-      Number(attempt.percentage) >= Number(assessment.passing_score ?? 0),
-  );
-}
-
-function ModuleCheckRailItem({
-  assessment,
-  cohortId,
-  available,
-  expanded = false,
-  onNavigate,
-  lockedLabel = "Complete the module first",
-}: {
-  assessment: AssessmentGate;
-  cohortId: string;
-  available: boolean;
-  expanded?: boolean;
-  onNavigate?: () => void;
-  lockedLabel?: string;
-}) {
-  const passed = moduleCheckPassed(assessment);
-  const completedAttempts = assessment.assessment_attempts.filter(
-    (attempt) => attempt.status === "completed",
-  );
-  const bestScore = completedAttempts.length
-    ? Math.max(
-        ...completedAttempts.map((attempt) => Number(attempt.percentage ?? 0)),
-      )
-    : null;
-  const content = (
-    <>
-      <span
-        className={`flex shrink-0 items-center justify-center rounded-md ${expanded ? "h-7 w-7" : "h-5 w-5"} ${passed ? "bg-success-100 text-success-700" : available ? "bg-accent-100 text-accent-800" : "bg-ink-100 text-ink-400"}`}
-      >
-        {passed ? <CheckCircle2 size={expanded ? 14 : 12} /> : available ? <ClipboardCheck size={expanded ? 14 : 12} /> : <LockKeyhole size={11} />}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className={`block ${expanded ? "text-xs font-semibold" : "text-[11px] font-medium"} ${available ? "text-accent-900" : "text-ink-500"}`}>
-          Assess it
-        </span>
-        <span className={`mt-0.5 block leading-4 text-ink-500 ${expanded ? "text-[11px]" : "text-[10px]"}`}>
-          {!available
-            ? lockedLabel
-            : passed
-            ? `Passed${bestScore === null ? "" : ` · Best ${Math.round(bestScore)}%`}`
-            : bestScore !== null
-              ? `Best ${Math.round(bestScore)}% · Retake anytime`
-              : "Ready · Unlimited attempts"}
-        </span>
-      </span>
-      {available && expanded && <ChevronRight size={16} className="text-accent-500" />}
-    </>
-  );
-  const className = `${expanded ? "mx-2 ml-6 mt-0.5 min-h-10 gap-2.5 px-2.5 py-1.5" : "ml-8 mt-0 min-h-9 gap-2 px-2 py-1"} flex items-center rounded-md border-l-2 transition-colors ${available ? "border-accent-300 bg-accent-50/55 hover:bg-accent-100/70" : "border-ink-200 bg-ink-50/50 opacity-60"}`;
-
-  return available ? (
-    <Link
-      to={`/student/courses/${cohortId}/learn/check/${assessment.id}`}
-      onClick={onNavigate}
-      className={`${className} outline-none focus-visible:ring-2 focus-visible:ring-accent-400`}
-    >
-      {content}
-    </Link>
-  ) : (
-    <div className={className}>{content}</div>
-  );
-}
-
-function CourseOutlineDrawer({
-  modules,
-  currentLessonId,
-  cohortId,
-  completedLessonIds,
-  releasedLessonIds,
-  moduleChecks,
-  onClose,
-}: {
-  modules: OutlineModule[];
-  currentLessonId: string;
-  cohortId: string;
-  completedLessonIds: string[];
-  releasedLessonIds: string[];
-  moduleChecks: AssessmentGate[];
-  onClose: () => void;
-}) {
-  const totalLessons = modules.reduce(
-    (total, module) => total + module.lessons.length,
-    0,
-  );
-  const completedLessons = modules
-    .flatMap((module) => module.lessons)
-    .filter((lesson) => completedLessonIds.includes(lesson.id)).length;
-  const completedChecks = moduleChecks.filter(moduleCheckPassed).length;
-  const totalSteps = totalLessons + moduleChecks.length;
-  const completionPercent = totalSteps
-    ? Math.round(((completedLessons + completedChecks) / totalSteps) * 100)
-    : 0;
-
-  return (
-    <div className="fixed inset-0 z-[70] flex justify-end" role="presentation">
-      <button
-        type="button"
-        className="absolute inset-0 bg-navy/55"
-        aria-label="Close course outline"
-        onClick={onClose}
-      />
-      <aside
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="course-outline-title"
-        className="relative flex h-full w-full max-w-md flex-col bg-canvas shadow-elevated"
-      >
-        <header className="border-b border-ink-200 bg-white px-5 py-5">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-brand-700">
-                Course progress
-              </p>
-              <h2
-                id="course-outline-title"
-                className="mt-1 text-xl text-ink-950"
-              >
-                Course outline
-              </h2>
-              <p className="mt-1 text-sm text-ink-500">
-                {completedLessons + completedChecks} of {totalSteps} course steps complete
-              </p>
-            </div>
-            <button
-              type="button"
-              className="flex h-10 w-10 items-center justify-center rounded-lg text-ink-500 hover:bg-ink-100"
-              aria-label="Close course outline"
-              onClick={onClose}
-            >
-              <X size={19} />
-            </button>
-          </div>
-          <div
-            className="mt-4 h-2 overflow-hidden rounded-full bg-ink-100"
-            role="progressbar"
-            aria-label="Course completion"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={completionPercent}
-          >
-            <div
-              className="h-full rounded-full bg-brand-600 transition-[width] duration-300"
-              style={{ width: `${completionPercent}%` }}
-            />
-          </div>
-        </header>
-
-        <div className="scrollbar-thin flex-1 overflow-y-auto p-4 sm:p-5">
-          <div className="space-y-4">
-            {modules.map((module, moduleIndex) => {
-              const moduleCompleted = module.lessons.filter((lesson) =>
-                completedLessonIds.includes(lesson.id),
-              ).length;
-              const moduleCheck = moduleChecks.find(
-                (assessment) => assessment.module_id === module.id,
-              );
-              const moduleLearningComplete = module.lessons.every((lesson) =>
-                completedLessonIds.includes(lesson.id),
-              );
-              return (
-                <section
-                  key={module.id}
-                  className="overflow-hidden rounded-xl border border-ink-100 bg-white shadow-soft"
-                >
-                  <div className="border-b border-ink-100 px-4 py-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-xs font-semibold text-brand-700">
-                          Module {moduleIndex + 1}
-                        </p>
-                        <h3 className="mt-0.5 text-sm font-semibold text-ink-900">
-                          {module.title}
-                        </h3>
-                      </div>
-                      <span className="text-xs tabular-nums text-ink-400">
-                        {moduleCompleted}/{module.lessons.length}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="p-1.5">
-                    {module.lessons.map((outlineLesson) => {
-                      const completed = completedLessonIds.includes(
-                        outlineLesson.id,
-                      );
-                      const released = releasedLessonIds.includes(
-                        outlineLesson.id,
-                      );
-                      const current = outlineLesson.id === currentLessonId;
-                      const content = (
-                        <>
-                          <span
-                            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
-                              completed
-                                ? "bg-success-50 text-success-700"
-                                : current
-                                  ? "bg-brand-600 text-white"
-                                  : released
-                                    ? "bg-brand-50 text-brand-700"
-                                    : "bg-ink-100 text-ink-400"
-                            }`}
-                          >
-                            {completed ? (
-                              <CheckCircle2 size={16} />
-                            ) : released ? (
-                              <BookOpen size={15} />
-                            ) : (
-                              <LockKeyhole size={14} />
-                            )}
-                          </span>
-                          <span className="min-w-0 flex-1">
-                            <span className="block text-sm font-medium text-ink-800">
-                              {outlineLesson.title}
-                            </span>
-                            <span className="mt-0.5 block text-xs text-ink-400">
-                              {completed
-                                ? "Completed"
-                                : current
-                                  ? "Current lesson"
-                                  : released
-                                    ? `${outlineLesson.estimated_minutes ?? 0} minutes`
-                                    : "Locked"}
-                            </span>
-                          </span>
-                          {released && (
-                            <ChevronRight size={16} className="text-ink-300" />
-                          )}
-                        </>
-                      );
-                      return released ? (
-                        <Link
-                          key={outlineLesson.id}
-                          to={`/student/courses/${cohortId}/learn/${outlineLesson.id}`}
-                          onClick={onClose}
-                          aria-current={current ? "page" : undefined}
-                          className={`flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors ${
-                            current ? "bg-brand-50" : "hover:bg-ink-50"
-                          }`}
-                        >
-                          {content}
-                        </Link>
-                      ) : (
-                        <div
-                          key={outlineLesson.id}
-                          className="flex items-center gap-3 rounded-lg px-3 py-2.5 opacity-75"
-                        >
-                          {content}
-                        </div>
-                      );
-                    })}
-                    {moduleCheck && (
-                      <ModuleCheckRailItem
-                        assessment={moduleCheck}
-                        cohortId={cohortId}
-                        available={moduleLearningComplete}
-                        expanded
-                        onNavigate={onClose}
-                      />
-                    )}
-                  </div>
-                </section>
-              );
-            })}
-          </div>
-        </div>
-        <footer className="border-t border-ink-200 bg-white p-4">
-          <Link
-            className="btn-secondary w-full"
-            to={`/student/courses/${cohortId}/learn`}
-            onClick={onClose}
-          >
-            View curriculum page
-          </Link>
-        </footer>
-      </aside>
-    </div>
-  );
-}
 
 function LessonBlockView({
   block,

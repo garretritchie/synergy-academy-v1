@@ -18,6 +18,7 @@ export function CourseLive() {
   const [rows, setRows] = useState<SessionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [showPast,setShowPast]=useState(false);
   useEffect(() => {
     if (!cohortId) return;
     void (async () => {
@@ -59,6 +60,8 @@ export function CourseLive() {
         subtitle="Find Zoom links, prepare for class, and revisit recordings."
       />
       <div className="mt-6 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-xs text-ink-600">Times shown in {Intl.DateTimeFormat().resolvedOptions().timeZone}</p><button type="button" className="btn-secondary" aria-pressed={showPast} onClick={()=>setShowPast(v=>!v)}>{showPast?'Show upcoming meetings':'Show past meetings'}</button></div>
+        {!loading&&!showPast&&!rows.some(s=>new Date(s.scheduled_end)>=new Date())&&<p className="rounded-xl border border-brand-100 bg-brand-50 p-5 text-sm">No upcoming meetings are posted. Check Messages for schedule updates.</p>}
         {error && <Alert>{error}</Alert>}
         {loading ? (
           <div className="rounded-xl bg-white shadow-soft">
@@ -73,7 +76,7 @@ export function CourseLive() {
             />
           </div>
         ) : (
-          rows.map((session) => {
+          rows.filter(s=>showPast?new Date(s.scheduled_end)<new Date():new Date(s.scheduled_end)>=new Date()).map((session) => {
             const ended = new Date(session.scheduled_end) < new Date();
             return (
               <article
@@ -115,6 +118,8 @@ export function CourseLive() {
                     )}
                   </div>
                   <div className="flex shrink-0 flex-wrap gap-2">
+                    {!ended&&!session.meeting_url&&!session.is_cancelled&&<span className="badge-neutral">Joining link not posted yet</span>}
+                    {ended&&!session.recording_url&&!session.resolved_recording_url&&<span className="badge-neutral">No recording posted</span>}
                     {!ended && session.meeting_url && !session.is_cancelled && (
                       <a
                         className="btn-primary"

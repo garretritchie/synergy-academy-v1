@@ -11,6 +11,7 @@ import importlib.util
 import json
 import re
 import sys
+import subprocess
 from pathlib import Path
 
 
@@ -215,6 +216,7 @@ def main() -> None:
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    subprocess.run(["node", "scripts/refine-course-content.mjs", str(args.output)], check=True)
     print(json.dumps({
         "output": str(args.output),
         "modules": len(modules),

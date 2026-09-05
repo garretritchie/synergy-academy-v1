@@ -1,3 +1,4 @@
+import { MatchingQuestion } from "./MatchingQuestion";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
@@ -5,17 +6,15 @@ import {
   ArrowRight,
   BrainCircuit,
   CheckCircle2,
-  ChevronDown,
   Clock3,
-  ClipboardCheck,
-  BookOpen,
   LockKeyhole,
-  ListChecks,
   RotateCcw,
   X,
   XCircle,
 } from "lucide-react";
 import { CourseLayout } from "./CourseLayout";
+import { StudyNotes } from "./StudyNotes";
+import { PathNavigation } from "./PathNavigation";
 import { LearningFlow } from "./LearningFlow";
 import { moduleLabel } from "./courseFormatting";
 import { Alert, TableSkeleton } from "@/components/ui/Feedback";
@@ -23,7 +22,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { EmptyState } from "@/components/ui/Spinner";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
-import courseContent from "@/content/ai-business-essentials.json";
+import { useLearningPath } from "@/hooks/useLearningPath";
 import type { Assessment, Lesson, Module, ProgressRecord } from "@/types";
 
 type AssessmentModule = { id: string; title: string; display_order: number };
@@ -76,14 +75,18 @@ export function CourseAssessments() {
     assessmentId?: string;
   }>();
   const { user } = useAuth();
+  const learningPath = useLearningPath(cohortId);
+  const [expiresAt, setExpiresAt] = useState<string | null>(null);
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const [extraAttempts,setExtraAttempts]=useState<Record<string,number>>({});
   const [enrolmentId, setEnrolmentId] = useState("");
   const [assessments, setAssessments] = useState<AssessmentRow[]>([]);
   const [progress, setProgress] = useState<ProgressRecord[]>([]);
-  const [pathModules, setPathModules] = useState<PathModule[]>([]);
+  const [, setPathModules] = useState<PathModule[]>([]);
   const [pathActivities, setPathActivities] = useState<PathActivity[]>([]);
-  const [releasedLessonIds, setReleasedLessonIds] = useState<string[]>([]);
+  const [, setReleasedLessonIds] = useState<string[]>([]);
   const [quiz, setQuiz] = useState<StudentAssessment | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [result, setResult] = useState<AssessmentResult | null>(null);
@@ -113,6 +116,8 @@ export function CourseAssessments() {
       return;
     }
     setEnrolmentId(enrolmentResult.data.id);
+    const authorizations=await supabase.from("assessment_attempt_authorizations").select("assessment_id").eq("enrolment_id",enrolmentResult.data.id);
+    setExtraAttempts((authorizations.data??[]).reduce((all:Record<string,number>,a)=>({...all,[a.assessment_id]:(all[a.assessment_id]??0)+1}),{}));
     const courseId = (enrolmentResult.data.cohort as unknown as { course_id: string }).course_id;
     const [assessmentResult, progressResult, moduleResult, releaseResult, activityResult] = await Promise.all([
       supabase
@@ -179,42 +184,17 @@ export function CourseAssessments() {
       ),
     [progress],
   );
-  const passedModuleOrders = useMemo(
-    () =>
-      new Set(
-        assessments
-          .filter(
-            (item) =>
-              isModuleCheck(item) &&
-              item.assessment_attempts.some(
-                (attempt) =>
-                  attempt.status === "completed" &&
-                  Number(attempt.percentage) >= Number(item.passing_score ?? 0),
-              ),
-          )
-          .map((item) => item.module?.display_order ?? -1),
-      ),
-    [assessments],
-  );
   const available = (assessment: AssessmentRow) => {
-    if (assessment.lesson_id && !completedLessonIds.has(assessment.lesson_id))
-      return false;
-    if (isModuleCheck(assessment)) {
-      const activity = pathActivities.find((item) => item.module_id === assessment.module_id);
-      return !activity || activity.submissions.some((submission) => ["submitted", "graded"].includes(submission.status));
-    }
-    if (assessment.title.includes("Graded Quiz 1"))
-      return [1, 2, 3].every((item) => passedModuleOrders.has(item));
-    if (assessment.title.includes("Midterm"))
-      return [1, 2, 3, 4, 5, 6].every((item) => passedModuleOrders.has(item));
-    if (assessment.title.includes("Graded Quiz 3"))
-      return [7, 8, 9].every((item) => passedModuleOrders.has(item));
-    if (assessment.title.includes("Final Exam"))
-      return Array.from({ length: 12 }, (_, index) => index + 1).every((item) =>
-        passedModuleOrders.has(item),
-      );
-    return true;
+    if (isModuleCheck(assessment)) return learningPath.steps.find(s=>s.id===assessment.id)?.available ?? false;
+    if (assessment.lesson_id && !completedLessonIds.has(assessment.lesson_id)) return false;
+    const order=assessment.module?.display_order;
+    return order === undefined || learningPath.steps.filter(s=>{const m=learningPath.modules.find(m=>m.id===s.moduleId);return m && m.display_order<=order;}).every(s=>s.done);
   };
+  useEffect(()=>{
+    if (!expiresAt || result || reviewMode) {setSecondsLeft(null);return;}
+    const tick=()=>setSecondsLeft(Math.max(0,Math.ceil((new Date(expiresAt).getTime()-Date.now())/1000)));
+    tick();const timer=window.setInterval(tick,1000);return ()=>window.clearInterval(timer);
+  },[expiresAt,result,reviewMode]);
 
   const start = async (assessment: AssessmentRow, review = false) => {
     if (!available(assessment) && !review) {
@@ -223,41 +203,21 @@ export function CourseAssessments() {
     }
     setSaving(true);
     setError("");
-    const { data, error: rpcError } = await supabase.rpc(
-      "get_assessment_for_student",
-      { assessment_uuid: assessment.id },
-    );
-    if (rpcError) setError(rpcError.message);
+    const session = review
+      ? await supabase.rpc('review_assessment_session',{assessment_uuid:assessment.id})
+      : await supabase.rpc('begin_assessment_session',{assessment_uuid:assessment.id,enrolment_uuid:enrolmentId});
+    if (session.error) {setError(session.error.message.includes('schema cache') ? 'Assessment sessions need a database update. Your attempt has not started. Please contact your instructor.' : session.error.message);setSaving(false);return;}
+    const loaded = await supabase.rpc('get_assessment_for_student',{assessment_uuid:assessment.id});
+    if (loaded.error) setError(loaded.error.message);
     else {
-      const loadedQuiz = data as StudentAssessment;
-      const latestAttempt = [...assessment.assessment_attempts].sort((a, b) =>
-        String(b.completed_at).localeCompare(String(a.completed_at)),
-      )[0];
-      const reviewAnswers = review ? (latestAttempt?.answers ?? {}) : {};
-      const reviewFeedback = review
-        ? Object.fromEntries(
-            loadedQuiz.questions.map((question) => {
-              const key = localAnswerKey(
-                loadedQuiz.title,
-                question.question_text,
-              );
-              return [
-                question.id,
-                {
-                  ...key,
-                  correct: reviewAnswers[question.id] === key.correctAnswer,
-                },
-              ];
-            }),
-          )
-        : {};
-      setQuiz(loadedQuiz);
-      setAnswers(reviewAnswers);
-      setFeedback(reviewFeedback);
+      const saved = session.data;
+      setQuiz({...loaded.data, questions: review && saved.questions ? saved.questions : loaded.data.questions} as StudentAssessment);
+      setAnswers(saved.answers ?? {});
+      setFeedback(Object.fromEntries(Object.entries(saved.feedback ?? {}).map(([id,f])=>{const value=f as {correct:boolean;correct_answer:string;explanation:string};return [id,{correct:value.correct,correctAnswer:value.correct_answer,explanation:value.explanation}];})));
+      setExpiresAt(saved.expires_at ?? null);
       setReviewMode(review);
-      setCurrentQuestion(0);
+      setCurrentQuestion(review ? 0 : Math.max(0, loaded.data.questions.findIndex((q:SafeQuestion)=>!saved.feedback?.[q.id])));
       setResult(null);
-      window.scrollTo({ top: 0, behavior: "smooth" });
     }
     setSaving(false);
   };
@@ -274,7 +234,7 @@ export function CourseAssessments() {
     );
     if (!linkedCheck) return;
     autoStartedAssessment.current = assessmentId;
-    void start(linkedCheck);
+    void start(linkedCheck, searchParams.get("review") === "true");
     // The assessment id is the one-time trigger; start uses the current loaded row.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assessmentId, assessments, loading, quiz]);
@@ -289,15 +249,9 @@ export function CourseAssessments() {
       "check_assessment_answer",
       { question_uuid: question.id, selected_answer: selectedAnswer },
     );
-    const checked =
-      !checkError && data
-        ? {
-            correct: Boolean(data.correct),
-            correctAnswer: String(data.correct_answer),
-            explanation: String(data.explanation || ""),
-          }
-        : localAnswerKey(quiz.title, question.question_text, selectedAnswer);
-    setFeedback((current) => ({ ...current, [question.id]: checked }));
+    if (checkError) {setError(checkError.message);setSaving(false);return;}
+    const checked={correct:Boolean(data.correct),correctAnswer:String(data.correct_answer),explanation:String(data.explanation ?? '')};
+    setFeedback(current=>({...current,[question.id]:checked}));
     setSaving(false);
   };
   const submit = async () => {
@@ -316,19 +270,23 @@ export function CourseAssessments() {
     else {
       setResult(data as AssessmentResult);
       await load();
+      await learningPath.refresh();
     }
     setSaving(false);
   };
 
   const practiceChecks = assessments.filter(isModuleCheck);
-  const graded = assessments.filter((item) => !isModuleCheck(item));
+  const graded = assessments.filter((item) => !isModuleCheck(item)).map(item=>({...item,max_attempts:1+(extraAttempts[item.id]??0)}));
   const learningCheckActive = Boolean(
     assessmentId && quiz && practiceChecks.some((item) => item.id === quiz.id),
   );
   const activeAssessment = quiz ? assessments.find((item) => item.id === quiz.id) : null;
   return (
     <CourseLayout>
-      {!quiz && (
+      <div className={quiz ? "mx-auto max-w-5xl" : ""}>
+      {learningCheckActive&&<div className="mb-3 flex justify-end"><StudyNotes cohortId={cohortId ?? ""} lessonId={activeAssessment?.lesson_id ?? ""} screen={200000}/></div>}
+      {!quiz && assessmentId && <div className="mb-4 rounded-xl border border-brand-100 bg-brand-50 p-4"><p className="text-sm">Knowledge checks are practice. Retake as often as you wish, or review your latest answers.</p><div className="mt-3 flex gap-2">{assessments.filter(a=>a.id===assessmentId).map(a=><div key={a.id} className="flex gap-2"><button className="btn-primary" disabled={saving || !available(a)} onClick={()=>void start(a)}>Start / resume check</button>{a.assessment_attempts.some(x=>x.status==="completed")&&<button className="btn-secondary" disabled={saving} onClick={()=>void start(a,true)}>Review latest</button>}</div>)}</div></div>}
+      {!quiz && !assessmentId && (
         <PageHeader
           title="Assessments"
           subtitle="Graded checkpoints, the midterm, and the final exam unlock at the required course points. Module checks now live inside Learning."
@@ -339,6 +297,8 @@ export function CourseAssessments() {
           <Alert>{error}</Alert>
         </div>
       )}
+      {quiz && secondsLeft !== null && <p role="timer" className="mx-auto mb-3 max-w-5xl text-right text-sm font-semibold text-brand-800">{secondsLeft ? `${Math.floor(secondsLeft/60)}:${String(secondsLeft%60).padStart(2,"0")} remaining · answers save when checked` : "Time ended. Finish to record your saved answers."}</p>}
+      {quiz && secondsLeft === 0 && !result && <button type="button" className="btn-primary mb-3" disabled={saving} onClick={()=>void submit()}>Finish timed assessment</button>}
       {quiz && (
         <>
         {learningCheckActive && <div className="mb-4"><LearningFlow active="assess" hasActivity={pathActivities.some((activity) => activity.module_id === activeAssessment?.module_id)} hasAssessment /></div>}
@@ -366,26 +326,20 @@ export function CourseAssessments() {
             if (assessmentId) navigate(`/student/courses/${cohortId}/learn`);
             else setQuiz(null);
           }}
+          onReview={()=>{setResult(null);setReviewMode(true);setCurrentQuestion(0);}}
+          nextHref={result?.passed && learningPath.next?.id!==assessmentId ? learningPath.next?.href : undefined}
           onSubmit={() => void submit()}
           cohortId={cohortId || ""}
           learningFrame={learningCheckActive}
           learningRail={
             learningCheckActive ? (
-              <AssessmentLearningRail
-                modules={pathModules}
-                assessments={practiceChecks}
-                activities={pathActivities}
-                progress={progress}
-                releasedLessonIds={releasedLessonIds}
-                cohortId={cohortId || ""}
-                currentAssessmentId={quiz.id}
-              />
+              <PathNavigation cohortId={cohortId ?? ""} />
             ) : undefined
           }
         />
         </>
       )}
-      {!quiz &&
+      {!quiz && !assessmentId &&
         (loading ? (
           <div className="mt-6 rounded-xl bg-white shadow-soft">
             <TableSkeleton />
@@ -402,7 +356,7 @@ export function CourseAssessments() {
           <div className="mt-6 space-y-8">
             <AssessmentGroup
               title="Graded assessments"
-              description="Three quiz-category checkpoints, including the midterm, and the final exam."
+              description="One attempt per graded assessment. Your instructor may authorize an additional attempt. Module checks remain unlimited."
               rows={graded}
               focusedModule={searchParams.get("module")}
               available={available}
@@ -411,6 +365,7 @@ export function CourseAssessments() {
             />
           </div>
         ))}
+    </div>
     </CourseLayout>
   );
 }
@@ -460,7 +415,7 @@ function AssessmentGroup({
             <article
               id={moduleKey}
               key={assessment.id}
-              className={`rounded-2xl border bg-white p-4 shadow-soft transition-[border-color,box-shadow] hover:border-brand-200 hover:shadow-elevated ${focusedModule === moduleKey ? "border-brand-400 ring-2 ring-brand-100" : "border-ink-200/80"}`}
+              className={`flex flex-col rounded-2xl border bg-white p-4 shadow-soft transition-[border-color,box-shadow] hover:border-brand-200 hover:shadow-elevated ${focusedModule === moduleKey ? "border-brand-400 ring-2 ring-brand-100" : "border-ink-200/80"}`}
             >
               <div className="flex items-start gap-4">
                 <span
@@ -492,7 +447,7 @@ function AssessmentGroup({
                     <span className="rounded-full bg-ink-50 px-2.5 py-1">
                       {isModuleCheck(assessment)
                         ? `${attempts.length} ${attempts.length === 1 ? "attempt" : "attempts"}, unlimited`
-                        : `${attempts.length}/1 attempt`}
+                        : `${attempts.length}/${assessment.max_attempts} ${assessment.max_attempts===1 ? "attempt" : "authorized attempts"}`}
                     </span>
                     {attempts.length > 0 && (
                       <span className="rounded-full bg-success-50 px-2.5 py-1 text-success-700">
@@ -502,7 +457,7 @@ function AssessmentGroup({
                   </div>
                 </div>
               </div>
-              <div className="mt-5 grid gap-2">
+              <div className="mt-auto grid gap-2 pt-5">
                 {canReview && (
                   <button
                     type="button"
@@ -531,7 +486,7 @@ function AssessmentGroup({
                       {attempts.length + 1}
                     </>
                   ) : (
-                    "Start assessment"
+                    "Start / resume assessment"
                   )}
                 </button>
               </div>
@@ -543,139 +498,6 @@ function AssessmentGroup({
   );
 }
 
-function AssessmentLearningRail({
-  modules,
-  assessments,
-  activities,
-  progress,
-  releasedLessonIds,
-  cohortId,
-  currentAssessmentId,
-}: {
-  modules: PathModule[];
-  assessments: AssessmentRow[];
-  activities: PathActivity[];
-  progress: ProgressRecord[];
-  releasedLessonIds: string[];
-  cohortId: string;
-  currentAssessmentId: string;
-}) {
-  const completedLessonIds = new Set(
-    progress
-      .filter((record) => record.status === "completed")
-      .map((record) => record.lesson_id),
-  );
-  const publishedLessons = modules.flatMap((module) =>
-    module.lessons.filter((lesson) => lesson.is_published),
-  );
-  const passedChecks = assessments.filter((assessment) =>
-    assessment.assessment_attempts.some(
-      (attempt) =>
-        attempt.status === "completed" &&
-        Number(attempt.percentage) >= Number(assessment.passing_score ?? 0),
-    ),
-  );
-  const completedActivities = activities.filter((activity) => activity.submissions.some((submission) => ["submitted", "graded"].includes(submission.status)));
-  const totalSteps = publishedLessons.length + assessments.length + activities.length;
-  const completedSteps =
-    publishedLessons.filter((lesson) => completedLessonIds.has(lesson.id)).length +
-    passedChecks.length + completedActivities.length;
-  const courseProgress = totalSteps
-    ? Math.round((completedSteps / totalSteps) * 100)
-    : 0;
-
-  return (
-    <aside
-      className="hidden min-h-0 flex-col border-r border-ink-200 bg-ink-50 text-ink-900 lg:flex"
-      aria-label="Course modules and module checks"
-    >
-      <div className="border-b border-ink-200 px-5 py-5">
-        <p className="text-sm font-semibold">Course progress</p>
-        <div className="mt-2 flex items-center gap-3">
-          <div className="h-2 flex-1 overflow-hidden rounded-full bg-ink-200">
-            <div
-              className="h-full rounded-full bg-brand-600"
-              style={{ width: `${courseProgress}%` }}
-            />
-          </div>
-          <span className="text-xs font-semibold tabular-nums text-brand-700">
-            {courseProgress}%
-          </span>
-        </div>
-      </div>
-      <nav className="scrollbar-thin min-h-0 flex-1 overflow-y-auto px-3 py-3" aria-label="Learning pathway">
-        {modules.map((module) => {
-          const lesson = module.lessons.find((item) => item.is_published);
-          if (!lesson) return null;
-          const previousModule = modules.find((item) => item.display_order === module.display_order - 1);
-          const previousCheck = previousModule ? assessments.find((item) => item.module_id === previousModule.id) : null;
-          const previousActivity = previousModule ? activities.find((item) => item.module_id === previousModule.id) : null;
-          const previousLesson = previousModule?.lessons.find((item) => item.is_published);
-          const pathwayReleased = module.display_order === 0 || (module.display_order === 1
-            ? Boolean(previousLesson && completedLessonIds.has(previousLesson.id))
-            : Boolean(previousModule && (previousCheck
-            ? passedChecks.some((item) => item.id === previousCheck.id)
-            : previousActivity
-              ? completedActivities.some((item) => item.id === previousActivity.id)
-              : previousLesson && completedLessonIds.has(previousLesson.id))));
-          const released = releasedLessonIds.includes(lesson.id) && pathwayReleased;
-          const completed = completedLessonIds.has(lesson.id);
-          const check = assessments.find((item) => item.module_id === module.id);
-          const activity = activities.find((item) => item.module_id === module.id);
-          const activityComplete = activity ? completedActivities.some((item) => item.id === activity.id) : true;
-          const checkPassed = check
-            ? passedChecks.some((item) => item.id === check.id)
-            : false;
-          const checkCurrent = check?.id === currentAssessmentId;
-          const moduleLabel = module.display_order === 0 ? "Introduction" : `Module ${module.display_order}`;
-          const current = checkCurrent;
-          const finishedSteps = Number(completed) + Number(activity ? activityComplete : false) + Number(check ? checkPassed : false);
-          const stepCount = 1 + Number(Boolean(activity)) + Number(Boolean(check));
-          return (
-            <details key={module.id} name="assessment-pathway" open={current || undefined} className={`group mb-1 rounded-lg ${current ? "bg-white shadow-[0_1px_3px_rgba(19,56,92,0.10)]" : "open:bg-white/70"}`}>
-              <summary className={`flex min-h-12 cursor-pointer list-none items-center gap-2 rounded-lg px-3 py-2 outline-none focus-visible:ring-2 focus-visible:ring-brand-500 [&::-webkit-details-marker]:hidden ${released ? "hover:bg-white/80" : "opacity-55"}`}><span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${completed ? "bg-success-600 text-white" : released ? "border border-brand-100 bg-brand-50 text-brand-700" : "bg-ink-100 text-ink-400"}`}>{completed ? <CheckCircle2 size={15} /> : released ? <BookOpen size={14} /> : <LockKeyhole size={13} />}</span><span className="min-w-0 flex-1"><span className="block text-xs font-semibold text-ink-900">{moduleLabel}</span><span className="mt-0.5 block truncate text-[11px] text-ink-500">{module.title.replace(/^Module \d+: /, "")}</span></span><span className="text-[10px] font-semibold tabular-nums text-ink-400">{finishedSteps}/{stepCount}</span><ChevronDown size={14} className="text-ink-400 transition-transform group-open:rotate-180" /></summary>
-              <div className="pb-2">
-              {released ? <Link to={`/student/courses/${cohortId}/learn/${lesson.id}`} className="ml-8 flex min-h-9 items-center gap-2 rounded-md border-l-2 border-brand-200 px-2 py-1 text-[11px] font-medium text-brand-700 hover:bg-brand-50"><BookOpen size={12} className="shrink-0" /><span className="min-w-0 flex-1 truncate">Learn it</span><span className="shrink-0 text-[10px] text-ink-500">{completed ? "Completed" : "In progress"}</span></Link> : <div className="ml-8 flex min-h-9 items-center gap-2 rounded-md border-l-2 border-ink-200 px-2 py-1 text-[11px] text-ink-400"><LockKeyhole size={11} className="shrink-0" /><span className="truncate">Learn it</span></div>}
-              {activity && (() => {
-                const content = <><span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md ${activityComplete ? "bg-success-100 text-success-700" : completed ? "bg-violet-100 text-violet-700" : "bg-ink-100 text-ink-400"}`}>{activityComplete ? <CheckCircle2 size={12} /> : completed ? <ListChecks size={12} /> : <LockKeyhole size={11} />}</span><span className="min-w-0"><span className={`block truncate text-[11px] font-medium ${completed ? "text-violet-900" : "text-ink-500"}`}>Do it</span><span className="mt-0.5 block truncate text-[10px] leading-4 text-ink-500">{activityComplete ? "Activity submitted" : completed ? "Ready to practice" : "Finish learning first"}</span></span></>;
-                const className = `ml-8 mt-0 flex min-h-9 items-center gap-2 rounded-md border-l-2 px-2 py-1 transition-colors ${completed ? "border-violet-300 bg-violet-50/55 hover:bg-violet-100/70" : "border-ink-200 bg-ink-50/50 opacity-60"}`;
-                return completed ? <Link to={`/student/courses/${cohortId}/learn/activity/${activity.id}`} className={`${className} outline-none focus-visible:ring-2 focus-visible:ring-violet-400`}>{content}</Link> : <div className={className}>{content}</div>;
-              })()}
-              {check && (() => {
-                const checkAvailable = completed && activityComplete;
-                const checkContent = (
-                  <>
-                    <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md ${checkPassed ? "bg-success-100 text-success-700" : checkAvailable ? "bg-accent-100 text-accent-800" : "bg-ink-100 text-ink-400"}`}>
-                      {checkPassed ? <CheckCircle2 size={12} /> : checkAvailable ? <ClipboardCheck size={12} /> : <LockKeyhole size={11} />}
-                    </span>
-                    <span className="min-w-0">
-                      <span className={`block truncate text-[11px] font-medium ${checkAvailable ? "text-accent-900" : "text-ink-500"}`}>Assess it</span>
-                      <span className="mt-0.5 block text-[10px] leading-4 text-ink-500">{checkCurrent ? "Current check" : checkPassed ? "Passed · Retake anytime" : checkAvailable ? "Ready · Unlimited attempts" : completed && activity ? "Finish the activity first" : "Finish learning first"}</span>
-                    </span>
-                  </>
-                );
-                const checkClass = `ml-8 mt-0 flex min-h-9 items-center gap-2 rounded-md border-l-2 px-2 py-1 transition-colors ${checkCurrent ? "border-accent-500 bg-accent-100/80" : checkPassed ? "border-success-300 bg-success-50/55" : completed ? "border-accent-300 bg-accent-50/55 hover:bg-accent-100/70" : "border-ink-200 bg-ink-50/50 opacity-60"}`;
-                return checkAvailable ? (
-                  <Link
-                    to={`/student/courses/${cohortId}/learn/check/${check.id}`}
-                    aria-current={checkCurrent ? "page" : undefined}
-                    className={`${checkClass} outline-none focus-visible:ring-2 focus-visible:ring-accent-400`}
-                  >
-                    {checkContent}
-                  </Link>
-                ) : <div className={checkClass}>{checkContent}</div>;
-              })()}
-              </div>
-            </details>
-          );
-        })}
-      </nav>
-      <div className="border-t border-ink-200 px-5 py-4 text-xs leading-5 text-ink-500">
-        Pass this check to unlock the next module.
-      </div>
-    </aside>
-  );
-}
 
 function AssessmentWorkspace({
   quiz,
@@ -692,6 +514,8 @@ function AssessmentWorkspace({
   onClose,
   onSubmit,
   cohortId,
+  onReview,
+  nextHref,
   learningFrame = false,
   learningRail,
 }: {
@@ -709,6 +533,8 @@ function AssessmentWorkspace({
   onClose: () => void;
   onSubmit: () => void;
   cohortId: string;
+  onReview:()=>void;
+  nextHref?:string;
   learningFrame?: boolean;
   learningRail?: ReactNode;
 }) {
@@ -727,7 +553,7 @@ function AssessmentWorkspace({
   return (
     <section
       id="assessment-workspace"
-      className={`overflow-hidden rounded-2xl border border-ink-200 bg-white shadow-elevated ${learningFrame ? "mt-4 flex h-[calc(100dvh-13.5rem)] min-h-[30rem] max-h-[42rem] flex-col" : "mt-6"}`}
+      className={`overflow-hidden rounded-2xl border border-ink-200 bg-white shadow-elevated ${learningFrame ? "learning-player flex flex-col" : "mt-6"}`}
       aria-labelledby="assessment-title"
     >
       <header className={`border-b border-ink-200 px-5 sm:px-6 ${learningFrame ? "py-2" : "py-4"}`}>
@@ -776,7 +602,7 @@ function AssessmentWorkspace({
         </div>
       </header>
       {result ? (
-        <div
+        <div className={learningFrame ? "grid min-h-0 flex-1 lg:grid-cols-[15rem_minmax(0,1fr)]" : ""}>{learningFrame&&learningRail}<div
           className={`m-5 rounded-xl p-6 sm:m-6 ${result.passed ? "bg-success-50 text-success-800" : "bg-warning-50 text-warning-900"}`}
         >
           <p className="text-3xl font-semibold tabular-nums">
@@ -785,7 +611,7 @@ function AssessmentWorkspace({
           <p className="mt-2 font-semibold">
             {result.passed
               ? "Assessment passed."
-              : "Review the module before your next attempt."}
+              : "Review your answers with the teaching team."}
           </p>
           <p className="mt-1 text-sm">
             You can review these questions at any time without using another
@@ -793,11 +619,12 @@ function AssessmentWorkspace({
           </p>
           <Link
             className="btn-primary mt-5"
-            to={`/student/courses/${cohortId}/learn`}
+            to={nextHref??`/student/courses/${cohortId}/learn`}
           >
-            Return to Learning <ArrowRight size={16} />
+            {nextHref ? "Continue learning" : "Return to Learning"} <ArrowRight size={16} />
           </Link>
-        </div>
+          <button type="button" className="btn-secondary mt-3" onClick={onReview}>Review my answers</button>
+        </div></div>
       ) : (
         <>
           <div className={`grid min-h-[24rem] ${learningFrame ? "min-h-0 flex-1 lg:grid-cols-[15rem_minmax(0,1fr)]" : "lg:h-[24rem] lg:grid-cols-[13rem_minmax(0,1fr)]"}`}>
@@ -834,7 +661,7 @@ function AssessmentWorkspace({
               <h3 className="mt-3 max-w-3xl text-xl font-semibold leading-7 text-ink-950">
                 {question.question_text}
               </h3>
-              <div className="mt-5 grid gap-2.5 sm:grid-cols-2">
+              {question.question_type==="matching" ? <MatchingQuestion key={question.id} options={question.options} value={answers[question.id]} disabled={Boolean(checked)||reviewMode} onChange={value=>onAnswer(question.id,value)}/> : <div className="mt-5 grid gap-2.5 sm:grid-cols-2">
                 {question.options.map((option, optionIndex) => {
                   const typed = option as { value?: string; label?: string };
                   const value =
@@ -878,7 +705,7 @@ function AssessmentWorkspace({
                     </label>
                   );
                 })}
-              </div>
+              </div>}
               {checked && (
                 <div
                   className={`mt-4 flex gap-3 rounded-xl border p-4 ${checked.correct ? "border-success-200 bg-success-50 text-success-900" : "border-danger-200 bg-danger-50 text-danger-900"}`}
@@ -892,8 +719,9 @@ function AssessmentWorkspace({
                     <p className="text-sm font-semibold">
                       {checked.correct
                         ? "Correct"
-                        : `Not quite. The correct answer is: ${checked.correctAnswer}`}
+                        : question.question_type === "matching" ? "Not quite. Review the correct pairs below." : `Not quite. The correct answer is: ${checked.correctAnswer}`}
                     </p>
+                    {question.question_type==="matching"&&<ul className="mt-2 space-y-1 text-sm">{Object.entries(JSON.parse(checked.correctAnswer||"{}")).map(([key,value])=><li key={key}>{key} → {String(value)}</li>)}</ul>}
                     {checked.explanation && (
                       <p className="mt-1 text-sm leading-5">
                         {checked.explanation}
@@ -968,26 +796,4 @@ function AssessmentWorkspace({
       )}
     </section>
   );
-}
-
-function localAnswerKey(
-  title: string,
-  questionText: string,
-  selectedAnswer = "",
-): QuestionFeedback {
-  const assessments = courseContent.assessments as Array<{
-    title: string;
-    questions: Array<{ question: string; answer: string; explanation: string }>;
-  }>;
-  const source = assessments
-    .find((assessment) => assessment.title === title)
-    ?.questions.find((question) => question.question === questionText);
-  const correctAnswer = source?.answer ?? "";
-  return {
-    correct: selectedAnswer === correctAnswer,
-    correctAnswer,
-    explanation:
-      source?.explanation ??
-      "Review the related learning screen for this answer.",
-  };
 }

@@ -1,0 +1,11 @@
+import {useCallback,useEffect,useState} from 'react';
+import {supabase} from '@/lib/supabase';
+import {useAuth} from '@/context/AuthContext';
+type Report={id:string;reason:string;discussion_id:string;resolved_at:string|null;discussion:{title:string;body:string;is_hidden:boolean}|null};
+export function DiscussionReports(){
+ const {user}=useAuth();const [rows,setRows]=useState<Report[]>([]),[error,setError]=useState(''),[saving,setSaving]=useState(false);
+ const load=useCallback(async()=>{const result=await supabase.from('discussion_reports').select('id,reason,discussion_id,resolved_at,discussion:discussions(title,body,is_hidden)').order('created_at',{ascending:false}).limit(30);if(result.error)setError('Discussion reports require migration 026.');else{setRows(result.data as unknown as Report[]);setError('');}},[]);
+ useEffect(()=>{void load();},[load]);
+ const action=async(row:Report,hide:boolean)=>{setSaving(true);const result=hide?await supabase.from('discussions').update({is_hidden:!row.discussion?.is_hidden}).eq('id',row.discussion_id):await supabase.from('discussion_reports').update({resolved_at:new Date().toISOString(),reviewed_by:user?.id}).eq('id',row.id);if(result.error)setError(result.error.message);else await load();setSaving(false);};
+ return <details className="rounded-xl border border-ink-200 bg-white p-5"><summary className="cursor-pointer font-semibold">Discussion moderation</summary>{error&&<p role="alert" className="mt-3 text-sm">{error}</p>}{!error&&!rows.length&&<p className="mt-3 text-sm text-ink-600">No reported posts.</p>}{rows.map(row=><article key={row.id} className="mt-4 rounded-xl bg-ink-50 p-4"><h3 className="text-sm font-semibold">{row.discussion?.title??'Discussion unavailable'}</h3><p className="mt-2 text-sm">Report: {row.reason}</p><p className="mt-2 whitespace-pre-wrap text-sm text-ink-600">{row.discussion?.body}</p><div className="mt-3 flex flex-wrap gap-2"><button type="button" className="btn-secondary" disabled={saving||!row.discussion} onClick={()=>void action(row,true)}>{row.discussion?.is_hidden?'Restore post':'Hide post from students'}</button>{!row.resolved_at&&<button type="button" className="btn-secondary" disabled={saving} onClick={()=>void action(row,false)}>Mark reviewed</button>}</div></article>)}</details>;
+}

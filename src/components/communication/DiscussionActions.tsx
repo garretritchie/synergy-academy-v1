@@ -1,0 +1,11 @@
+import {useState} from 'react';
+import {Modal} from '@/components/ui/Modal';
+import {supabase} from '@/lib/supabase';
+import {useAuth} from '@/context/AuthContext';
+import type {Discussion} from '@/types';
+export function DiscussionActions({post,onChanged}:{post:Discussion;onChanged:()=>void}){
+ const {user}=useAuth();const [mode,setMode]=useState<'edit'|'report'|null>(null),[body,setBody]=useState(''),[title,setTitle]=useState(''),[error,setError]=useState(''),[saving,setSaving]=useState(false);
+ const save=async()=>{if(!user)return;setSaving(true);setError('');const result=mode==='edit'?await supabase.from('discussions').update({title:title.trim(),body:body.trim()}).eq('id',post.id).eq('author_id',user.id):await supabase.from('discussion_reports').insert({discussion_id:post.id,cohort_id:post.cohort_id,reporter_id:user.id,reason:body.trim()});if(result.error)setError(result.error.message.includes('schema cache')?'Reporting needs migration 026. Please contact your instructor through Messages.':result.error.message);else{setMode(null);onChanged();}setSaving(false);};
+ const open=(value:'edit'|'report')=>{setMode(value);setTitle(post.title);setBody(value==='edit'?post.body??'':'');setError('');};
+ return <div className="mt-3 flex gap-4 text-xs text-ink-500">{post.author_id===user?.id&&<button type="button" onClick={()=>open('edit')}>Edit post</button>}<button type="button" onClick={()=>open('report')}>Report to instructor</button>{mode&&<Modal title={mode==='edit'?'Edit your post':'Report a post'} onClose={()=>{if(!saving)setMode(null);}}>{mode==='edit'&&<label className="block text-sm">Title<input className="input mt-1" maxLength={200} value={title} onChange={e=>setTitle(e.target.value)}/></label>}<label className="mt-3 block text-sm">{mode==='edit'?'Post':'Reason for reporting'}<textarea className="input mt-1 min-h-32" maxLength={mode==='edit'?5000:2000} value={body} onChange={e=>setBody(e.target.value)}/></label>{error&&<p role="alert" className="mt-3 text-sm text-danger-700">{error}</p>}<button type="button" className="btn-primary mt-4" disabled={saving||body.trim().length<(mode==='report'?5:1)||(mode==='edit'&&!title.trim())} onClick={()=>void save()}>{saving?'Saving…':mode==='edit'?'Save changes':'Send report'}</button></Modal>}</div>;
+}

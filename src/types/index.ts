@@ -203,7 +203,9 @@ export interface AttendanceRecord {
   recorded_by: string | null;
 }
 
+export type AssessmentRubric = {version:number;criteria:Array<{id:string;label:string;points:number;levels:string[]}>};
 export interface Assignment {
+  rubric?: AssessmentRubric;
   id: string;
   cohort_id: string | null;
   module_id: string | null;
@@ -225,6 +227,7 @@ export interface Assignment {
 }
 
 export interface Submission {
+  rubric_scores?: Record<string,number>;
   id: string;
   assignment_id: string;
   enrolment_id: string;

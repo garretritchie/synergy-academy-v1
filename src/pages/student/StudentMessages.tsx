@@ -22,6 +22,7 @@ import { fullName } from "@/lib/format";
 import type { Announcement, Discussion, Notification, Profile } from "@/types";
 import { DirectMessagesPanel } from "@/components/communication/DirectMessagesPanel";
 import { UserAvatar } from "@/components/ui/UserAvatar";
+import { QuestionReplies } from '@/components/communication/QuestionReplies';
 
 type CourseContext = {
   id: string;
@@ -203,6 +204,7 @@ export function StudentMessages() {
             <button
               key={id}
               type="button"
+              aria-pressed={activeTab === id}
               className={`flex min-h-10 shrink-0 items-center gap-2 rounded-lg px-4 text-sm font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand-500 ${activeTab === id ? "bg-brand-600 text-white" : "text-ink-600 hover:bg-ink-50 hover:text-ink-900"}`}
               onClick={() =>
                 setSearchParams(id === "announcements" ? {} : { tab: id })
@@ -360,7 +362,7 @@ export function StudentMessages() {
                   >
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="rounded-lg bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700">
-                        {question.cohort.course.title}
+                        {question.cohort.course.title} · {question.cohort.name}
                       </span>
                       {question.is_resolved && (
                         <span className="badge-success">Resolved</span>
@@ -378,6 +380,7 @@ export function StudentMessages() {
                       <UserAvatar profile={question.author} size="xs" decorative />
                       <span>{fullName(question.author)}, {formatDateTime(question.created_at)}</span>
                     </div>
+                    <QuestionReplies questionId={question.id} cohortId={question.cohort.id}/>
                   </article>
                 ))
               )}

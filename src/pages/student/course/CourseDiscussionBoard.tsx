@@ -1,3 +1,4 @@
+import { DiscussionActions } from '@/components/communication/DiscussionActions';
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import {
   MessageCircle,
@@ -217,7 +218,7 @@ export function CourseDiscussions() {
                     <h2 className="mt-4 text-lg font-semibold text-ink-950">
                       {row.title}
                     </h2>
-                    {row.body && (
+                    <DiscussionActions post={row} onChanged={()=>void load()}/>{row.body && (
                       <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-ink-700">
                         {row.body}
                       </p>

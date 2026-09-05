@@ -1,3 +1,7 @@
+import { DiscussionReports } from '@/components/communication/DiscussionReports';
+import { CourseQuestionsPanel } from '@/components/communication/CourseQuestionsPanel';
+import { Rubric } from '@/components/ui/Rubric';
+import { AttemptAuthorization } from "@/components/communication/AttemptAuthorization";
 /* Page-local loaders intentionally rerun when their serialized cohort scope changes. */
 /* eslint-disable react-hooks/exhaustive-deps */
 import { useEffect, useState, type FormEvent } from "react";
@@ -1289,6 +1293,7 @@ export function InstructorGradebook() {
   const [reviewFeedback, setReviewFeedback] = useState("");
   const [editing, setEditing] = useState("");
   const [grade, setGrade] = useState("");
+  const [rubricMarks,setRubricMarks]=useState<Record<string,number>>({});
   const [feedback, setFeedback] = useState("");
   const [overrideReason, setOverrideReason] = useState("");
   const [loading, setLoading] = useState(true);
@@ -1577,6 +1582,7 @@ export function InstructorGradebook() {
     else window.open(data.signedUrl, "_blank", "noopener,noreferrer");
   };
   const save = async (row: SubmissionRow) => {
+    if(row.assignment.rubric?.criteria?.length && row.assignment.rubric.criteria.some(c=>rubricMarks[c.id]===undefined)){setError("Choose a level for every review criterion.");return;}
     const numeric = Number(grade);
     const max = Number(row.assignment.max_points);
     const isOverride = row.grade != null && Number(row.grade) !== numeric;
@@ -1603,6 +1609,7 @@ export function InstructorGradebook() {
       .from("submissions")
       .update({
         grade: numeric,
+        ...(row.assignment.rubric?.criteria?.length ? {rubric_scores:rubricMarks} : {}),
         max_grade: max,
         feedback,
         graded_by: user?.id,
@@ -1614,7 +1621,7 @@ export function InstructorGradebook() {
       setError(updateError.message);
       return;
     }
-    if (row.assignment.cohort_id) {
+    if (row.assignment.cohort_id && row.assignment.assignment_type !== "activity") {
       let { data: category } = await supabase
         .from("grade_categories")
         .select("id")
@@ -1696,6 +1703,7 @@ export function InstructorGradebook() {
   };
   return (
     <AppLayout>
+      {gradebookCohortId&&<AttemptAuthorization cohortId={gradebookCohortId} students={students.filter(s=>s.status==="active")}/>}
       <PageHeader
         title="Gradebook"
         subtitle="Grade submitted work, configure weighted categories, and record practical or external assessments."
@@ -2010,6 +2018,7 @@ export function InstructorGradebook() {
                       {formatDateTime(row.submitted_at)}
                     </p>
                     <StructuredSubmission row={row} />
+                    <p className="mt-2 text-xs text-ink-500">{row.student.email}{row.assignment.assignment_type==="activity" ? " · Practice feedback only; excluded from the course grade." : ""}</p>
                     {row.submission_files?.length > 0 && (
                       <div className="mt-3 flex flex-wrap gap-2">
                         {row.submission_files.map((file) => (
@@ -2032,15 +2041,18 @@ export function InstructorGradebook() {
                     onClick={() => {
                       setEditing(row.id);
                       setGrade(String(row.grade ?? ""));
+                      setRubricMarks(row.rubric_scores ?? {});
                       setFeedback(row.feedback ?? "");
                       setOverrideReason("");
                     }}
                   >
                     Grade
                   </button>
+                  {row.status==="submitted"&&<button className="btn-secondary self-start" onClick={async()=>{const reason=window.prompt("Tell the student what to revise:");if(!reason?.trim())return;const response=await supabase.from("submissions").update({status:"returned",feedback:reason.trim()}).eq("id",row.id);if(response.error)setError(response.error.message);else await load();}}>Return for changes</button>}
                 </div>
                 {editing === row.id && (
                   <div className="mt-4 grid gap-3 border-t border-ink-100 pt-4 sm:grid-cols-[10rem_1fr_auto]">
+                    <div className="sm:col-span-3"><Rubric rubric={row.assignment.rubric} values={rubricMarks} onChange={(marks,total)=>{setRubricMarks(marks);const maximum=row.assignment.rubric?.criteria.reduce((sum,c)=>sum+c.points,0)??100;setGrade(String(Math.round(total/maximum*row.assignment.max_points*100)/100));}}/></div>
                     <Field label={`Score / ${row.assignment.max_points}`}>
                       <input
                         required
@@ -2326,6 +2338,8 @@ export function InstructorCommunications() {
       />
       <div className="mt-6 space-y-5">
         <DirectMessagesPanel role="instructor" />
+        <CourseQuestionsPanel/>
+        <DiscussionReports/>
         <div className="grid gap-5 xl:grid-cols-[24rem_minmax(0,1fr)]">
           <form
             onSubmit={save}

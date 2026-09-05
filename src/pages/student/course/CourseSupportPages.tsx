@@ -249,22 +249,13 @@ export function CourseResources() {
       const { data, error: queryError } = resourceResult;
       if (queryError) setError(queryError.message);
       else {
-        const resolved = await Promise.all(
-          ((data ?? []) as Resource[]).map(async (resource) => {
-            if (!resource.url?.startsWith("storage:")) return resource;
-            const { data: signed, error: signedError } = await supabase.storage
-              .from("course-assets")
-              .createSignedUrl(resource.url.slice(8), 3600);
-            if (signedError) return { ...resource, url: null };
-            return { ...resource, url: signed.signedUrl };
-          }),
-        );
-        setRows(resolved);
+        setRows((data ?? []) as Resource[]);
         if (!upcomingResult.error) setUpcoming(upcomingResult.data ?? []);
       }
       setLoading(false);
     })();
   }, [cohortId]);
+  const openResource=async(resource:Resource)=>{if(!resource.url)return;const win=window.open('about:blank','_blank');if(win)win.opener=null;let url=resource.url;if(url.startsWith('storage:')){const result=await supabase.storage.from('course-assets').createSignedUrl(url.slice(8),300);if(result.error){win?.close();setError(result.error.message);return;}url=result.data.signedUrl;}if(!/^https?:\/\//i.test(url)){win?.close();setError('This resource needs a valid web address.');return;}if(win)win.location.href=url;else setError('Allow pop-ups to open this resource.');};
   return (
     <CourseLayout>
       <PageHeader
@@ -289,10 +280,9 @@ export function CourseResources() {
               </p>
             </div>
             {row.url && (
-              <a
-                href={row.url}
-                target="_blank"
-                rel="noreferrer"
+              <button
+                type="button"
+                onClick={()=>void openResource(row)}
                 className="btn-secondary"
               >
                 {row.is_downloadable ? (
@@ -301,7 +291,7 @@ export function CourseResources() {
                   <ExternalLink size={15} />
                 )}
                 Open
-              </a>
+              </button>
             )}
           </article>
         ))}

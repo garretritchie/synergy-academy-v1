@@ -8,6 +8,7 @@ import {
   LockKeyhole,
   Sparkles,
 } from "lucide-react";
+import { useLearningPath } from "@/hooks/useLearningPath";
 import { CourseLayout } from "./CourseLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Alert, TableSkeleton } from "@/components/ui/Feedback";
@@ -28,9 +29,10 @@ type ActivityGate = { id: string; module_id: string | null; submissions: Array<{
 export function CourseLearn() {
   const { cohortId } = useParams<{ cohortId: string }>();
   const { user } = useAuth();
+  const path=useLearningPath(cohortId);
   const [modules, setModules] = useState<ModuleRow[]>([]);
   const [progress, setProgress] = useState<ProgressRecord[]>([]);
-  const [released, setReleased] = useState<string[]>([]);
+  const [, setReleased] = useState<string[]>([]);
   const [passedChecks, setPassedChecks] = useState<string[]>([]);
   const [moduleChecks, setModuleChecks] = useState<AssessmentGate[]>([]);
   const [moduleActivities, setModuleActivities] = useState<ActivityGate[]>([]);
@@ -122,9 +124,7 @@ export function CourseLearn() {
   const completedActivityCount = moduleActivities.filter((activity) => activity.submissions.some((submission) => ["submitted", "graded"].includes(submission.status))).length;
   const courseStepCount = publishedLessons.length + moduleChecks.length + moduleActivities.length;
   const completedStepCount = completedCount + passedChecks.length + completedActivityCount;
-  const coursePercent = courseStepCount
-    ? Math.round((completedStepCount / courseStepCount) * 100)
-    : 0;
+  const coursePercent = path.percentage;
   const assessmentStatusByModule = useMemo(() => {
     const statuses = new Map<
       string,
@@ -200,43 +200,18 @@ export function CourseLearn() {
               </SummaryTile>
             </section>
             <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {modules.map((module, moduleIndex) => {
-                const previousModule = modules[moduleIndex - 1];
-                const previousLesson = previousModule?.lessons.find(
-                  (lesson) => lesson.is_published,
-                );
-                const previousLearningComplete =
-                  !previousLesson ||
-                  progress.some(
-                    (item) =>
-                      item.lesson_id === previousLesson.id &&
-                      item.status === "completed",
-                  );
-                const previousCheck = previousModule
-                  ? moduleChecks.find((item) => item.module_id === previousModule.id)
-                  : null;
-                const previousActivity = previousModule
-                  ? moduleActivities.find((item) => item.module_id === previousModule.id)
-                  : null;
-                const previousActivityComplete = !previousActivity || previousActivity.submissions.some((submission) => ["submitted", "graded"].includes(submission.status));
-                const pathwayUnlocked = module.display_order === 0 || (module.display_order === 1
-                  ? previousLearningComplete
-                  : Boolean(previousModule && (previousCheck
-                    ? passedChecks.includes(previousModule.id)
-                    : previousActivity
-                      ? previousActivityComplete
-                      : previousLearningComplete)));
+              {modules.map((module) => {
+                const moduleSteps=path.steps.filter(s=>s.moduleId===module.id);
+                const destination=moduleSteps.find(s=>s.available&&!s.done) ?? moduleSteps.find(s=>s.available);
                 const lesson = module.lessons.find((item) => item.is_published);
                 if (!lesson) return null;
                 const available =
-                  pathwayUnlocked && released.includes(lesson.id);
+                  Boolean(destination);
                 const record = progress.find(
                   (item) => item.lesson_id === lesson.id,
                 );
-                const complete = record?.status === "completed";
-                const percent = complete
-                  ? 100
-                  : Number(record?.progress_percent ?? 0);
+                const complete = moduleSteps.length>0 && moduleSteps.every(s=>s.done);
+                const percent = moduleSteps.length?Math.round(moduleSteps.filter(s=>s.done).length/moduleSteps.length*100):0;
                 const isIntroduction = module.display_order === 0;
                 const assessmentStatus = assessmentStatusByModule.get(
                   module.id,
@@ -263,10 +238,10 @@ export function CourseLearn() {
                 return available ? (
                   <article
                     key={module.id}
-                    className={`group overflow-hidden rounded-2xl border border-ink-200/80 bg-white shadow-soft transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-elevated ${isIntroduction ? "md:col-span-2 xl:col-span-3" : ""}`}
+                    className={`group overflow-hidden rounded-2xl border border-ink-200/80 bg-white shadow-soft transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-elevated `}
                   >
                     <Link
-                      to={`/student/courses/${cohortId}/learn/${lesson.id}`}
+                      to={destination?.href ?? `/student/courses/${cohortId}/learn/${lesson.id}`}
                       className="block p-5 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500"
                     >
                       {cardBody}

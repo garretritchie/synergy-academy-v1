@@ -1,3 +1,4 @@
+import { Rubric } from '@/components/ui/Rubric';
 import { useCallback, useEffect, useState } from "react";
 import {
   CheckCircle2,
@@ -21,7 +22,7 @@ import type { Assignment, Submission } from "@/types";
 
 type AssignmentRow = Assignment & {
   module: { title: string; display_order: number } | null;
-  submissions: Submission[];
+  submissions: Array<Submission & {submission_files:Array<{id:string;file_name:string;file_path:string}>}>;
 };
 
 export function CourseAssignments() {
@@ -54,7 +55,7 @@ export function CourseAssignments() {
     setEnrolmentId(enrolmentResult.data.id);
     const assignmentResult = await supabase
       .from("assignments")
-      .select("*,module:modules(title,display_order),submissions(*)")
+      .select("*,module:modules(title,display_order),submissions(*,submission_files(*))")
       .eq("cohort_id", cohortId)
       .neq("assignment_type", "activity")
       .eq("is_published", true)
@@ -69,11 +70,15 @@ export function CourseAssignments() {
   }, [load]);
   const open = (row: AssignmentRow) => {
     setOpenId(row.id);
-    setContent(row.submissions[0]?.content ?? "");
+    const saved=row.submissions[0];let draft:string|null=null;if(!saved||!["submitted","graded"].includes(saved.status)){try{draft=localStorage.getItem(`academy-assignment-draft:${user?.id}:${cohortId}:${row.id}`);}catch{/* Use the account draft. */}}setContent(draft ?? saved?.content ?? "");
     setFiles([]);
   };
 
-  const submit = async (row: AssignmentRow) => {
+  const submit = async (row: AssignmentRow, finalize=true) => {
+    if(row.submissions.some(s=>["submitted","graded"].includes(s.status))){setError("Your submitted work is preserved. Ask your instructor to return it for changes.");return;}
+    if(finalize&&!content.trim()&&!files.length&&!row.submissions[0]?.submission_files.length){setError("Add your work or evidence before submitting.");return;}
+    if(files.some(f=>f.size>(row.max_file_size_mb??25)*1024*1024)){setError(`Files must be ${row.max_file_size_mb??25} MB or smaller.`);return;}
+    if(files.some(f=>row.allowed_file_types?.length&&!row.allowed_file_types.includes(f.name.split(".").pop()?.toLowerCase()??""))){setError("One of the selected file types is not allowed for this assignment.");return;}
     if (!user) return;
     setSaving(true);
     setError("");
@@ -86,8 +91,8 @@ export function CourseAssignments() {
           enrolment_id: enrolmentId,
           student_id: user.id,
           content,
-          status: "submitted",
-          submitted_at: new Date().toISOString(),
+          status: "draft",
+          submitted_at: null,
           is_late: late,
           max_grade: row.max_points,
         },
@@ -123,8 +128,10 @@ export function CourseAssignments() {
         setSaving(false);
         return;
       }
+      setFiles(current=>current.filter(item=>item!==file));
     }
-    setOpenId("");
+    if(finalize){const saved=await supabase.from("submissions").update({status:"submitted",submitted_at:new Date().toISOString()}).eq("id",submission.id).eq("status","draft");if(saved.error){setError(saved.error.message);setSaving(false);return;}}
+    localStorage.removeItem(`academy-assignment-draft:${user?.id}:${cohortId}:${row.id}`);
     setFiles([]);
     await load();
     setSaving(false);
@@ -222,7 +229,7 @@ export function CourseAssignments() {
                   <div className="border-t border-ink-100 p-5 sm:p-6">
                     <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
                       <div>
-                        <h3 className="font-semibold text-ink-950">
+                        <Rubric rubric={row.rubric} values={submission?.rubric_scores}/><h3 className="mt-4 font-semibold text-ink-950">
                           Instructions
                         </h3>
                         <ol className="mt-3 space-y-3 text-sm leading-6 text-ink-700">
@@ -256,15 +263,18 @@ export function CourseAssignments() {
                         </label>
                         <textarea
                           id={`response-${row.id}`}
+                          disabled={saving || submitted}
                           className="input min-h-32"
                           value={content}
-                          onChange={(event) => setContent(event.target.value)}
+                          onChange={(event) => {setContent(event.target.value);try{localStorage.setItem(`academy-assignment-draft:${user?.id}:${cohortId}:${row.id}`,event.target.value);}catch{/* Account saving remains available. */}}}
                           placeholder="Add your response, a short summary, or a note for your instructor."
                         />
                         <label className="btn-secondary mt-4 w-full cursor-pointer">
                           <FileUp size={16} /> Add files
                           <input
                             type="file"
+                            disabled={saving || submitted || !row.allow_file_upload}
+                            accept={row.allowed_file_types?.map(t=>`.${t}`).join(",")}
                             multiple
                             className="sr-only"
                             onChange={(event) =>
@@ -281,11 +291,14 @@ export function CourseAssignments() {
                             ))}
                           </ul>
                         )}
+                        {submission?.submission_files.map(file=><button className="btn-secondary mt-2 w-full" key={file.id} onClick={async()=>{const result=await supabase.storage.from("assignment-submissions").createSignedUrl(file.file_path,300);if(result.error)setError(result.error.message);else window.open(result.data.signedUrl,"_blank","noopener,noreferrer");}}>{file.file_name}</button>)}
+                        <p className="mt-3 text-xs text-ink-600">{submitted ? "Submitted work is preserved. Your instructor can return it for changes." : submission?.status==="draft" ? "Draft saved to your account." : "Save a draft as you work. Submit when all files have uploaded."}</p>
+                        <button type="button" className="btn-secondary mt-3 w-full" disabled={saving||submitted} onClick={()=>void submit(row,false)}>Save draft</button>
                         <button
                           type="button"
                           className="btn-primary mt-4 w-full"
                           disabled={
-                            saving || (!content.trim() && files.length === 0)
+                            saving || submitted || (!content.trim() && files.length === 0 && !submission?.submission_files.length)
                           }
                           onClick={() => void submit(row)}
                         >
@@ -293,7 +306,7 @@ export function CourseAssignments() {
                           {saving
                             ? "Submitting..."
                             : submitted
-                              ? "Submit a new version"
+                              ? "Submitted"
                               : "Submit assignment"}
                         </button>
                         {submission?.feedback && (

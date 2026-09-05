@@ -29,6 +29,7 @@ export function AdminResources() {
   const [cohorts, setCohorts] = useState<CohortOption[]>([]);
   const [checkpoints, setCheckpoints] = useState<CheckpointOption[]>([]);
   const [open, setOpen] = useState(false);
+  const [editingId,setEditingId]=useState("");
   const [resourceStep, setResourceStep] = useState(0);
   const [form, setForm] = useState({
     title: "",
@@ -128,7 +129,7 @@ export function AdminResources() {
       setSaving(false);
       return;
     }
-    const resourceId = crypto.randomUUID();
+    const resourceId = editingId || crypto.randomUUID();
     let resourceUrl = form.url;
     if (file) {
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
@@ -147,13 +148,13 @@ export function AdminResources() {
     }
     const { error: insertError } = await supabase
       .from("resources")
-      .insert({
+      .upsert({
         id: resourceId,
         title: form.title,
         description: form.description,
         resource_type: file ? "file" : form.resource_type,
         url: resourceUrl,
-        file_size: file?.size ?? null,
+        file_size: file?.size ?? rows.find(r=>r.id===editingId)?.file_size ?? null,
         is_downloadable: file ? true : form.is_downloadable,
         course_id: courseId,
         module_id: form.module_id || null,
@@ -165,11 +166,12 @@ export function AdminResources() {
         release_checkpoint_id: form.release_mode === "checkpoint" ? form.release_checkpoint_id : null,
         checkpoint_requires_pass: form.checkpoint_requires_pass,
         show_before_release: form.show_before_release,
-        display_order: rows.length + 1,
+        display_order: rows.find(r=>r.id===editingId)?.display_order ?? rows.length + 1,
       });
     if (insertError) setError(insertError.message);
     else {
       setOpen(false);
+      setEditingId("");
       setForm({
         title: "",
         description: "",
@@ -192,7 +194,9 @@ export function AdminResources() {
     }
     setSaving(false);
   };
+  const editResource=(row:Resource)=>{setEditingId(row.id);setForm({title:row.title,description:row.description??"",resource_type:row.resource_type,url:row.url??"",is_downloadable:row.is_downloadable,module_id:row.module_id??"",lesson_id:row.lesson_id??"",cohort_id:row.cohort_id??"",release_mode:row.release_mode??"immediate",release_at:row.release_at?new Date(new Date(row.release_at).getTime()-new Date(row.release_at).getTimezoneOffset()*60000).toISOString().slice(0,16):"",release_checkpoint_type:row.release_checkpoint_type??"lesson",release_checkpoint_id:row.release_checkpoint_id??"",checkpoint_requires_pass:row.checkpoint_requires_pass??true,show_before_release:row.show_before_release??true});setFile(null);setResourceStep(0);setOpen(true);};
   const remove = async (id: string) => {
+    if(!window.confirm("Remove this resource and its file? This may not be recoverable."))return;
     const row = rows.find((item) => item.id === id);
     if (row?.url?.startsWith("storage:"))
       await supabase.storage.from("course-assets").remove([row.url.slice(8)]);
@@ -231,10 +235,10 @@ export function AdminResources() {
           </Field>
         </section>
         <FormPanel
-          title="Add resource"
+          title={editingId ? "Edit resource" : "Add resource"}
           description="Upload a private course file or publish a trusted external URL."
           open={open}
-          onToggle={() => setOpen(!open)}
+          onToggle={() => {if(!open){setEditingId("");setForm({title:"",description:"",resource_type:"file",url:"",is_downloadable:false,module_id:"",lesson_id:"",cohort_id:"",release_mode:"immediate",release_at:"",release_checkpoint_type:"lesson",release_checkpoint_id:"",checkpoint_requires_pass:true,show_before_release:true});setFile(null);setResourceStep(0);}setOpen(!open);}}
           actionLabel="New resource"
         >
           <form onSubmit={save}>
@@ -253,11 +257,11 @@ export function AdminResources() {
                     : resourceStep === 3
                     ? form.resource_type === "link"
                       ? Boolean(form.url)
-                      : Boolean(file)
+                      : Boolean(file || (editingId && form.url))
                     : true
               }
               saving={saving}
-              finalAction="Publish resource"
+              finalAction={editingId ? "Save resource" : "Publish resource"}
               onBack={() => setResourceStep((step) => Math.max(0, step - 1))}
               onNext={() => setResourceStep((step) => Math.min(3, step + 1))}
             >
@@ -485,6 +489,7 @@ export function AdminResources() {
                       <ExternalLink size={16} />
                     </a>
                   )}
+                  <button type="button" className="btn-secondary" onClick={()=>editResource(row)}>Edit release / details</button>
                   <button
                     className="btn-ghost !p-2 text-danger-600"
                     onClick={() => void remove(row.id)}

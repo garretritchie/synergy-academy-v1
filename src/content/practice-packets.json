@@ -1,0 +1,133 @@
+{
+  "packets": [
+    {
+      "title": "Sort a safe task",
+      "input": "Fictional tasks: flag orders over $500; estimate next month's demand; draft a welcome email; find a refund policy; book an approved meeting.",
+      "example": "Drafting a welcome email is generation. Input: approved event facts. Output: an unsent email. Reviewer: team lead. Stop before sending.",
+      "template": "Task | Capability | Input | Output | Reviewer | Stop point\n",
+      "check": "Use one main label for each task. Explain any overlap. Include an input, output, reviewer and stop point for your chosen task."
+    },
+    {
+      "title": "A prompt you can improve",
+      "input": "Fictional event: staff workshop, 12 October, 10 am, Room B. Bring a laptop. Attendance is optional. Do not invent a price or trainer name.",
+      "example": "Context: staff need a brief invitation. Instruction: draft the invitation. Details: under 80 words; include date, time, room and what to bring. Input: the checked event facts.",
+      "template": "Context:\nInstruction:\nDetails:\nInput:\nFirst output:\nWeakness found:\nRevised instruction:\nWhat improved:\n",
+      "check": "Look for every supplied fact. Remove invented details. Explain one focused revision."
+    },
+    {
+      "title": "Compare two options",
+      "input": "Use the workshop facts from Module 2. Sample A: “Required workshop, 12 October at 10 am, Room B. Bring a laptop.” Sample B: “Optional staff workshop, 12 October at 10 am, Room B. Bring a laptop.” These are fictional sample outputs, not claims about a vendor.",
+      "example": "Accuracy: A changes optional attendance to required, so it fails that requirement. B preserves the facts. A fluent sentence can still be wrong.",
+      "template": "Criterion | What earns 1 / 3 / 5 | Option A | Option B | Evidence\nAccuracy | wrong / partly correct / all key facts correct | | |\nUsefulness | | | |\nPrivacy fit | | | |\nReview effort | | | |\nCost | | | |\nRecommendation and limits:\n",
+      "check": "Use identical input. Mark privacy and cost as unknown if the sample does not supply them; do not invent scores. Use approved tools or compare the supplied samples."
+    },
+    {
+      "title": "Check a draft against notes",
+      "input": "Fictional notes: Monday stock count found 12 missing labels. Mina will check the shelf list by Thursday. No customer orders are affected. A new printer is being considered, not approved.",
+      "example": "Bad draft: “A new printer was approved.” Better: “The team is considering a new printer.” This preserves the decision status in the notes.",
+      "template": "Purpose and reader:\nFirst draft:\nClaim | Source detail | Keep / fix / remove\nChecked final draft:\nHuman edits and reasons:\n",
+      "check": "Keep the count, owner, date and decision status accurate. Do not claim the printer was approved."
+    },
+    {
+      "title": "One message, two audiences",
+      "input": "Fictional facts: an order is delayed by two days. The team is checking a replacement part. No refund has been approved. A confirmed update will be sent tomorrow at noon.",
+      "example": "Manager: “Please approve the replacement-part check. The order is delayed two days.” Customer: “Your order is delayed by two days. We will send an update tomorrow at noon.” Neither version promises a refund.",
+      "template": "Manager version:\nCustomer version:\nFacts preserved:\nTone changes:\nPromises checked:\nRequested action:\n",
+      "check": "Keep the delay and update time in both versions. Do not invent a resolution or expose internal blame."
+    },
+    {
+      "title": "Create and check a clear asset",
+      "input": "Fictional brief: a poster for an optional staff workshop on 12 October at 10 am in Room B. Bring a laptop. Audience: staff reading on a phone. No real faces, protected logos or private data.",
+      "example": "A useful text alternative is: “Optional staff workshop, 12 October, 10 am, Room B. Bring a laptop.” The event facts matter more than decorative shapes.",
+      "template": "Brief:\nAudience and purpose:\nRequired facts:\nFormat:\nRights and consent check:\nText alternative or transcript:\nWhat I corrected:\n",
+      "check": "Check all dates, text and required items. Provide a text alternative. If a media tool is unavailable, submit a text layout and annotate how it meets the brief."
+    },
+    {
+      "title": "Trace claims to sources",
+      "input": "Fictional source A — Workshop memo, 1 September: “Room B has 18 seats. Attendance is optional.” Fictional source B — Registration note, 3 September: “Twelve staff have registered; registration closes 8 September.” These supplied practice sources are not live research.",
+      "example": "Supported: “12 staff registered” → source B. Not supported: “Everyone will attend.” Inference: “At the time of source B, six seats may remain,” assuming no new registrations.",
+      "template": "Question:\nClaim | Source | Exact supporting detail | Date | Limit\nConflicting or missing information:\nMy inference (clearly labeled):\n",
+      "check": "Use both supplied sources. Separate source facts from your inference. For independent research, use current sources you can open and inspect."
+    },
+    {
+      "title": "Clean a small dataset",
+      "input": "Fictional CSV:\norder_id,date,department,amount\nA1,2026-09-01,Office,10\nA2,2026-09-02,Office,20\nA3,2026-09-03,Sales,30\nA3,2026-09-03,Sales,30\nA4,2026-09-04,Sales,\n\nAssume the second A3 row is a confirmed duplicate; A4 amount is unknown.",
+      "example": "The three known genuine amounts total 60 and average 20. Do not turn the missing amount into zero. Report: “Known sales total 60; one order amount is missing.”",
+      "template": "Cleaning log:\nIssue | Evidence | Action\nFormula or calculation:\nKnown total:\nMissing-data limit:\nChart choice and units:\nDecision supported / not supported:\n",
+      "check": "Remove only the confirmed duplicate. Preserve the unknown as missing. Test the calculation on the known values and explain limits."
+    },
+    {
+      "title": "Build an action log",
+      "input": "Fictional meeting transcript — Jo: “We found 12 missing labels.” Mina: “I will check the shelf list by Thursday.” Jo: “Can we buy a printer?” Pat: “No decision yet. I will ask finance by Friday.”",
+      "example": "Action: Mina — check shelf list — Thursday. Open decision: printer purchase. Pat will ask finance by Friday; the transcript does not approve a purchase.",
+      "template": "Decision | Evidence\nAction | Owner | Due | Source words\nOpen question | Person to resolve it\nFollow-up message:\n",
+      "check": "Keep suggestions separate from decisions. Check owners and dates. Do not add attendees or approvals that are absent from the transcript."
+    },
+    {
+      "title": "Measure a small pilot",
+      "input": "Fictional baseline: 10 hours each week on a draft-only process. Pilot: 6 hours including review. Staff time is valued at $20/hour. Tool and support cost is $30/week. Errors must not rise. No customer actions are automated.",
+      "example": "Weekly time saved: 10 − 6 = 4 hours. Value: 4 × $20 = $80. Net benefit: $80 − $30 = $50/week. This is an estimate of time value, not guaranteed new cash.",
+      "template": "Problem:\nBaseline:\nPilot result:\nBenefits:\nFull costs:\nNet benefit and assumptions:\nQuality target:\nStop rule:\nOwner and next decision:\n",
+      "check": "Include review time and tool costs. State assumptions. Recommend expansion only if quality and safety targets also pass."
+    },
+    {
+      "title": "Test a bounded workflow",
+      "input": "Fictional workflow: read a public event form, prepare an invitation draft, and wait for staff approval. It may not send messages. Test cases: complete form; missing date; conflicting room names; draft tool unavailable.",
+      "example": "For a missing date, the workflow should stop and ask for the date, not invent one. For a tool failure, log the problem and preserve the input for safe retry.",
+      "template": "Allowed actions:\nForbidden actions:\nApproval point:\nTest case | Expected result | Actual result | Pass / fix\nLog fields:\nStop and recovery plan:\n",
+      "check": "Cover all four cases. Use a paper walkthrough or isolated test; do not grant access to live accounts or send real messages."
+    },
+    {
+      "title": "Review three workplace cases",
+      "input": "Case A: an AI draft invents a delivery promise. Case B: a chart treats missing sales as zero. Case C: an agent wants permission to send private files to a new address.",
+      "example": "For Case A: pause sending, verify the source facts, remove the promise, and ask an authorized reviewer to approve the corrected draft.",
+      "template": "Case | Risk | Safe next action | Evidence needed | Human reviewer\nA | | | |\nB | | | |\nC | | | |\nTerms I need to review:\nMy next practice step:\n",
+      "check": "Explain what to stop, what to verify and who should review each case. Use the glossary when a term is unclear."
+    }
+  ],
+  "rubric": {
+    "version": 1,
+    "criteria": [
+      {
+        "id": "task",
+        "label": "Meets the task",
+        "points": 25,
+        "levels": [
+          "Missing or unrelated work",
+          "Partly follows the task; important gaps remain",
+          "Addresses the task and all required outputs"
+        ]
+      },
+      {
+        "id": "evidence",
+        "label": "Evidence and accuracy",
+        "points": 25,
+        "levels": [
+          "No usable evidence or unchecked claims",
+          "Some checks shown; gaps or errors remain",
+          "Claims trace to evidence and corrections are shown"
+        ]
+      },
+      {
+        "id": "safety",
+        "label": "Safe and responsible use",
+        "points": 25,
+        "levels": [
+          "Unsafe data or unapproved action",
+          "Risks named but safeguards incomplete",
+          "Safe input, limits, reviewer and stop point are clear"
+        ]
+      },
+      {
+        "id": "reflection",
+        "label": "Reasoning and improvement",
+        "points": 25,
+        "levels": [
+          "No explanation of choices",
+          "Some reasoning; revision is unclear",
+          "Explains choices, limits and a useful improvement"
+        ]
+      }
+    ]
+  }
+}

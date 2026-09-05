@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/* A shared viewport budget keeps reading, practice and checks in one player. */
+.learning-player { height: calc(100dvh - 21rem); min-height: 32rem; max-height: 44rem; }
+@media (max-width: 1023px) {
+  .learning-player { height: auto; min-height: 0; max-height: none; }
+  .learning-player > main, .learning-player [aria-label="Lesson content"] { overflow: visible; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}
+
 @layer base {
   :root {
     color-scheme: light;
@@ -301,3 +311,8 @@ main table tbody tr {
     margin: 0;
   }
 }
+/* Native progress controls share the academy palette across browsers. */
+progress { appearance: none; border: 0; border-radius: 999px; overflow: hidden; background: #e2e8f0; }
+progress::-webkit-progress-bar { background: #e2e8f0; border-radius: 999px; }
+progress::-webkit-progress-value { background: #126bbe; border-radius: 999px; }
+progress::-moz-progress-bar { background: #126bbe; border-radius: 999px; }

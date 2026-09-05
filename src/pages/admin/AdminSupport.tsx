@@ -1,3 +1,5 @@
+import { DiscussionReports } from '@/components/communication/DiscussionReports';
+import { CourseQuestionsPanel } from '@/components/communication/CourseQuestionsPanel';
 import {
   useCallback,
   useEffect,
@@ -132,6 +134,8 @@ export function AdminCommunications() {
           </div>
         )}
         <DirectMessagesPanel role="administrator" />
+        <CourseQuestionsPanel/>
+        <DiscussionReports/>
         <FormPanel
           title="New announcement"
           open={open}

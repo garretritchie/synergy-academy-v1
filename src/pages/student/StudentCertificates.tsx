@@ -34,7 +34,7 @@ export function StudentCertificates() {
     <AppLayout>
       <PageHeader
         title="Certificates"
-        subtitle="Your verified Synergy Academy credentials, ready to view, download, or share."
+        subtitle="Your Synergy Academy credentials and certificate updates."
       />
       <div className="mt-6">
         {error && <Alert>{error}</Alert>}

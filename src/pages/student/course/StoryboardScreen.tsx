@@ -29,7 +29,7 @@ function BulletList({ items }: { items: string[] }) {
 }
 
 export function StoryboardScreen({ content }: { content: StoryboardContent }) {
-  if (content.type === "welcome") return <div><ScreenHeader content={content} />{content.outcomes && <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_18rem]"><div><h3 className="text-sm font-semibold text-ink-950">By the end, you can</h3><BulletList items={content.outcomes} /></div>{(content.start_title || content.start_body) && <aside className="rounded-xl border border-accent-200 bg-accent-50 p-4 text-accent-900"><Sparkles size={18} /><h3 className="mt-2.5 text-sm font-semibold">{content.start_title}</h3><p className="mt-1.5 text-sm leading-5">{content.start_body}</p></aside>}</div>}</div>;
+  if (content.type === "welcome") return <div><ScreenHeader content={content} />{content.outcomes && <div className={`mt-5 grid gap-4 ${content.start_title || content.start_body ? "lg:grid-cols-[1fr_18rem]" : ""}`}><div><h3 className="text-sm font-semibold text-ink-950">By the end, you can</h3><BulletList items={content.outcomes} /></div>{(content.start_title || content.start_body) && <aside className="rounded-xl border border-accent-200 bg-accent-50 p-4 text-accent-900"><Sparkles size={18} /><h3 className="mt-2.5 text-sm font-semibold">{content.start_title}</h3><p className="mt-1.5 text-sm leading-5">{content.start_body}</p></aside>}</div>}</div>;
 
   if (content.type === "cards") {
     const columns = content.cols && content.cols >= 3 ? "md:grid-cols-2 xl:grid-cols-3" : "md:grid-cols-2";

@@ -164,7 +164,7 @@ export function StudentProfile() {
             <h3 className="mt-4 text-lg font-semibold text-ink-900">
               {fullName}
             </h3>
-            <p className="text-sm text-ink-500">{profile?.email}</p>
+            <p className="break-words text-sm text-ink-500">{profile?.email}</p>
             <div className="mt-3 flex justify-center gap-2">
               {roles.map((role) => (
                 <Badge key={role} variant="brand" className="capitalize">

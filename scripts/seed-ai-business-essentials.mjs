@@ -135,6 +135,7 @@ async function main() {
       slug: "fundamentals-ai-business-professionals-demo",
     });
   }
+  if(course) throw new Error("This bootstrap seed is for a new course only. To update an existing course without deleting grades or question history, apply migrations 023–025 from GitHub in Bolt.new.");
   const courseValues = {
     title: content.course.title,
     slug: "ai-business-essentials",
@@ -357,7 +358,7 @@ async function main() {
       await client.from("assessment_questions").insert(
         item.questions.map((question, index) => ({
           assessment_id: assessment.id,
-          question_type: "multiple_choice",
+          question_type: question.type ?? "multiple_choice",
           question_text: question.question,
           options: question.options,
           correct_answer: question.answer,

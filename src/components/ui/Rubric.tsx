@@ -1,0 +1,6 @@
+import type { AssessmentRubric } from '@/types';
+
+export function Rubric({rubric,values,onChange}:{rubric?:AssessmentRubric;values?:Record<string,number>;onChange?:(value:Record<string,number>,total:number)=>void}){
+ if(!rubric?.criteria?.length)return null;
+ return <section className="rounded-xl border border-brand-100 bg-brand-50/50 p-4"><h3 className="text-sm font-semibold">Review criteria <span className="font-normal text-ink-500">· rubric v{rubric.version}</span></h3><div className="mt-3 space-y-3">{rubric.criteria.map(c=><div key={c.id}><p className="text-sm font-medium">{c.label} <span className="text-xs text-ink-500">/ {c.points}</span></p>{onChange?<select className="input mt-1 bg-white" aria-label={`Score for ${c.label}`} value={values?.[c.id]??''} onChange={e=>{const next={...values,[c.id]:Number(e.target.value)};onChange(next,Object.values(next).reduce((a,b)=>a+b,0));}}><option value="" disabled>Choose a level</option>{c.levels.map((level,i)=><option key={level} value={c.points*i/(c.levels.length-1)}>{c.points*i/(c.levels.length-1)} — {level}</option>)}</select>:<p className="mt-1 text-xs leading-5 text-ink-600">{c.levels[c.levels.length-1]}{values?.[c.id]!==undefined&&<strong className="ml-2">Score: {values[c.id]}</strong>}</p>}</div>)}</div></section>;
+}

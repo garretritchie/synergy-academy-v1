@@ -1,3 +1,4 @@
+import { CourseProgress } from "@/components/ui/CourseProgress";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -13,7 +14,6 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Alert, TableSkeleton } from "@/components/ui/Feedback";
 import { EmptyState } from "@/components/ui/Spinner";
-import { ProgressBar } from "@/components/ui/ProgressBar";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { formatDate } from "@/lib/format";
@@ -361,7 +361,6 @@ function MinePanel({
   loading,
   rows,
   hasAnyRows,
-  releasedCounts,
   hasFilters,
   onBrowse,
 }: {
@@ -406,19 +405,6 @@ function MinePanel({
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       {rows.map((row) => {
-        const records = row.progress_records ?? [];
-        const releasedCount = releasedCounts[row.cohort_id] ?? 0;
-        const progress = releasedCount
-          ? Math.min(
-              100,
-              Math.round(
-                records.reduce(
-                  (sum, item) => sum + Number(item.progress_percent),
-                  0,
-                ) / releasedCount,
-              ),
-            )
-          : 0;
         return (
           <Link
             key={row.id}
@@ -449,7 +435,7 @@ function MinePanel({
                 </div>
                 <div className="mt-5">
                   <div className="mb-1.5 flex flex-wrap justify-between gap-2 text-xs text-ink-500">
-                    <span>{progress}% complete</span>
+                    <span>Learning path</span>
                     <span className="flex items-center gap-1">
                       <CalendarDays size={13} />
                       {row.cohort.end_date
@@ -457,7 +443,7 @@ function MinePanel({
                         : "Ongoing access"}
                     </span>
                   </div>
-                  <ProgressBar value={progress} />
+                  <CourseProgress cohortId={row.cohort_id} compact/>
                 </div>
                 <div className="mt-4 flex items-center justify-end gap-1 text-sm font-medium text-brand-700">
                   Open course <ArrowRight size={16} />

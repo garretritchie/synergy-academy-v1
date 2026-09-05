@@ -1,3 +1,4 @@
+import { CourseProgress } from "@/components/ui/CourseProgress";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -12,7 +13,6 @@ import {
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Alert, TableSkeleton } from "@/components/ui/Feedback";
-import { ProgressBar } from "@/components/ui/ProgressBar";
 import { EmptyState } from "@/components/ui/Spinner";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -252,9 +252,9 @@ export function StudentDashboard() {
                 return (
                   <article
                     key={enrolment.id}
-                    className="group flex min-h-[25rem] flex-col overflow-hidden rounded-2xl bg-white shadow-card transition-[transform,box-shadow] duration-200 hover:-translate-y-1 hover:shadow-elevated"
+                    className="group flex min-h-[20rem] flex-col overflow-hidden rounded-2xl bg-white shadow-card transition-[transform,box-shadow] duration-200 hover:-translate-y-1 hover:shadow-elevated"
                   >
-                    <div className="relative aspect-[16/8] overflow-hidden bg-navy">
+                    <div className="relative aspect-[16/6] overflow-hidden bg-navy">
                       {course.cover_image_url ? (
                         <img
                           src={course.cover_image_url}
@@ -278,13 +278,7 @@ export function StudentDashboard() {
                         {enrolment.cohort.name}
                       </p>
                       <div className="mt-auto pt-6">
-                        <div className="mb-2 flex items-center justify-between text-xs font-semibold text-ink-600">
-                          <span>Course progress</span>
-                          <span className="tabular-nums text-brand-700">
-                            {progress}% complete
-                          </span>
-                        </div>
-                        <ProgressBar value={progress} />
+                        <CourseProgress cohortId={enrolment.cohort_id}/>
                         <Link
                           to={`/student/courses/${enrolment.cohort_id}/learn`}
                           className="btn-primary mt-5 w-full"
@@ -322,7 +316,7 @@ function LearningAtGlance({ courses }: { courses: CourseChoice[] }) {
             <DashboardRow
               key={item.enrolment.id}
               course={item.enrolment.cohort.course.title}
-              primary={`${item.progress}% learning complete`}
+              primary={<CourseProgress cohortId={item.enrolment.cohort_id} compact/>}
               secondary={item.gradeAverage === null ? "Grade not available" : `${item.gradeAverage}% grade average`}
             />
           ))}
@@ -386,7 +380,7 @@ function DashboardRow({
   secondary,
 }: {
   course: string;
-  primary: string;
+  primary: React.ReactNode;
   secondary: string;
 }) {
   return (

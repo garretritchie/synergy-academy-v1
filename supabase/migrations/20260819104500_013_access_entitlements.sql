@@ -582,11 +582,10 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  seat_record seat_assignments%ROWTYPE;
   organization_uuid uuid;
 BEGIN
-  SELECT seat, contract.organization_id
-  INTO seat_record, organization_uuid
+  SELECT contract.organization_id
+  INTO organization_uuid
   FROM seat_assignments seat
   JOIN access_contracts contract ON contract.id = seat.contract_id
   WHERE seat.id = seat_uuid;

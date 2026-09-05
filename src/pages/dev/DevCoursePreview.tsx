@@ -12,7 +12,7 @@ import {
   MessageSquare,
   Video,
 } from "lucide-react";
-import courseContent from "@/content/ai-business-essentials.json";
+import courseContent from "@/content/ai-business-preview.json";
 import { StoryboardScreen, type StoryboardContent } from "@/pages/student/course/StoryboardScreen";
 
 type Section = "learning" | "assessments" | "assignments" | "discussions" | "resources" | "live";
