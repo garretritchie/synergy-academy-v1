@@ -7,6 +7,8 @@ import {
   Clock,
   LockKeyhole,
   Sparkles,
+  LayoutGrid,
+  List,
 } from "lucide-react";
 import { useLearningPath } from "@/hooks/useLearningPath";
 import { CourseLayout } from "./CourseLayout";
@@ -38,6 +40,13 @@ export function CourseLearn() {
   const [moduleActivities, setModuleActivities] = useState<ActivityGate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [view, setView] = useState<'grid' | 'list'>(() => {
+    try { return localStorage.getItem('academy-module-view') === 'list' ? 'list' : 'grid'; } catch { return 'grid'; }
+  });
+  const changeView = (next: 'grid' | 'list') => {
+    setView(next);
+    try { localStorage.setItem('academy-module-view', next); } catch { /* Session preference still works. */ }
+  };
 
   useEffect(() => {
     if (!cohortId || !user) return;
@@ -156,10 +165,11 @@ export function CourseLearn() {
       <PageHeader
         title="Learning"
         subtitle="Build your skills one clear eLearning screen at a time."
+        actions={<div className="inline-flex rounded-lg border border-brand-200 bg-white p-1" role="group" aria-label="Module layout">{([{ id: 'grid', label: 'Grid', Icon: LayoutGrid }, { id: 'list', label: 'List', Icon: List }] as const).map(({id,label,Icon}) => <button key={id} type="button" aria-pressed={view === id} onClick={() => changeView(id)} className={`flex min-h-10 items-center gap-2 rounded-md px-3 text-sm font-semibold ${view === id ? 'bg-brand-700 text-white' : 'text-ink-600 hover:bg-brand-50'}`}><Icon size={15}/>{label}</button>)}</div>}
       />
       <div className="mt-6">
-        {error && <Alert>{error}</Alert>}
-        {loading ? (
+        {(error || path.error) && <Alert>{error || path.error}</Alert>}
+        {loading || path.loading ? (
           <div className="rounded-xl bg-white shadow-soft">
             <TableSkeleton />
           </div>
@@ -171,7 +181,7 @@ export function CourseLearn() {
         ) : (
           <>
             <section
-              className="grid gap-3 sm:grid-cols-3"
+              className="grid divide-y divide-ink-200 rounded-xl border border-ink-200 bg-white sm:grid-cols-3 sm:divide-x sm:divide-y-0"
               aria-label="Learning progress summary"
             >
               <SummaryTile label="Course progress" value={`${coursePercent}%`}>
@@ -199,7 +209,7 @@ export function CourseLearn() {
                 </p>
               </SummaryTile>
             </section>
-            <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <div className={view === 'grid' ? 'mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3' : 'module-list mt-5 grid gap-3'}>
               {modules.map((module) => {
                 const moduleSteps=path.steps.filter(s=>s.moduleId===module.id);
                 const destination=moduleSteps.find(s=>s.available&&!s.done) ?? moduleSteps.find(s=>s.available);
@@ -221,6 +231,7 @@ export function CourseLearn() {
                     module={module}
                     lesson={lesson}
                     available={available}
+                    lockReason={moduleSteps.find(step => !step.available)?.reason || 'Waiting for your instructor to release this module.'}
                     complete={complete}
                     percent={percent}
                     isIntroduction={isIntroduction}
@@ -238,11 +249,11 @@ export function CourseLearn() {
                 return available ? (
                   <article
                     key={module.id}
-                    className={`group overflow-hidden rounded-2xl border border-ink-200/80 bg-white shadow-soft transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-elevated `}
+                    className="module-card module-card-available group"
                   >
                     <Link
                       to={destination?.href ?? `/student/courses/${cohortId}/learn/${lesson.id}`}
-                      className="block p-5 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500"
+                      className="flex h-full flex-col outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500"
                     >
                       {cardBody}
                     </Link>
@@ -250,7 +261,7 @@ export function CourseLearn() {
                 ) : (
                   <article
                     key={module.id}
-                    className="rounded-2xl border border-ink-200/70 bg-white/70 p-5 opacity-70 shadow-soft"
+                    className="module-card module-card-locked"
                   >
                     {cardBody}
                   </article>
@@ -274,7 +285,7 @@ function SummaryTile({
   children: ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-ink-200/80 bg-white p-4 shadow-soft">
+    <div className="p-4">
       <p className="text-xs font-medium text-ink-500">{label}</p>
       <p className="mt-1 text-2xl font-semibold tabular-nums text-ink-950">
         {value}
@@ -288,6 +299,7 @@ function ModuleTile({
   module,
   lesson,
   available,
+  lockReason,
   complete,
   percent,
   isIntroduction,
@@ -297,6 +309,7 @@ function ModuleTile({
   module: ModuleRow;
   lesson: Lesson;
   available: boolean;
+  lockReason: string;
   complete: boolean;
   percent: number;
   isIntroduction: boolean;
@@ -305,9 +318,9 @@ function ModuleTile({
 }) {
   return (
     <>
-      <div className="-mx-5 -mt-5 mb-5 flex h-24 items-end justify-between overflow-hidden rounded-t-2xl bg-gradient-to-br from-navy via-brand-800 to-brand-500 px-5 py-4 text-white">
-        <div>
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/12">
+      <div className="module-card-head">
+        <div className="flex items-center gap-2.5">
+          <span className={`flex h-8 w-8 items-center justify-center rounded-lg ${complete ? 'bg-success-100 text-success-800' : available ? 'bg-brand-100 text-brand-800' : 'bg-ink-200 text-ink-600'}`}>
             {complete ? (
               <CheckCircle2 size={19} />
             ) : isIntroduction ? (
@@ -318,19 +331,14 @@ function ModuleTile({
               <LockKeyhole size={16} />
             )}
           </span>
-          <p className="mt-2 text-xs font-semibold text-brand-100">
+          <p className="text-xs font-semibold text-ink-700">
             {isIntroduction
-              ? "Course orientation"
+              ? "Introduction"
               : `Module ${String(module.display_order).padStart(2, "0")}`}
           </p>
         </div>
-        <span className="text-5xl font-semibold leading-none text-white/15">
-          {isIntroduction ? "I" : String(module.display_order).padStart(2, "0")}
-        </span>
-      </div>
-      <div className="flex justify-end">
         <span
-          className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${complete ? "bg-success-50 text-success-700" : available ? "bg-brand-50 text-brand-700" : "bg-ink-100 text-ink-500"}`}
+          className={`rounded-full px-2.5 py-1 text-xs font-semibold ${complete ? "bg-success-100 text-success-800" : available ? "bg-white text-brand-800" : "bg-ink-200 text-ink-600"}`}
         >
           {complete
             ? "Completed"
@@ -341,10 +349,8 @@ function ModuleTile({
               : "Locked"}
         </span>
       </div>
-      <p className="mt-5 text-xs font-semibold uppercase tracking-[0.08em] text-brand-700">
-        {isIntroduction ? "Start here" : `Module ${module.display_order}`}
-      </p>
-      <h2 className="mt-1.5 text-lg font-semibold leading-6 text-ink-950">
+      <div className="module-card-body">
+      <h2 className="text-base font-semibold leading-6 text-ink-950">
         {isIntroduction
           ? "Course Introduction"
           : module.title.replace(/^Module \d+: /, "")}
@@ -354,32 +360,24 @@ function ModuleTile({
           {module.description}
         </p>
       )}
-      <div className="mt-5 grid grid-cols-2 gap-3 rounded-xl bg-ink-50 px-3 py-2.5 text-xs">
-        <span className="inline-flex items-center gap-1.5">
-          <Clock size={13} />
-          {lesson.estimated_minutes ?? 0} minutes
-        </span>
-        <span className="text-right text-ink-500">
-          Assessment score{" "}
-          <strong className="font-semibold tabular-nums text-ink-800">
-            {assessmentScore}
-          </strong>
-        </span>
-      </div>
+      <dl className="mt-auto grid grid-cols-2 gap-3 pt-3 text-xs">
+        <div><dt className="text-ink-500">Estimated time</dt><dd className="mt-1 inline-flex items-center gap-1.5 font-semibold text-ink-800"><Clock size={13} />{lesson.estimated_minutes ?? 0} min</dd></div>
+        <div className="text-right"><dt className="text-ink-500">Assessment score</dt><dd className="mt-1 font-semibold tabular-nums text-ink-800">{assessmentScore}</dd></div>
+      </dl>
       <div className="mt-3 flex items-center justify-between text-xs text-ink-500">
-        <span>Learning progress</span>
+        <span>Module progress</span>
         <span className="font-semibold tabular-nums text-ink-700">
           {percent}%
         </span>
       </div>
-      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-ink-100">
+      <div role="progressbar" aria-label="Module progress" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100} className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-ink-200">
         <div
           className={`h-full rounded-full ${complete ? "bg-success-600" : "bg-brand-600"}`}
           style={{ width: `${percent}%` }}
         />
       </div>
       <div
-        className={`mt-5 flex items-center justify-between border-t border-ink-100 pt-4 text-sm font-semibold ${available ? "text-brand-700" : "text-ink-400"}`}
+        className={`mt-3 flex items-center justify-between border-t border-ink-200 pt-3 text-sm font-semibold ${available ? "text-brand-700" : "text-ink-500"}`}
       >
         <span>
           {complete
@@ -388,9 +386,10 @@ function ModuleTile({
               ? started
                 ? "Continue learning"
                 : "Start learning"
-              : "Complete the previous step"}
+              : lockReason}
         </span>
         {available && <ArrowRight size={17} />}
+      </div>
       </div>
     </>
   );

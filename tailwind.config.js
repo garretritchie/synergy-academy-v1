@@ -4,9 +4,10 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Open Sans', 'system-ui', '-apple-system', 'sans-serif'],
-        display: ['Montserrat', 'system-ui', '-apple-system', 'sans-serif'],
+        sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        display: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
       },
+      fontSize: { sm: ['0.8125rem', { lineHeight: '1.35rem' }] },
       colors: {
         navy: '#08172b',
         canvas: '#f3f6fa',

@@ -18,7 +18,6 @@ import {
   ScrollText,
   Layers,
   ClipboardCheck,
-  BrainCircuit,
   Clock3,
   Building2,
   WandSparkles,
@@ -51,8 +50,7 @@ export const studentNav: NavSection[] = [
 export const studentCourseNav: NavItem[] = [
   { label: "Home", path: "home", icon: LayoutDashboard },
   { label: "Learning", path: "learn", icon: BookOpen },
-  { label: "Assessments", path: "assessments", icon: BrainCircuit },
-  { label: "Assignments", path: "assignments", icon: ClipboardList },
+  { label: "Coursework", path: "coursework", icon: ClipboardList },
   { label: "Discussion Board", path: "discussions", icon: MessageSquare },
   { label: "Resources", path: "resources", icon: FolderOpen },
   { label: "Live Meetings", path: "live", icon: Video },

@@ -1,4 +1,4 @@
-import { CourseProgress } from "@/components/ui/CourseProgress";
+import { CourseProgress, CourseContinueButton } from "@/components/ui/CourseProgress";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -193,12 +193,12 @@ export function StudentDashboard() {
   return (
     <AppLayout>
       <section className="mx-auto max-w-6xl">
-        <div className="flex flex-col gap-5 border-b border-ink-200 pb-7 sm:flex-row sm:items-end sm:justify-between">
+        <div className="page-header">
           <div>
-            <h1 className="font-display text-3xl font-semibold tracking-[-0.03em] text-navy sm:text-4xl">
+            <h1 className="font-display text-2xl font-semibold tracking-[-0.03em] text-navy sm:text-3xl">
               Welcome, {firstName}.
             </h1>
-            <p className="mt-3 max-w-2xl text-base leading-7 text-ink-600">
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-600">
               Choose a course to begin learning or continue where you stopped.
             </p>
           </div>
@@ -206,7 +206,7 @@ export function StudentDashboard() {
             <Link to="/student/messages" className="btn-secondary">
               <Mail size={16} /> Messages
             </Link>
-            <Link to="/student/certificates" className="btn-secondary">
+            <Link to="/student/certificates" className="btn-ghost">
               <Award size={16} /> Certificates
             </Link>
           </div>
@@ -216,7 +216,7 @@ export function StudentDashboard() {
           <LearningAtGlance courses={courses} />
         )}
 
-        <div className="mt-8">
+        <div className="mt-7">
           <div className="flex items-center justify-between gap-4">
             <h2 className="font-display text-xl font-semibold text-ink-950">
               Choose a course
@@ -246,20 +246,20 @@ export function StudentDashboard() {
               />
             </div>
           ) : (
-            <div className="mt-5 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-              {courses.map(({ enrolment, progress }) => {
+            <div className={`mt-4 grid gap-5 ${courses.length > 1 ? "md:grid-cols-2 xl:grid-cols-3" : ""}`}>
+              {courses.map(({ enrolment }) => {
                 const course = enrolment.cohort.course;
                 return (
                   <article
                     key={enrolment.id}
-                    className="group flex min-h-[20rem] flex-col overflow-hidden rounded-2xl bg-white shadow-card transition-[transform,box-shadow] duration-200 hover:-translate-y-1 hover:shadow-elevated"
+                    className={`card group flex overflow-hidden ${courses.length === 1 ? "flex-col sm:flex-row" : "flex-col"}`}
                   >
-                    <div className="relative aspect-[16/6] overflow-hidden bg-navy">
+                    <div className={`relative shrink-0 overflow-hidden bg-navy ${courses.length === 1 ? "h-44 sm:h-auto sm:w-64" : "h-36"}`}>
                       {course.cover_image_url ? (
                         <img
                           src={course.cover_image_url}
                           alt=""
-                          className="h-full w-full object-cover opacity-80 transition-transform duration-300 group-hover:scale-[1.03]"
+                          className="absolute inset-0 h-full w-full object-cover object-center"
                         />
                       ) : (
                         <div className="flex h-full items-center justify-center text-brand-200">
@@ -270,22 +270,16 @@ export function StudentDashboard() {
                         {String(course.metadata?.course_id || "Course")}
                       </span>
                     </div>
-                    <div className="flex flex-1 flex-col p-6">
+                    <div className="flex min-w-0 flex-1 flex-col p-5 sm:p-6">
                       <h3 className="font-display text-lg font-semibold leading-6 text-ink-950">
                         {course.title}
                       </h3>
                       <p className="mt-2 text-sm text-ink-500">
                         {enrolment.cohort.name}
                       </p>
-                      <div className="mt-auto pt-6">
-                        <CourseProgress cohortId={enrolment.cohort_id}/>
-                        <Link
-                          to={`/student/courses/${enrolment.cohort_id}/learn`}
-                          className="btn-primary mt-5 w-full"
-                        >
-                          {progress > 0 ? "Continue course" : "Start course"}{" "}
-                          <ArrowRight size={16} />
-                        </Link>
+                      <div className="mt-auto pt-5">
+                        <CourseProgress cohortId={enrolment.cohort_id} compact/>
+                        <div className="mt-4"><CourseContinueButton cohortId={enrolment.cohort_id}/></div>
                       </div>
                     </div>
                   </article>
@@ -301,16 +295,13 @@ export function StudentDashboard() {
 
 function LearningAtGlance({ courses }: { courses: CourseChoice[] }) {
   return (
-    <section className="mt-7 rounded-2xl border border-brand-100 bg-[linear-gradient(120deg,rgba(230,242,253,0.92),rgba(255,255,255,0.88))] p-5 shadow-soft sm:p-6">
+    <section className="mt-6" aria-labelledby="learning-glance-heading">
       <div>
-        <h2 className="font-display text-xl font-semibold text-ink-950">
+        <h2 id="learning-glance-heading" className="font-display text-lg font-semibold text-ink-950">
           Your learning at a glance
         </h2>
-        <p className="mt-1 text-sm text-ink-500">
-          Performance, upcoming dates, and announcements stay labeled by course.
-        </p>
       </div>
-      <div className="mt-5 grid gap-4 lg:grid-cols-3">
+      <div className="mt-3 grid gap-4 lg:grid-cols-3">
         <DashboardPanel icon={BarChart3} title="Performance">
           {courses.map((item) => (
             <DashboardRow
@@ -321,7 +312,7 @@ function LearningAtGlance({ courses }: { courses: CourseChoice[] }) {
             />
           ))}
         </DashboardPanel>
-        <DashboardPanel icon={CalendarDays} title="Upcoming">
+        <DashboardPanel icon={CalendarDays} title="Upcoming" tone="calendar">
           {courses.map((item) => (
             <DashboardRow
               key={item.enrolment.id}
@@ -331,7 +322,7 @@ function LearningAtGlance({ courses }: { courses: CourseChoice[] }) {
             />
           ))}
         </DashboardPanel>
-        <DashboardPanel icon={Megaphone} title="Announcements">
+        <DashboardPanel icon={Megaphone} title="Announcements" tone="messages">
           {courses.map((item) => (
             <DashboardRow
               key={item.enrolment.id}
@@ -356,20 +347,22 @@ function DashboardPanel({
   icon: Icon,
   title,
   children,
+  tone,
 }: {
   icon: typeof BarChart3;
   title: string;
   children: React.ReactNode;
+  tone?: "calendar" | "messages";
 }) {
   return (
-    <section className="rounded-2xl border border-ink-200/80 bg-white p-5 shadow-soft">
+    <section className="dashboard-panel" data-tone={tone}>
       <div className="flex items-center gap-2.5">
-        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
+        <span className={`flex h-8 w-8 items-center justify-center rounded-lg ${tone === 'calendar' ? 'bg-accent-100 text-accent-800' : tone === 'messages' ? 'bg-success-100 text-success-800' : 'bg-brand-100 text-brand-800'}`}>
           <Icon size={18} />
         </span>
         <h3 className="font-semibold text-ink-950">{title}</h3>
       </div>
-      <div className="mt-4 space-y-3">{children}</div>
+      <div className="mt-3 space-y-3">{children}</div>
     </section>
   );
 }
@@ -384,13 +377,13 @@ function DashboardRow({
   secondary: string;
 }) {
   return (
-    <article className="rounded-xl bg-ink-50 px-3.5 py-3">
+    <article className="border-t border-ink-200/70 pt-3">
       <p className="line-clamp-1 text-xs font-semibold text-brand-700">
         {course}
       </p>
-      <p className="mt-1 line-clamp-1 text-sm font-medium text-ink-900">
+      <div className="mt-1 text-sm font-medium text-ink-900">
         {primary}
-      </p>
+      </div>
       <p className="mt-0.5 line-clamp-2 text-xs leading-5 text-ink-500">
         {secondary}
       </p>

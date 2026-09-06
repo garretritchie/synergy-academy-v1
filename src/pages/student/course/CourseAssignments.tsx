@@ -1,5 +1,5 @@
 import { Rubric } from '@/components/ui/Rubric';
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import {
   CheckCircle2,
   ChevronDown,
@@ -25,7 +25,7 @@ type AssignmentRow = Assignment & {
   submissions: Array<Submission & {submission_files:Array<{id:string;file_name:string;file_path:string}>}>;
 };
 
-export function CourseAssignments() {
+export function CourseAssignments({ embedded = false, category = 'all' }: { embedded?: boolean; category?: 'all' | 'homework' | 'projects' } = {}) {
   const { cohortId } = useParams<{ cohortId: string }>();
   const { user } = useAuth();
   const [enrolmentId, setEnrolmentId] = useState("");
@@ -137,12 +137,14 @@ export function CourseAssignments() {
     setSaving(false);
   };
 
+  const Layout = embedded ? Fragment : CourseLayout;
+  const visibleRows = rows.filter(row => category === 'all' || (category === 'homework' ? row.assignment_type === 'homework' : row.assignment_type !== 'homework'));
   return (
-    <CourseLayout>
-      <PageHeader
+    <Layout>
+      {!embedded && <PageHeader
         title="Assignments"
         subtitle="Find homework, capstone guidance, presentation work, feedback, and submissions in one place."
-      />
+      />}
       {error && (
         <div className="mt-5">
           <Alert>{error}</Alert>
@@ -152,17 +154,17 @@ export function CourseAssignments() {
         <div className="mt-6 rounded-xl bg-white shadow-soft">
           <TableSkeleton />
         </div>
-      ) : rows.length === 0 ? (
+      ) : visibleRows.length === 0 ? (
         <div className="mt-6 rounded-xl bg-white shadow-soft">
           <EmptyState
             icon={<ClipboardList size={30} />}
-            title="No assignments yet"
-            description="Published homework and capstone work will appear here."
+            title={category === 'projects' ? 'No projects yet' : category === 'homework' ? 'No homework yet' : 'No assignments yet'}
+            description={category === 'projects' ? 'Published projects and presentations will appear here.' : 'Published homework tasks will appear here.'}
           />
         </div>
       ) : (
         <div className="mt-6 grid items-start gap-4 lg:grid-cols-2">
-          {rows.map((row) => {
+          {visibleRows.map((row) => {
             const submission = row.submissions[0];
             const submitted =
               submission && ["submitted", "graded"].includes(submission.status);
@@ -172,11 +174,11 @@ export function CourseAssignments() {
             return (
               <article
                 key={row.id}
-                className={`overflow-hidden rounded-2xl border border-ink-200/80 border-t-4 bg-white shadow-soft ${isHomework ? "border-t-brand-500" : "border-t-navy"} ${expanded ? "lg:col-span-2" : ""}`}
+                className={`card overflow-hidden ${expanded ? "lg:col-span-2" : ""}`}
               >
                 <button
                   type="button"
-                  className="flex w-full items-start gap-4 p-5 text-left hover:bg-ink-50"
+                  className={`flex w-full items-start gap-3 p-4 text-left transition-colors ${isHomework ? "bg-brand-50/70 hover:bg-brand-50" : "bg-accent-50 hover:bg-accent-100"}`}
                   aria-expanded={expanded}
                   onClick={() => (expanded ? setOpenId("") : open(row))}
                 >
@@ -191,17 +193,14 @@ export function CourseAssignments() {
                   </span>
                   <span className="min-w-0 flex-1">
                     <span
-                      className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ${isHomework ? "bg-brand-50 text-brand-700" : "bg-ink-100 text-navy"}`}
+                      className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${isHomework ? "bg-brand-100 text-brand-800" : "bg-accent-100 text-accent-800"}`}
                     >
-                      {isHomework ? "Homework" : "Capstone project"}
+                      {isHomework ? "Homework" : row.assignment_type === 'presentation' ? 'Presentation' : 'Project'}
                     </span>
-                    <span className="mt-2 block text-xs font-semibold uppercase tracking-[0.08em] text-ink-500">
-                      {moduleLabel(row.module)} ·{" "}
-                      {row.assignment_type.replace("_", " ")}
-                    </span>
-                    <span className="mt-1 block font-semibold text-ink-950">
+                    <span className="mt-2 block font-semibold text-ink-950">
                       {row.title}
                     </span>
+                    <span className="mt-1 block text-xs text-ink-500">{moduleLabel(row.module)}</span>
                     <span className="mt-2 flex flex-wrap gap-3 text-xs text-ink-500">
                       <span>{row.max_points} points</span>
                       {row.due_date && (
@@ -324,6 +323,6 @@ export function CourseAssignments() {
           })}
         </div>
       )}
-    </CourseLayout>
+    </Layout>
   );
 }

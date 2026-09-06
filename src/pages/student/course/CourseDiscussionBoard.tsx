@@ -252,11 +252,13 @@ export function CourseDiscussions() {
                     <button
                       type="button"
                       onClick={() => setReplyingTo(isReplying ? "" : row.id)}
-                      className="ml-auto flex min-h-9 items-center gap-1.5 rounded-full px-3 text-sm font-medium text-ink-600 hover:bg-white"
+                      aria-expanded={isReplying}
+                      aria-controls={`reply-composer-${row.id}`}
+                      className="btn-primary ml-auto !min-h-11 !px-3"
                     >
                       <MessageCircle size={15} />
-                      {replies.length}{" "}
-                      {replies.length === 1 ? "reply" : "replies"}
+                      {isReplying ? 'Cancel reply' : 'Write a reply'}
+                      {replies.length > 0 && <span className="rounded bg-white/20 px-1.5 text-xs">{replies.length}</span>}
                     </button>
                   </div>
                   {(replies.length > 0 || isReplying) && (
@@ -280,10 +282,11 @@ export function CourseDiscussions() {
                         </div>
                       ))}
                       {isReplying && (
-                        <div className="flex gap-3">
+                        <div id={`reply-composer-${row.id}`} className="flex gap-3">
                           <UserAvatar profile={profile} size="sm" />
                           <div className="min-w-0 flex-1">
                             <textarea
+                              aria-label={`Reply to ${row.title}`}
                               autoFocus
                               className="input min-h-20 resize-none"
                               placeholder="Write a reply..."
@@ -295,7 +298,7 @@ export function CourseDiscussions() {
                                 }))
                               }
                             />
-                            <div className="mt-2 flex items-center justify-between">
+                            <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                               <div className="flex items-center gap-1 text-sm text-ink-500">
                                 <SmilePlus size={16} />
                                 {REACTIONS.map((emoji) => (
@@ -323,7 +326,7 @@ export function CourseDiscussions() {
                                 onClick={() => void addReply(row.id)}
                               >
                                 <Send size={14} />
-                                Reply
+                                Post reply
                               </button>
                             </div>
                           </div>

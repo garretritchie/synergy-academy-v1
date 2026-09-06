@@ -1,5 +1,5 @@
 import { MatchingQuestion } from "./MatchingQuestion";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -69,7 +69,7 @@ type QuestionFeedback = {
 const isModuleCheck = (assessment: AssessmentRow) =>
   assessment.assessment_type === "practice";
 
-export function CourseAssessments() {
+export function CourseAssessments({ embedded = false, onWorkspaceChange }: { embedded?: boolean; onWorkspaceChange?: (active: boolean) => void } = {}) {
   const { cohortId, assessmentId } = useParams<{
     cohortId: string;
     assessmentId?: string;
@@ -88,6 +88,8 @@ export function CourseAssessments() {
   const [pathActivities, setPathActivities] = useState<PathActivity[]>([]);
   const [, setReleasedLessonIds] = useState<string[]>([]);
   const [quiz, setQuiz] = useState<StudentAssessment | null>(null);
+  const workspaceActive = Boolean(quiz);
+  useEffect(() => { onWorkspaceChange?.(workspaceActive); }, [workspaceActive, onWorkspaceChange]);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [result, setResult] = useState<AssessmentResult | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -190,6 +192,10 @@ export function CourseAssessments() {
     const order=assessment.module?.display_order;
     return order === undefined || learningPath.steps.filter(s=>{const m=learningPath.modules.find(m=>m.id===s.moduleId);return m && m.display_order<=order;}).every(s=>s.done);
   };
+  const lockReason = (assessment: AssessmentRow) => {
+    if (assessment.lesson_id && !completedLessonIds.has(assessment.lesson_id)) return `Complete ${assessment.module ? moduleLabel(assessment.module) : 'the linked lesson'} learning first, then finish its required activities and checks.`;
+    return assessment.module ? `Unlocks after all learning, activities, and knowledge checks through ${moduleLabel(assessment.module)} are complete.` : 'Complete the required course steps first.';
+  };
   useEffect(()=>{
     if (!expiresAt || result || reviewMode) {setSecondsLeft(null);return;}
     const tick=()=>setSecondsLeft(Math.max(0,Math.ceil((new Date(expiresAt).getTime()-Date.now())/1000)));
@@ -281,12 +287,13 @@ export function CourseAssessments() {
     assessmentId && quiz && practiceChecks.some((item) => item.id === quiz.id),
   );
   const activeAssessment = quiz ? assessments.find((item) => item.id === quiz.id) : null;
+  const Layout = embedded ? Fragment : CourseLayout;
   return (
-    <CourseLayout>
+    <Layout>
       <div className={quiz ? "mx-auto max-w-5xl" : ""}>
       {learningCheckActive&&<div className="mb-3 flex justify-end"><StudyNotes cohortId={cohortId ?? ""} lessonId={activeAssessment?.lesson_id ?? ""} screen={200000}/></div>}
       {!quiz && assessmentId && <div className="mb-4 rounded-xl border border-brand-100 bg-brand-50 p-4"><p className="text-sm">Knowledge checks are practice. Retake as often as you wish, or review your latest answers.</p><div className="mt-3 flex gap-2">{assessments.filter(a=>a.id===assessmentId).map(a=><div key={a.id} className="flex gap-2"><button className="btn-primary" disabled={saving || !available(a)} onClick={()=>void start(a)}>Start / resume check</button>{a.assessment_attempts.some(x=>x.status==="completed")&&<button className="btn-secondary" disabled={saving} onClick={()=>void start(a,true)}>Review latest</button>}</div>)}</div></div>}
-      {!quiz && !assessmentId && (
+      {!quiz && !assessmentId && !embedded && (
         <PageHeader
           title="Assessments"
           subtitle="Graded checkpoints, the midterm, and the final exam unlock at the required course points. Module checks now live inside Learning."
@@ -360,13 +367,14 @@ export function CourseAssessments() {
               rows={graded}
               focusedModule={searchParams.get("module")}
               available={available}
+              lockReason={lockReason}
               saving={saving}
               onStart={start}
             />
           </div>
         ))}
     </div>
-    </CourseLayout>
+    </Layout>
   );
 }
 
@@ -376,6 +384,7 @@ function AssessmentGroup({
   rows,
   focusedModule,
   available,
+  lockReason,
   saving,
   onStart,
 }: {
@@ -384,14 +393,15 @@ function AssessmentGroup({
   rows: AssessmentRow[];
   focusedModule: string | null;
   available: (assessment: AssessmentRow) => boolean;
+  lockReason: (assessment: AssessmentRow) => string;
   saving: boolean;
   onStart: (assessment: AssessmentRow, review?: boolean) => void;
 }) {
   return (
-    <section className="rounded-2xl border border-brand-100 bg-brand-50/35 p-5 sm:p-6">
-      <h2 className="text-xl font-semibold text-ink-950">{title}</h2>
+    <section>
+      <h2 className="text-lg font-semibold text-ink-950">{title}</h2>
       <p className="mt-1 text-sm text-ink-500">{description}</p>
-      <div className="mt-4 grid gap-3 md:grid-cols-3">
+      <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         {rows.map((assessment) => {
           const unlocked = available(assessment);
           const attempts = assessment.assessment_attempts || [];
@@ -409,17 +419,18 @@ function AssessmentGroup({
             : "";
           const attemptLimitReached =
             !isModuleCheck(assessment) &&
+            !attempts.some(attempt => attempt.status === 'in_progress') &&
             attempts.length >= assessment.max_attempts;
           const canReview = attempts.length > 0;
           return (
             <article
               id={moduleKey}
               key={assessment.id}
-              className={`flex flex-col rounded-2xl border bg-white p-4 shadow-soft transition-[border-color,box-shadow] hover:border-brand-200 hover:shadow-elevated ${focusedModule === moduleKey ? "border-brand-400 ring-2 ring-brand-100" : "border-ink-200/80"}`}
+              className={`module-card p-4 ${!unlocked ? 'module-card-locked' : 'border-brand-200'} ${focusedModule === moduleKey ? "border-brand-400 ring-2 ring-brand-100" : ""}`}
             >
               <div className="flex items-start gap-4">
                 <span
-                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${passed ? "bg-success-50 text-success-700" : unlocked ? "bg-brand-50 text-brand-700" : "bg-ink-100 text-ink-400"}`}
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${passed ? "bg-success-100 text-success-800" : unlocked ? "bg-brand-100 text-brand-800" : "bg-ink-100 text-ink-600"}`}
                 >
                   {passed ? (
                     <CheckCircle2 size={21} />
@@ -430,12 +441,10 @@ function AssessmentGroup({
                   )}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-semibold uppercase tracking-[0.08em] text-brand-700">
-                    {moduleLabel(assessment.module)}
-                  </p>
-                  <h3 className="mt-1 font-semibold text-ink-950">
+                  <h3 className="font-semibold text-ink-950">
                     {assessment.title}
                   </h3>
+                  <p className="mt-1 text-xs text-ink-500">{moduleLabel(assessment.module)}</p>
                   <p className="mt-2 line-clamp-2 text-sm leading-5 text-ink-600">
                     {assessment.description}
                   </p>
@@ -458,6 +467,7 @@ function AssessmentGroup({
                 </div>
               </div>
               <div className="mt-auto grid gap-2 pt-5">
+                {!unlocked && <p className="text-xs leading-5 text-ink-600">{lockReason(assessment)}</p>}
                 {canReview && (
                   <button
                     type="button"
@@ -480,6 +490,8 @@ function AssessmentGroup({
                     "Locked"
                   ) : attemptLimitReached ? (
                     "Attempt used"
+                  ) : attempts.some(attempt => attempt.status === 'in_progress') ? (
+                    "Resume assessment"
                   ) : attempts.length ? (
                     <>
                       <RotateCcw size={16} /> Start attempt{" "}

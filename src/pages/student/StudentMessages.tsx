@@ -181,23 +181,8 @@ export function StudentMessages() {
         }
       />
       <div className="mt-6 space-y-5">
-        <section className="overflow-hidden rounded-2xl border border-brand-100 bg-[linear-gradient(120deg,rgba(232,243,252,0.96),rgba(255,255,255,0.98))] px-5 py-4 shadow-soft sm:px-6">
-          <div className="flex items-center gap-4">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white shadow-[0_6px_18px_rgba(26,108,176,0.18)]">
-              <MessageCircle size={21} />
-            </span>
-            <div>
-              <h2 className="font-semibold text-ink-950">
-                Your communication center
-              </h2>
-              <p className="mt-0.5 text-sm text-ink-600">
-                Send a private message or review updates from your courses.
-              </p>
-            </div>
-          </div>
-        </section>
         <nav
-          className="flex gap-1 overflow-x-auto rounded-xl border border-ink-200 bg-white p-1 shadow-soft"
+          className="segmented-tabs w-fit max-w-full"
           aria-label="Message sections"
         >
           {messageTabs.map(({ id, label, icon: Icon }) => (
@@ -205,7 +190,7 @@ export function StudentMessages() {
               key={id}
               type="button"
               aria-pressed={activeTab === id}
-              className={`flex min-h-10 shrink-0 items-center gap-2 rounded-lg px-4 text-sm font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand-500 ${activeTab === id ? "bg-brand-600 text-white" : "text-ink-600 hover:bg-ink-50 hover:text-ink-900"}`}
+              className="segmented-tab"
               onClick={() =>
                 setSearchParams(id === "announcements" ? {} : { tab: id })
               }
@@ -411,7 +396,7 @@ export function StudentMessages() {
                   <h2 className="mt-3 font-semibold text-ink-950">
                     {announcement.title}
                   </h2>
-                  <p className="mt-2 line-clamp-4 whitespace-pre-wrap text-sm leading-6 text-ink-600">
+                  <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-ink-600">
                     {announcement.body}
                   </p>
                   <div className="mt-3 flex items-center gap-2 text-xs text-ink-500">

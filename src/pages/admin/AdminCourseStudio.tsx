@@ -407,7 +407,6 @@ export function AdminCourseStudio() {
 
   return (
     <AppLayout>
-      {selectedCourse&&<DeliveryReadiness courseId={selectedCourse.id}/>}
       <PageHeader
         title="Course Studio"
         subtitle="Create, prepare, and publish a course with one guided workspace. Advanced tools remain available when you need them."
@@ -420,6 +419,7 @@ export function AdminCourseStudio() {
 
       <div className="mt-6 space-y-5">
         {error && <Alert>{error}</Alert>}
+        {selectedCourse&&<DeliveryReadiness courseId={selectedCourse.id}/>}
 
         {wizardOpen && (
           <FormPanel

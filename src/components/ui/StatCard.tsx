@@ -25,20 +25,16 @@ export function StatCard({
 }: StatCardProps) {
   const styles = accentStyles[accent];
   return (
-    <div className="card surface-interactive group relative overflow-hidden p-5">
-      <span
-        aria-hidden="true"
-        className={`absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-transparent ${styles.line} to-transparent opacity-70`}
-      />
+    <div className="card relative overflow-hidden p-5">
       <div className="flex items-start justify-between">
         <div>
           <p className="text-xs font-semibold text-ink-500">{label}</p>
-          <p className="mt-2 font-display text-[1.75rem] font-semibold leading-none tracking-[-0.03em] tabular-nums text-ink-950">{value}</p>
-          {hint && <p className="mt-1.5 text-xs text-ink-400">{hint}</p>}
+          <p className="mt-2 font-display text-2xl font-semibold leading-none tracking-[-0.03em] tabular-nums text-ink-950">{value}</p>
+          {hint && <p className="mt-2 text-xs text-ink-500">{hint}</p>}
         </div>
         {icon && (
           <div
-            className={`flex h-9 w-9 items-center justify-center rounded-lg shadow-sm ring-1 ring-inset ring-current/10 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:scale-[1.03] ${styles.bg} ${styles.text}`}
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${styles.bg} ${styles.text}`}
           >
             {icon}
           </div>

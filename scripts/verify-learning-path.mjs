@@ -14,3 +14,10 @@ path=buildLearningPath('cohort',modules,[],[{...check,passing_score:0,assessment
 path=buildLearningPath('cohort',modules,[],[{...check,assessment_attempts:[{status:'completed',percentage:80}]}],new Set(['l1','l2']),released);assert.equal(pathProgress(path).next.id,'l3');
 path=buildLearningPath('cohort',modules,[],[],new Set(),new Set());assert.equal(pathProgress(path).next,undefined);
 console.log('PASS optional Learn/Do/Assess combinations, multiple lessons, order gaps, draft gates, score gates, release gates, percentage and next step.');
+const scheduled=buildLearningPath('cohort',modules,[],[],new Set(),new Set(),new Map([['l1','Unlocks September 20.']]));
+assert.equal(scheduled[0].reason,'Unlocks September 20.');
+assert.match(scheduled[1].reason,/Complete the learning: l1/);
+assert.equal(scheduled[0].available,false);
+const dependent=buildLearningPath('cohort',modules,[activity],[check],new Set(['l1','l2']),released);
+assert.equal(dependent.find(s=>s.id==='q1').reason,'Complete the activity: Practice');
+console.log('PASS release explanations and named prerequisites do not alter access gates.');

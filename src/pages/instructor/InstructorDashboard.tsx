@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { StatCard } from "@/components/ui/StatCard";
 import { Alert, TableSkeleton } from "@/components/ui/Feedback";
 import { useInstructorCohorts } from "@/hooks/useInstructorCohorts";
 import { supabase } from "@/lib/supabase";
@@ -94,18 +95,7 @@ export function InstructorDashboard() {
           <>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {cards.map((card) => (
-                <div
-                  key={card.label}
-                  className="rounded-xl bg-white p-5 shadow-soft"
-                >
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm text-ink-500">{card.label}</p>
-                    <card.icon size={18} className="text-brand-600" />
-                  </div>
-                  <p className="mt-3 text-3xl font-semibold tabular-nums text-ink-900">
-                    {card.value}
-                  </p>
-                </div>
+                <StatCard key={card.label} label={card.label} value={card.value} icon={<card.icon size={19}/>}/>
               ))}
             </div>
             <section className="rounded-xl bg-white p-5 shadow-soft">

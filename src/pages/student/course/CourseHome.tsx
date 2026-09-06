@@ -3,7 +3,6 @@ import { Link, useParams } from "react-router-dom";
 import {
   ArrowRight,
   BookOpen,
-  BrainCircuit,
   CheckCircle2,
   ClipboardList,
   GraduationCap,
@@ -207,7 +206,7 @@ export function CourseHome() {
                 </div>
               </section>
             )}
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid divide-y divide-ink-200 overflow-hidden rounded-xl border border-ink-200 bg-white sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-4">
               <Metric
                 icon={TrendingUp}
                 label="Learning progress"
@@ -230,6 +229,7 @@ export function CourseHome() {
                 icon={CheckCircle2}
                 label="Grade average"
                 value={grades.length ? `${average}%` : "Not available"}
+                compact={!grades.length}
               />
             </div>
             <section>
@@ -237,9 +237,9 @@ export function CourseHome() {
                 Course workspace
               </h2>
               <p className="mt-1 text-sm text-ink-500">
-                Everything for this course is organized into three clear areas.
+                Learn and practice, then complete your graded coursework.
               </p>
-              <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <CourseArea
                   icon={BookOpen}
                   title="Learning"
@@ -247,16 +247,10 @@ export function CourseHome() {
                   to={path.next?.href ?? `/student/courses/${cohortId}/learn`}
                 />
                 <CourseArea
-                  icon={BrainCircuit}
-                  title="Assessments"
-                  description="Take graded checkpoints, the midterm, and the final exam."
-                  to={`/student/courses/${cohortId}/assessments`}
-                />
-                <CourseArea
                   icon={ClipboardList}
-                  title="Assignments"
-                  description="Submit homework and build your capstone project."
-                  to={`/student/courses/${cohortId}/assignments`}
+                  title="Coursework"
+                  description="Find graded assessments, exams, homework, and your capstone project."
+                  to={`/student/courses/${cohortId}/coursework`}
                 />
               </div>
             </section>
@@ -416,9 +410,9 @@ function Metric({
   compact?: boolean;
 }) {
   return (
-    <div className="rounded-xl bg-white p-5 shadow-soft">
+    <div className="p-4 sm:border-r sm:border-ink-200 last:border-r-0">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-ink-500">{label}</p>
+        <p className="text-xs text-ink-600">{label}</p>
         <Icon size={18} className="text-brand-600" />
       </div>
       <p

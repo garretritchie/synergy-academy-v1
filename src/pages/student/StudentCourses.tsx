@@ -1,6 +1,6 @@
 import { CourseProgress } from "@/components/ui/CourseProgress";
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
   ArrowRight,
@@ -31,7 +31,8 @@ type CourseSort = "recent" | "title-asc" | "title-desc";
 
 export function StudentCourses() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<LibraryTab>("mine");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab: LibraryTab = searchParams.get('tab') === 'catalog' ? 'catalog' : 'mine';
   const [rows, setRows] = useState<CourseRow[]>([]);
   const [catalog, setCatalog] = useState<Course[]>([]);
   const [releasedCounts, setReleasedCounts] = useState<Record<string, number>>(
@@ -171,12 +172,12 @@ export function StudentCourses() {
   }, [activeTab, normalizedQuery, sort, statusFilter]);
 
   const enrolledByCourse = useMemo(
-    () => new Map(rows.map((row) => [row.cohort.course_id, row])),
+    () => new Map(rows.filter(row => row.status === 'active').map((row) => [row.cohort.course_id, row])),
     [rows],
   );
 
   const switchTab = (tab: LibraryTab) => {
-    setActiveTab(tab);
+    setSearchParams(tab === 'catalog' ? { tab: 'catalog' } : {});
     setQuery("");
     setStatusFilter("all");
     setSort(tab === "mine" ? "recent" : "title-asc");

@@ -17,7 +17,7 @@ export function LearningFlow({ active, hasActivity, hasAssessment }: { active: F
   ];
 
   return (
-    <nav className="flex min-h-12 items-center rounded-xl border border-brand-100 bg-white/90 px-2 py-1.5 shadow-soft backdrop-blur-sm" aria-label="Module workflow">
+    <nav className="flex min-h-12 items-center rounded-xl border border-ink-200 bg-white px-2 py-1.5" aria-label="Module workflow">
       {steps.map((step, index) => {
         const Icon = step.icon;
         const destination=moduleSteps.find(s=>s.kind===step.id&&!s.done) ?? moduleSteps.find(s=>s.kind===step.id);

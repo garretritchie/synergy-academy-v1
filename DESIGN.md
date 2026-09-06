@@ -16,30 +16,30 @@ colors:
   danger: "#dc2626"
 typography:
   display:
-    fontFamily: "Montserrat, system-ui, sans-serif"
+    fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif"
     fontSize: "3rem"
     fontWeight: 700
     lineHeight: 1.08
     letterSpacing: "-0.03em"
   headline:
-    fontFamily: "Montserrat, system-ui, sans-serif"
+    fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif"
     fontSize: "1.5rem"
     fontWeight: 700
     lineHeight: 1.25
     letterSpacing: "-0.025em"
   title:
-    fontFamily: "Montserrat, system-ui, sans-serif"
+    fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif"
     fontSize: "1rem"
     fontWeight: 600
     lineHeight: 1.5
   body:
-    fontFamily: "Open Sans, system-ui, sans-serif"
-    fontSize: "0.875rem"
+    fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif"
+    fontSize: "0.8125rem"
     fontWeight: 400
     lineHeight: 1.5
   label:
-    fontFamily: "Open Sans, system-ui, sans-serif"
-    fontSize: "0.875rem"
+    fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif"
+    fontSize: "0.8125rem"
     fontWeight: 600
     lineHeight: 1.25
 rounded:
@@ -117,10 +117,10 @@ The palette combines institutional navy, clear action blue, and cool neutral sur
 
 ## Typography
 
-**Display Font:** Montserrat (with system sans fallbacks)
-**Body Font:** Open Sans (with system sans fallbacks)
+**Display Font:** Native system sans (SF on Apple, Segoe UI on Windows, Roboto on Android)
+**Body Font:** The same system sans, 13px interface copy and 14px lesson body copy
 
-**Character:** Montserrat gives headings a confident geometric structure while Open Sans keeps dense academic and administrative copy neutral and readable.
+**Character:** Crisp native typography keeps dense academic and administrative copy professional and predictable across devices. Headings retain a larger, semibold hierarchy.
 
 ### Hierarchy
 
@@ -130,7 +130,7 @@ The palette combines institutional navy, clear action blue, and cool neutral sur
 - **Body:** Regular 14px interface copy, increasing to 16px only for longer reading passages.
 - **Label:** Semibold 14px form and control labels; uppercase 12px is reserved for functional navigation groups.
 
-**The Two-Family Rule.** Montserrat carries identity and hierarchy; Open Sans carries instructions, data, and extended reading.
+**One-family hierarchy.** Use size, weight, and spacing for hierarchy. Mobile form controls remain at least 16px to avoid automatic input zoom.
 
 ## Layout
 
@@ -188,7 +188,21 @@ Controls use gently curved 8px corners, standard surfaces use 12px corners, and 
 
 ### Navigation
 
-Desktop navigation uses Lucide icons with compact text labels in a controlled navy-to-blue brand gradient. Active destinations use a translucent white field, higher-contrast text, and a slim inset marker. Mobile retains the same sections in an overlay drawer with a persistent academy header.
+Desktop navigation uses Lucide icons with compact text labels on a solid navy surface. Active destinations use a translucent white field and higher-contrast text. Mobile retains the same sections in a focus-contained overlay drawer with a persistent academy header.
+
+## Platform refinement — September 2026
+
+The Synergy identity remains authoritative. The September 5 user-approved refinement replaces Montserrat/Open Sans with crisp native system typography, retaining navy, blue, warm gold, and readable tonal surfaces.
+
+- Canvas `#edf2f7`, sidebar `#10263f`, white task surfaces, and dividers `#dce4ee` separate navigation, orientation and working content.
+- Calendar summaries use warm paper `#f8f5ed` with `#e8e0cd` borders; announcements use pale sage `#eff6f4` with `#d8e7e3` borders. These tones group information, not performance or success states; explicit labels and icons remain mandatory.
+- Primary controls use the established brand-700 token, solid white text and a 44px minimum target. Secondary controls are white with a quiet stroke. Static cards must not lift on hover as though clickable.
+- Page headings use 24px, the dashboard greeting 30px on desktop, body 14px, and metadata 12px. Course-reading content keeps its existing larger reading sizes.
+- Course module cards use compact identity/status strips, one topic title, duration and score, progress, and one destination. Locked cards keep readable text rather than reducing the opacity of the whole card.
+- Course resources use reusable file tiles; homework and capstone tiles retain blue and warm-gold category cues. Messages uses a wrapping segmented navigation control and full readable announcements.
+- Top bars are 64px. Desktop sidebars remain 240px; all temporary menus render above page content. Mobile navigation excludes the background from keyboard interaction, traps Tab within the drawer, and closes with Escape.
+- Readiness warnings show an explicit issue count and expandable detail. Collapsing detail never implies the course is ready.
+- Native progress controls use the existing `#126bbe` academy blue and fully rounded tracks. Keyboard focus, reduced motion and tabular numerals are part of the shared system.
 
 ## Do's and Don'ts
 

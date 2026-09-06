@@ -80,7 +80,6 @@ export function LessonPage() {
   const [error, setError] = useState("");
   const [activeNugget, setActiveNugget] = useState(0);
   const [outlineOpen, setOutlineOpen] = useState(false);
-  const [outlineLessons, setOutlineLessons] = useState<OutlineLesson[]>([]);
   const [, setCompletedLessonIds] = useState<string[]>([]);
   const [, setReleasedLessonIds] = useState<string[]>([]);
   const [moduleCheckId, setModuleCheckId] = useState("");
@@ -245,7 +244,6 @@ export function LessonPage() {
           const currentIndex = navigable.findIndex(
             (item) => item.id === lessonId,
           );
-          setOutlineLessons(ordered);
           setReleasedLessonIds(released);
           setCompletedLessonIds([...completedIds]);
           setPreviousLesson(
@@ -304,9 +302,6 @@ export function LessonPage() {
   const isLastNugget =
     activeNugget === Math.max(0, lessonWorkspace.nuggets.length - 1);
   const lessonPartCount = Math.max(1, lessonWorkspace.nuggets.length);
-  const currentLessonIndex = outlineLessons.findIndex(
-    (item) => item.id === lessonId,
-  );
   const completedCourseStepCount=path.completed, totalCourseSteps=path.total;
   const isIntroduction = lesson?.module.display_order === 0;
   const completionDestination =
@@ -345,8 +340,8 @@ export function LessonPage() {
       ) : !lesson ? (
         <Alert>{error || "Lesson not found."}</Alert>
       ) : (
-        <article className="mx-auto max-w-5xl space-y-4 pb-6">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+        <article className="lesson-workspace mx-auto max-w-5xl space-y-4 pb-6">
+          <div className="lesson-workspace-tools flex flex-col gap-3 lg:flex-row lg:items-center">
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
@@ -361,18 +356,13 @@ export function LessonPage() {
               </button>
               <StudyNotes cohortId={cohortId ?? ""} lessonId={lessonId ?? ""} screen={activeNugget}/>
             </div>
-            {currentLessonIndex >= 0 && (
-              <div className="text-right">
-                <p className="text-xs font-medium text-ink-500">Lesson {currentLessonIndex + 1} of {outlineLessons.length}</p>
-              </div>
-            )}
+            {!isIntroduction && <div className="min-w-0 flex-1"><LearningFlow active="learn" hasActivity={Boolean(activityId)} hasAssessment={Boolean(moduleCheckId)} /></div>}
           </div>
-          {!isIntroduction && <LearningFlow active="learn" hasActivity={Boolean(activityId)} hasAssessment={Boolean(moduleCheckId)} />}
           {error && <Alert>{error}</Alert>}
           <div className="learning-player grid overflow-hidden rounded-2xl bg-white shadow-elevated lg:grid-cols-[15rem_minmax(0,1fr)]">
             <PathNavigation cohortId={cohortId ?? ""} />
             <div className="flex min-h-0 min-w-0 flex-col">
-              <header className="border-b border-ink-200 bg-white px-5 py-2 sm:px-6">
+              <header className="lesson-player-header shrink-0 border-b border-ink-200 bg-white px-5 py-2 sm:px-6">
                 <p className="text-xs font-semibold text-brand-700">
                   {lesson.module.title.split(":")[0]}
                 </p>
@@ -407,7 +397,7 @@ export function LessonPage() {
               </header>
 
               <section
-                className="scrollbar-thin min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6"
+                className="lesson-reading-pane scrollbar-thin min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6"
                 aria-label="Lesson content"
               >
                 {lessonWorkspace.nuggets.length > 0 ? (
@@ -444,7 +434,7 @@ export function LessonPage() {
                 )}
               </section>
 
-              <footer className="border-t border-ink-200 bg-ink-50/90 px-4 py-3 sm:px-5">
+              <footer className="shrink-0 border-t border-ink-200 bg-ink-50/90 px-4 py-3 sm:px-5">
                 <div className="grid grid-cols-2 items-center gap-2 sm:grid-cols-[1fr_auto_1fr] sm:gap-3">
                   <div>
                     {activeNugget > 0 ? (
@@ -614,7 +604,7 @@ function LessonPartContent({
     );
   }
 
-  return <div className="mx-auto max-w-[72ch]">{renderBlocks(blocks)}</div>;
+  return <div className={blocks.some(block => block.block_type === "storyboard_screen") ? "w-full" : "mx-auto max-w-[72ch]"}>{renderBlocks(blocks)}</div>;
 }
 
 

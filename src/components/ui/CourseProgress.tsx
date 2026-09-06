@@ -1,5 +1,12 @@
 import { useLearningPath } from '@/hooks/useLearningPath';
 import { Link } from 'react-router-dom';
+import { ArrowRight } from 'lucide-react';
+export function CourseContinueButton({ cohortId }: { cohortId: string }) {
+  const path = useLearningPath(cohortId);
+  return <Link to={path.next?.href ?? `/student/courses/${cohortId}/learn`} className="btn-primary gap-4">
+    {path.percentage > 0 ? 'Continue learning' : 'Start learning'}<ArrowRight size={16} aria-hidden="true"/>
+  </Link>;
+}
 export function CourseProgress({cohortId,compact=false}:{cohortId:string;compact?:boolean}){
   const path=useLearningPath(cohortId);
   if(path.error)return <span className="text-xs text-ink-600">Progress unavailable</span>;

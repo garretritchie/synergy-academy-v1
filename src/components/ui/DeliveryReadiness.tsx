@@ -1,5 +1,6 @@
 import { useEffect,useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { AlertCircle, CheckCircle2, ChevronDown } from 'lucide-react';
 export function DeliveryReadiness({courseId}:{courseId:string}){
  const [issues,setIssues]=useState<string[]>([]),[loading,setLoading]=useState(true);
  useEffect(()=>{let alive=true;setLoading(true);void(async()=>{
@@ -20,5 +21,15 @@ export function DeliveryReadiness({courseId}:{courseId:string}){
   }
   if(alive){setIssues(found);setLoading(false);}
  })();return()=>{alive=false;};},[courseId]);
- return <section className="my-5 rounded-xl border border-amber-200 bg-amber-50/60 p-5"><h2 className="font-semibold text-ink-950">Delivery checks</h2><p className="mt-1 text-sm text-ink-600">Structure alone does not confirm that a course is ready to launch.</p>{loading?<p role="status" className="mt-3 text-sm">Checking connected services and course setup…</p>:issues.length?<ul className="mt-3 space-y-2 text-sm text-amber-950">{issues.map((i,n)=><li key={n}>• {i}</li>)}</ul>:<p className="mt-3 text-sm text-success-800">Automated setup checks passed. Still preview the course as a learner and confirm content, schedule and access before launch.</p>}</section>;
+ return <section className="my-5 rounded-xl border border-amber-200 bg-amber-50/60">
+  {loading ? <p role="status" className="p-4 text-sm text-ink-700">Checking connected services and course setup…</p> : issues.length ?
+   <details className="group">
+    <summary className="flex cursor-pointer list-none items-center gap-3 rounded-xl p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500">
+     <AlertCircle size={20} className="shrink-0 text-amber-800" aria-hidden="true"/>
+     <span className="min-w-0 flex-1"><span className="block font-semibold text-ink-950">Delivery checks · {issues.length} items need attention</span><span className="mt-0.5 block text-sm text-ink-600">Review setup, content and access before inviting students.</span></span>
+     <ChevronDown size={17} className="shrink-0 text-amber-800 group-open:rotate-180" aria-hidden="true"/>
+    </summary>
+    <ul className="list-disc space-y-2 border-t border-amber-200 px-8 py-4 text-sm text-amber-950">{issues.map((issue,index)=><li key={index}>{issue}</li>)}</ul>
+   </details> : <div className="flex items-start gap-3 p-4"><CheckCircle2 size={20} className="shrink-0 text-success-800"/><p className="text-sm text-success-800">Automated setup checks passed. Still preview the course as a learner and confirm content, schedule and access before launch.</p></div>}
+ </section>;
 }

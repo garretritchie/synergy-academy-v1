@@ -89,6 +89,7 @@ export function AdminDashboard() {
       <PageHeader
         title="Academy overview"
         subtitle="Current operational totals from the connected academy database."
+        actions={<Link to="/admin/course-studio" className="btn-primary"><WandSparkles size={16}/> Open Course Studio</Link>}
       />
 
       <div className="mt-6">

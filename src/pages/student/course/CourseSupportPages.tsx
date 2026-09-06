@@ -6,6 +6,7 @@ import {
   CalendarDays,
   Clock3,
   Download,
+  FileText,
   ExternalLink,
   FolderOpen,
   GraduationCap,
@@ -267,15 +268,19 @@ export function CourseResources() {
         error={error}
         emptyIcon={<FolderOpen />}
         empty="No resources have been added."
+        tiles
       >
         {rows.map((row) => (
-          <article key={row.id} className="flex items-center gap-4 px-5 py-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
-              <FolderOpen size={18} />
+          <article key={row.id} className="card flex flex-col p-5">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <span className={`flex h-12 w-12 items-center justify-center rounded-xl ${row.is_downloadable ? 'bg-brand-100 text-brand-800' : 'bg-accent-100 text-accent-800'}`}>
+                {row.is_downloadable ? <FileText size={23}/> : <ExternalLink size={23}/>}
+              </span>
+              <span className="badge-neutral capitalize">{row.resource_type.replace(/_/g, ' ')}</span>
             </div>
-            <div className="min-w-0 flex-1">
-              <h2 className="font-medium text-ink-900">{row.title}</h2>
-              <p className="mt-0.5 text-sm text-ink-500">
+            <div className="mb-5 min-w-0 flex-1">
+              <h2 className="font-semibold text-ink-900">{row.title}</h2>
+              <p className="mt-2 text-sm leading-6 text-ink-600">
                 {row.description || row.resource_type}
               </p>
             </div>
@@ -283,14 +288,15 @@ export function CourseResources() {
               <button
                 type="button"
                 onClick={()=>void openResource(row)}
-                className="btn-secondary"
+                className="btn-secondary w-full"
+                aria-label={`Open ${row.title}`}
               >
                 {row.is_downloadable ? (
                   <Download size={15} />
                 ) : (
                   <ExternalLink size={15} />
                 )}
-                Open
+                Open resource
               </button>
             )}
           </article>
@@ -477,16 +483,18 @@ function SupportList({
   emptyIcon,
   empty,
   children,
+  tiles = false,
 }: {
   loading: boolean;
   error: string;
   emptyIcon: React.ReactNode;
   empty: string;
   children: React.ReactNode;
+  tiles?: boolean;
 }) {
   const count = Array.isArray(children) ? children.length : children ? 1 : 0;
   return (
-    <div className="mt-6 overflow-hidden rounded-xl bg-white shadow-soft">
+    <div className={tiles ? "mt-6" : "mt-6 overflow-hidden rounded-xl bg-white shadow-soft"}>
       {error && (
         <div className="p-4">
           <Alert>{error}</Alert>
@@ -501,7 +509,7 @@ function SupportList({
           description="Check back after your instructor adds course activity."
         />
       ) : (
-        <div className="divide-y divide-ink-100">{children}</div>
+        <div className={tiles ? "grid gap-4 sm:grid-cols-2 xl:grid-cols-3" : "divide-y divide-ink-100"}>{children}</div>
       )}
     </div>
   );

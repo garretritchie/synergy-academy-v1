@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   Menu,
@@ -32,8 +32,34 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [canManageSeats, setCanManageSeats] = useState(false);
+  const sidebarRef = useRef<HTMLElement>(null);
+  const navigationTrigger = useRef<HTMLButtonElement>(null);
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const previous = document.activeElement as HTMLElement | null;
+    const sidebar = sidebarRef.current;
+    sidebar?.querySelector<HTMLButtonElement>('button')?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMobileOpen(false);
+      if (event.key !== 'Tab' || !sidebar) return;
+      const targets = Array.from(sidebar.querySelectorAll<HTMLElement>('a[href], button:not([disabled])')).filter(el => el.getClientRects().length > 0);
+      const first = targets[0], last = targets[targets.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    };
+    const desktop = window.matchMedia('(min-width: 1024px)');
+    const onResize = () => { if (desktop.matches) setMobileOpen(false); };
+    document.addEventListener('keydown', onKey);
+    desktop.addEventListener('change', onResize);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      desktop.removeEventListener('change', onResize);
+      previous?.focus();
+    };
+  }, [mobileOpen]);
 
   const defaultRole: UserRole = roles.includes("administrator")
     ? "administrator"
@@ -105,13 +131,16 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
 
   useEffect(() => {
     if (!userMenuOpen) return;
+    const trigger = document.activeElement as HTMLElement | null;
+    const menus = document.querySelectorAll<HTMLElement>('[data-account-menu] [role="menu"]');
+    Array.from(menus).find(menu => menu.getClientRects().length)?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
     const closeOnPointerDown = (event: PointerEvent) => {
       if (!(event.target instanceof Element) || !event.target.closest("[data-account-menu]")) {
         setUserMenuOpen(false);
       }
     };
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setUserMenuOpen(false);
+      if (event.key === "Escape") { setUserMenuOpen(false); trigger?.focus(); }
     };
     document.addEventListener("pointerdown", closeOnPointerDown);
     document.addEventListener("keydown", closeOnEscape);
@@ -152,6 +181,15 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
       {userMenuOpen && (
         <div
           role="menu"
+          aria-label="Your account"
+          onKeyDown={event => {
+            if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+            event.preventDefault();
+            const items = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('[role="menuitem"]'));
+            const current = items.indexOf(document.activeElement as HTMLElement);
+            const index = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 : (current + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+            items[index]?.focus();
+          }}
           className="absolute right-0 top-full z-[60] mt-2 w-64 overflow-hidden rounded-xl border border-ink-200 bg-white/95 py-1.5 shadow-elevated backdrop-blur-xl motion-safe:animate-slide-up"
         >
           <div className="border-b border-ink-100 px-3 py-2.5">
@@ -215,15 +253,18 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
 
   return (
     <div className="flex h-[100dvh] min-h-[100dvh] overflow-hidden bg-canvas">
+      <a href="#main-content" className="skip-link">Skip to content</a>
       {/* Desktop Sidebar */}
       <aside
-        className={`app-sidebar fixed inset-y-0 left-0 z-50 w-60 transform border-r border-white/[0.08] text-white shadow-[8px_0_30px_rgba(7,22,42,0.16)] transition-transform duration-300 lg:static lg:translate-x-0 ${
-          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        ref={sidebarRef}
+        aria-label="Workspace navigation"
+        className={`app-sidebar fixed inset-y-0 left-0 z-[60] w-60 shrink-0 transform text-white transition-transform duration-200 lg:visible lg:static lg:translate-x-0 ${
+          mobileOpen ? "visible translate-x-0" : "invisible -translate-x-full"
         }`}
       >
         <div className="flex h-full flex-col">
           {/* Logo */}
-          <div className="relative flex h-[4.5rem] items-center border-b border-white/[0.08] bg-white/[0.025] px-5 shadow-[0_1px_0_rgba(255,255,255,0.03)]">
+          <div className="relative flex h-16 shrink-0 items-center justify-between border-b border-white/10 px-6">
             <img
               src="/brand/synergy-bahamas-logo-white.png"
               alt="Synergy Bahamas"
@@ -231,10 +272,11 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
               height="964"
               className="h-auto w-[7.75rem]"
             />
+            <button type="button" className="flex h-10 w-10 items-center justify-center rounded-lg text-white/80 hover:bg-white/10 lg:hidden" onClick={() => setMobileOpen(false)} aria-label="Close navigation"><X size={19}/></button>
           </div>
 
           {/* Nav */}
-          <nav className="scrollbar-thin flex-1 overflow-y-auto px-3 py-4">
+          <nav aria-label="Main navigation" className="scrollbar-thin flex-1 overflow-y-auto px-3 py-5">
             {navSections.map((section) => (
               <div key={section.label} className="mb-4">
                 <button
@@ -244,7 +286,7 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
                       current === section.label ? null : section.label,
                     )
                   }
-                  className="mb-1 flex min-h-9 w-full items-center justify-between rounded-lg px-3 text-left text-[10px] font-semibold uppercase tracking-[0.12em] text-white/55 transition-colors hover:bg-white/[0.06] hover:text-white"
+                  className="mb-1 flex min-h-9 w-full items-center justify-between rounded-lg px-3 text-left text-xs font-semibold uppercase tracking-[0.08em] text-white/65 transition-colors hover:bg-white/[0.06] hover:text-white"
                   aria-expanded={expandedSection === section.label}
                 >
                   {section.label}
@@ -276,7 +318,10 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
               </div>
             ))}
           </nav>
-
+          <div className="border-t border-white/10 px-6 py-5">
+            <p className="text-xs font-semibold text-white/90">Synergy Academy</p>
+            <p className="mt-1 text-xs text-white/65">Skills for What’s Next.</p>
+          </div>
         </div>
       </aside>
 
@@ -284,17 +329,18 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
       {mobileOpen && (
         <button
           type="button"
-          className="fixed inset-0 z-40 bg-ink-950/55 backdrop-blur-[2px] lg:hidden"
+          className="fixed inset-0 z-50 bg-ink-950/55 lg:hidden"
           onClick={() => setMobileOpen(false)}
           aria-label="Close navigation"
         />
       )}
 
       {/* Main content area */}
-      <div className="relative flex min-w-0 flex-1 flex-col">
+      <div className="relative flex min-w-0 flex-1 flex-col" {...(mobileOpen ? { inert: '' } : {})}>
         {/* Mobile top bar */}
-        <header className="app-topbar flex h-[3.75rem] items-center justify-between px-4 lg:hidden">
+        <header className="app-topbar flex h-16 shrink-0 items-center justify-between px-4 lg:hidden">
           <button
+            ref={navigationTrigger}
             type="button"
             onClick={() => setMobileOpen(!mobileOpen)}
             className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-600 transition-colors hover:bg-brand-50 hover:text-brand-800"
@@ -307,14 +353,14 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
         </header>
 
         {/* Desktop top bar */}
-        <header className="app-topbar hidden h-[3.75rem] shrink-0 items-center justify-between px-7 lg:flex">
+        <header className="app-topbar hidden h-16 shrink-0 items-center justify-between px-7 lg:flex">
           <AcademyBrandMark />
           {accountMenu()}
         </header>
 
         {/* Page content */}
-        <main className="app-main relative z-0 min-h-0 flex-1 overflow-y-auto scrollbar-thin">
-          <div className="mx-auto max-w-[1400px] px-4 py-5 motion-safe:animate-fade-in sm:px-6 lg:px-7 lg:py-6">
+        <main id="main-content" tabIndex={-1} className="app-main relative z-0 min-h-0 flex-1 overflow-y-auto outline-none scrollbar-thin">
+          <div className="mx-auto max-w-[1400px] px-4 py-5 sm:px-6 lg:px-7 lg:py-7">
             {children}
           </div>
         </main>

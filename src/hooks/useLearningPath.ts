@@ -7,20 +7,30 @@ const empty:Snapshot={modules:[],steps:[],error:'',loading:true};
 const cache=new Map<string,{at:number;promise:Promise<Snapshot>}>();
 const listeners=new Map<string,Set<()=>void>>();
 async function fetchPath(cohortId:string,studentId:string):Promise<Snapshot>{
- const enrolment=await supabase.from('enrolments').select('id,cohort:cohorts(course_id)').eq('cohort_id',cohortId).eq('student_id',studentId).eq('status','active').single();
+ const enrolment=await supabase.from('enrolments').select('id,cohort:cohorts(course_id,start_date)').eq('cohort_id',cohortId).eq('student_id',studentId).eq('status','active').single();
  if(enrolment.error)return {...empty,loading:false,error:enrolment.error.message};
  const courseId=(enrolment.data.cohort as unknown as {course_id:string}).course_id;
- const [m,a,c,p,r]=await Promise.all([
+ const [m,a,c,p,r,rules]=await Promise.all([
   supabase.from('modules').select('id,title,display_order,lessons(id,title,display_order,is_published)').eq('course_id',courseId).eq('is_published',true).order('display_order'),
   supabase.from('assignments').select('id,title,module_id,submissions(status)').eq('cohort_id',cohortId).eq('assignment_type','activity').eq('is_published',true).eq('submissions.enrolment_id',enrolment.data.id),
   supabase.from('assessments').select('id,title,module_id,passing_score,assessment_attempts(status,percentage)').eq('cohort_id',cohortId).eq('assessment_type','practice').eq('is_published',true).eq('assessment_attempts.enrolment_id',enrolment.data.id),
   supabase.from('progress_records').select('lesson_id,status').eq('enrolment_id',enrolment.data.id),
   supabase.rpc('get_released_lesson_ids',{cohort_uuid:cohortId}),
+  supabase.from('content_release_rules').select('module_id,lesson_id,release_type,release_date,days_offset').eq('cohort_id',cohortId),
  ]);
  const failure=m.error||a.error||c.error||p.error||r.error;
  if(failure)return {...empty,loading:false,error:failure.message};
  const modules=m.data as unknown as PathModule[];
- return {modules,steps:buildLearningPath(cohortId,modules,a.data as unknown as PathActivity[],c.data as unknown as PathAssessment[],new Set(p.data.filter(x=>x.status==='completed').map(x=>x.lesson_id)),new Set(r.data as string[])),error:'',loading:false};
+ const releaseReasons = new Map<string,string>();
+ const startDate = (enrolment.data.cohort as unknown as {start_date:string|null}).start_date;
+ for (const module of modules) for (const lesson of module.lessons) {
+  const rule = rules.data?.find(rule => rule.lesson_id === lesson.id) ?? rules.data?.find(rule => !rule.lesson_id && rule.module_id === module.id);
+  if (!rule) continue;
+  const date = rule.release_type === 'scheduled' && rule.release_date ? new Date(rule.release_date) : rule.release_type === 'days_from_start' && startDate && rule.days_offset !== null ? new Date(`${startDate}T00:00:00Z`) : null;
+  if (date && rule.release_type === 'days_from_start') date.setUTCDate(date.getUTCDate() + rule.days_offset);
+  if (date && !Number.isNaN(date.getTime())) releaseReasons.set(lesson.id, `Unlocks ${new Intl.DateTimeFormat(undefined,{dateStyle:'medium',timeStyle:'short',timeZoneName:undefined}).format(date)} (your local time).`);
+ }
+ return {modules,steps:buildLearningPath(cohortId,modules,a.data as unknown as PathActivity[],c.data as unknown as PathAssessment[],new Set(p.data.filter(x=>x.status==='completed').map(x=>x.lesson_id)),new Set(r.data as string[]),releaseReasons),error:'',loading:false};
 }
 function request(key:string,cohort:string,student:string){
  let entry=cache.get(key);

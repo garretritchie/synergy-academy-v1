@@ -38,7 +38,7 @@ export function FormPanel({
         </button>
       </div>
       {open && (
-        <div id={panelId} className="border-t border-ink-100 bg-gradient-to-b from-ink-50/55 to-white px-5 py-5 motion-safe:animate-slide-up">{children}</div>
+        <div id={panelId} className="border-t border-ink-200 bg-ink-50/50 px-5 py-5">{children}</div>
       )}
     </section>
   );

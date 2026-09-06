@@ -1,5 +1,5 @@
 import { lazy, Suspense, type ComponentType } from "react";
-import { BrowserRouter, Navigate, Route, Routes, useParams } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useParams, useLocation } from "react-router-dom";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AcademyBrandMark } from "@/components/brand/AcademyBrandMark";
 import { FullPageSpinner } from "@/components/ui/Spinner";
@@ -69,9 +69,9 @@ const CourseLive = lazyNamed(
   () => import("@/pages/student/course/CourseLive"),
   "CourseLive",
 );
-const CourseAssignments = lazyNamed(
-  () => import("@/pages/student/course/CourseAssignments"),
-  "CourseAssignments",
+const Coursework = lazyNamed(
+  () => import("@/pages/student/course/Coursework"),
+  "Coursework",
 );
 const CoursePerformance = lazyNamed(
   () => import("@/pages/student/course/CoursePerformance"),
@@ -227,6 +227,14 @@ const sharedRoutes: AppRoute[] = [
   { path: "/organization/seats", Component: OrganizationSeats },
 ];
 
+function LegacyCoursework() {
+  const { cohortId } = useParams();
+  const location = useLocation();
+  const query = new URLSearchParams(location.search);
+  query.set('section', location.pathname.endsWith('/assignments') ? 'assignments' : 'assessments');
+  return <Navigate replace to={`/student/courses/${cohortId}/coursework?${query}`}/>;
+}
+
 const studentRoutes: AppRoute[] = [
   { path: "/student", Component: StudentDashboard },
   { path: "/student/courses", Component: StudentCourses },
@@ -238,6 +246,7 @@ const studentRoutes: AppRoute[] = [
   },
   { path: "/student/profile", Component: StudentProfile },
   { path: "/student/courses/:cohortId/home", Component: CourseHome },
+  { path: "/student/courses/:cohortId/coursework", Component: Coursework },
   { path: "/student/courses/:cohortId/learn", Component: CourseLearn },
   { path: "/student/courses/:cohortId/learn/:lessonId", Component: LessonPage },
   { path: "/student/courses/:cohortId/learn/activity/:activityId", Component: CourseActivities },
@@ -247,7 +256,7 @@ const studentRoutes: AppRoute[] = [
   },
   {
     path: "/student/courses/:cohortId/assessments",
-    Component: CourseAssessments,
+    Component: LegacyCoursework,
   },
   {
     path: "/student/courses/:cohortId/activities",
@@ -256,7 +265,7 @@ const studentRoutes: AppRoute[] = [
   { path: "/student/courses/:cohortId/live", Component: CourseLive },
   {
     path: "/student/courses/:cohortId/assignments",
-    Component: CourseAssignments,
+    Component: LegacyCoursework,
   },
   { path: "/student/courses/:cohortId/calendar", Component: CourseCalendar },
   {

@@ -5,7 +5,7 @@ export type PathAssessment = { id: string; title: string; module_id: string | nu
 export type PathStep = { id: string; moduleId: string; kind: 'learn' | 'do' | 'assess'; title: string; done: boolean; available: boolean; href: string; reason: string };
 
 /** One ordered path for optional activities/checks and any number of lessons. */
-export function buildLearningPath(cohortId: string, modules: PathModule[], activities: PathActivity[], checks: PathAssessment[], completed: Set<string>, released: Set<string>): PathStep[] {
+export function buildLearningPath(cohortId: string, modules: PathModule[], activities: PathActivity[], checks: PathAssessment[], completed: Set<string>, released: Set<string>, releaseReasons: Map<string, string> = new Map()): PathStep[] {
   const steps: PathStep[] = [];
   let previousDone = true;
   for (const module of [...modules].sort((a, b) => a.display_order - b.display_order)) {
@@ -15,7 +15,10 @@ export function buildLearningPath(cohortId: string, modules: PathModule[], activ
       ...checks.filter(a => a.module_id === module.id).sort((a,b)=>a.title.localeCompare(b.title)||a.id.localeCompare(b.id)).map(a => ({ id:a.id, title:a.title, kind:'assess' as const, done:a.assessment_attempts.some(s => s.status === 'completed' && s.percentage !== null && Number(s.percentage) >= Number(a.passing_score ?? 0)), released:true, href:`/student/courses/${cohortId}/learn/check/${a.id}` })),
     ];
     for (const item of items) {
-      steps.push({ ...item, moduleId:module.id, available:item.released && (previousDone || item.done), reason: !item.released ? 'Not released yet' : item.kind === 'do' ? 'Finish learning first' : item.kind === 'assess' ? 'Finish the previous step first' : 'Finish the previous module first' });
+      const prerequisite = steps.find(step => !step.done);
+      const prerequisiteReason = prerequisite ? `Complete ${prerequisite.kind === 'do' ? 'the activity' : prerequisite.kind === 'assess' ? 'the knowledge check' : 'the learning'}: ${prerequisite.title}` : '';
+      const reason = !item.released ? [releaseReasons.get(item.id) || 'Waiting for your instructor to release this content.', !item.done ? prerequisiteReason : ''].filter(Boolean).join(' Then ') : prerequisiteReason;
+      steps.push({ ...item, moduleId:module.id, available:item.released && (previousDone || item.done), reason });
       previousDone = previousDone && item.done;
     }
   }
