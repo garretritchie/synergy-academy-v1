@@ -14,6 +14,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { EmptyState } from "@/components/ui/Spinner";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
+import { isSubmissionGraded, submissionSaveError } from '@/lib/submissionPolicy';
 import type { Assignment, Lesson, Module, ProgressRecord, Submission } from "@/types";
 
 type EvidenceFile = { id:string; file_name:string; file_path:string; file_size:number };
@@ -93,19 +94,20 @@ export function CourseActivities() {
   const active = activities.find((item) => item.id === openId) ?? null;
   const structured = active ? parseStructuredInstructions(active.description) : null;
   const draftKey=(id:string)=>`academy-activity-draft:${user?.id}:${cohortId}:${id}`;
-  const storedResponse=(activity:ActivityRow,length:number)=>{let local:string|null=null;if(!activity.submissions.some(s=>["submitted","graded"].includes(s.status))){try{local=localStorage.getItem(draftKey(activity.id));}catch{/* Account drafts remain available. */}}return readResponse(local??activity.submissions[0]?.content??null,length);};
-  const activeResponse = active && structured ? responses[active.id] ?? storedResponse(active,structured.checklist.length) : null;
+  const storedResponse=(activity:ActivityRow,length:number)=>{let local:string|null=null;if(!activity.submissions.some(isSubmissionGraded)){try{local=localStorage.getItem(draftKey(activity.id));}catch{/* Account drafts remain available. */}}return readResponse(local??activity.submissions[0]?.content??null,length);};
+  const activeResponse = active && structured ? (active.submissions.some(isSubmissionGraded) ? readResponse(active.submissions[0]?.content ?? null,structured.checklist.length) : responses[active.id] ?? storedResponse(active,structured.checklist.length)) : null;
   const activeModuleCheck = active ? moduleChecks.find((item) => item.module_id === active.module_id) : null;
   const activeModuleOrder = active?.module?.display_order ?? -1;
   const nextLearningLesson = pathModules.find((module) => module.display_order === activeModuleOrder + 1)?.lessons.find((lesson) => lesson.is_published);
   const updateResponse = (activityId: string, next: ActivityResponse) => {setDirty(true);try{localStorage.setItem(draftKey(activityId),JSON.stringify(next));}catch{/* beforeunload still warns if device storage is unavailable. */}setSaveMessage('Unsaved account changes. Save draft to sync.');setResponses((current) => ({ ...current, [activityId]: next }));};
   const pathLocked=learningPath.loading || !learningPath.steps.find(s=>s.id===active?.id)?.available;
-  const readOnly=pathLocked || (active?.submissions.some(s=>['submitted','graded'].includes(s.status)) ?? false);
+  const readOnly=pathLocked || (active?.submissions.some(isSubmissionGraded) ?? false);
   const openEvidence=async(file:EvidenceFile)=>{const result=await supabase.storage.from('assignment-submissions').createSignedUrl(file.file_path,300);if(result.error)setError(result.error.message);else window.open(result.data.signedUrl,'_blank','noopener,noreferrer');};
 
   const saveActivity = async (activity: ActivityRow, submit: boolean) => {
-    if (!user || readOnly) return;
-    if (activity.submissions.some(s=>['submitted','graded'].includes(s.status))) {setError('Your submitted work is preserved. Ask your instructor to return it if you need to make changes.');return;}
+    if (!user || readOnly || saving) return;
+    if (activity.submissions.some(isSubmissionGraded)) {setError('This work has been graded. Ask your instructor to reopen it for changes.');return;}
+    const existing = activity.submissions[0];
     const activityStructure = parseStructuredInstructions(activity.description);
     const response = responses[activity.id] ?? storedResponse(activity,activityStructure.checklist.length);
     if (submit && !response.selfCheck.every(Boolean)) { setError("Complete every self-check item before submitting this activity."); return; }
@@ -113,8 +115,14 @@ export function CourseActivities() {
     if((files[activity.id]??[]).some(f=>f.size>25*1024*1024)){setError('Each evidence file must be 25 MB or smaller.');return;}
     setSaving(true); setError("");
     const payload = { ...response, selfCheckItems: activityStructure.checklist, ...(submit ? { completedAt: new Date().toISOString() } : {}) };
-    const { data: submission, error: saveError } = await supabase.from("submissions").upsert({ assignment_id: activity.id, enrolment_id: enrolmentId, student_id: user.id, content: JSON.stringify(payload), status: "draft", submitted_at: null, is_late: false, max_grade: activity.max_points }, { onConflict: "assignment_id,enrolment_id" }).select().single();
-    if (saveError) { setError(saveError.message); setSaving(false); return; }
+    if (!submit && existing?.status === 'submitted') {
+      try { localStorage.setItem(draftKey(activity.id), JSON.stringify(payload)); setSaveMessage('Revision saved on this device. Select Update submission to send it to your instructor. Selected files must be uploaded before leaving.'); }
+      catch { setError('Your browser could not save this revision. Keep this page open and select Update submission.'); }
+      setSaving(false); return;
+    }
+    const result = existing?.status === 'submitted' ? { data: existing, error: null } : await supabase.from("submissions").upsert({ assignment_id: activity.id, enrolment_id: enrolmentId, student_id: user.id, content: JSON.stringify(payload), status: "draft", submitted_at: null, is_late: false, max_grade: activity.max_points }, { onConflict: "assignment_id,enrolment_id" }).select().single();
+    const submission = result.data;
+    if (result.error || !submission) { setError(submissionSaveError(result.error?.message ?? 'Your work could not be saved. Please try again.')); setSaving(false); return; }
     for (const file of files[activity.id] ?? []) {
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
       const path = `${user.id}/${submission.id}/${Date.now()}-${safeName}`;
@@ -124,9 +132,9 @@ export function CourseActivities() {
       if (fileResult.error) { setError(fileResult.error.message); setSaving(false); return; }
       setFiles(current=>({...current,[activity.id]:(current[activity.id]??[]).filter(item=>item!==file)}));
     }
-    if(submit){const finalized=await supabase.from('submissions').update({status:'submitted',submitted_at:new Date().toISOString()}).eq('id',submission.id).eq('status','draft');if(finalized.error){setError(finalized.error.message);setSaving(false);return;}}
+    if(submit){const finalized=await supabase.from('submissions').update({content:JSON.stringify(payload),status:'submitted',submitted_at:new Date().toISOString()}).eq('id',submission.id).select('id').single();if(finalized.error){setError(submissionSaveError(finalized.error.message));setSaving(false);return;}}
     setFiles((current) => ({ ...current, [activity.id]: [] }));
-    localStorage.removeItem(draftKey(activity.id));setDirty(false);setSaveMessage(submit?'Activity submitted. Your evidence and work have been saved.':'Draft saved to your account.');
+    try { localStorage.removeItem(draftKey(activity.id)); } catch { /* Account work was saved successfully. */ }setDirty(false);setSaveMessage(submit?'Activity submitted. You can update it until your instructor grades it.':'Draft saved to your account.');
     await load(); await learningPath.refresh(); setSaving(false);
   };
 
@@ -136,7 +144,7 @@ export function CourseActivities() {
       <div className="mb-3 flex justify-end"><StudyNotes cohortId={cohortId ?? ""} lessonId={active?.lesson_id ?? ""} screen={100000}/></div>
       {!embedded && <PageHeader title="Activity workspace" subtitle="Apply what you learned, record your thinking, and submit clear evidence of your work." />}
       <div className={embedded ? "mb-4" : "mt-5"}><LearningFlow active="do" hasActivity hasAssessment={Boolean(activeModuleCheck)} /></div>
-      {error && <div className="mb-4"><Alert>{error}</Alert></div>}
+      {error && <div className="mb-4"><Alert>{submissionSaveError(error)}</Alert></div>}
       {loading ? <div className="rounded-xl bg-white shadow-soft"><TableSkeleton /></div> : activities.length === 0 ? <div className="rounded-xl bg-white shadow-soft"><EmptyState icon={<ListChecks size={30} />} title="No activities yet" description="This course does not currently include activities. Continue with the available learning steps." /></div> : (
         <div className={`${embedded ? "learning-player lg:grid-cols-[15rem_minmax(0,1fr)]" : "mt-5 min-h-[34rem] lg:grid-cols-[18rem_minmax(0,1fr)]"} grid overflow-hidden rounded-2xl border border-ink-200 bg-white shadow-elevated`}>
           {embedded ? <PathNavigation cohortId={cohortId ?? ""} /> : <aside className="border-b border-ink-200 bg-ink-50/80 lg:border-b-0 lg:border-r">
@@ -163,11 +171,11 @@ export function CourseActivities() {
                 </div>
                 <aside className="space-y-4">
                   <Rubric rubric={active.rubric} values={active.submissions[0]?.rubric_scores}/>
-                  <p role="status" className="text-xs leading-5 text-ink-600">{pathLocked ? "Finish the required earlier learning steps to edit this activity." : readOnly ? "Submitted work is preserved. Your instructor can return it for changes." : saveMessage || "Save a draft as you work. Your instructor sees only submitted work."}</p>
+                  <p role="status" className="text-xs leading-5 text-ink-600">{pathLocked ? "Finish the required earlier learning steps to edit this activity." : readOnly ? "This work has been graded and is locked. Ask your instructor to reopen it for changes." : saveMessage || (active.submissions[0]?.status === 'submitted' ? "You can update this submission until it is graded. Your instructor keeps the submitted version until you select Update submission." : "Save a draft as you work. You can revise your submission until it is graded.")}</p>
                   {(active.submissions[0]?.submission_files??[]).map(file=><button key={file.id} type="button" className="btn-secondary w-full truncate" onClick={()=>void openEvidence(file)}>{file.file_name} · {Math.ceil(file.file_size/1024)} KB</button>)}
                   <section className="rounded-xl border border-accent-200 bg-accent-50/60 p-4"><h3 className="text-sm font-semibold text-ink-950">Submission check</h3><p className="mt-1 text-xs leading-5 text-ink-600">Use the same checks your instructor will see when reviewing your work.</p><div className="mt-3 space-y-2">{structured.checklist.map((item, index) => <label key={item} className="flex cursor-pointer items-start gap-2.5 rounded-lg bg-white px-3 py-2.5 text-xs leading-5 text-ink-700 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand-600 has-[:focus-visible]:ring-offset-2"><input disabled={readOnly || saving} type="checkbox" className="sr-only" checked={activeResponse.selfCheck[index]} onChange={(event) => { const next = [...activeResponse.selfCheck]; next[index] = event.target.checked; updateResponse(active.id, { ...activeResponse, selfCheck: next }); }} />{activeResponse.selfCheck[index] ? <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-success-600" /> : <Circle size={16} className="mt-0.5 shrink-0 text-ink-300" />}<span>{item}</span></label>)}</div></section>
                   {active.submissions[0]?.feedback && <section className="rounded-xl border border-success-200 bg-success-50 p-4"><h3 className="text-sm font-semibold text-success-900">Instructor feedback</h3><p className="mt-2 text-xs leading-5 text-success-800">{active.submissions[0].feedback}</p>{active.submissions[0].grade !== null && <p className="mt-2 font-semibold text-success-900">Score: {active.submissions[0].grade}/{active.submissions[0].max_grade}</p>}</section>}
-                  <div className="grid gap-2"><button type="button" className="btn-secondary justify-center" disabled={saving || readOnly} onClick={() => void saveActivity(active, false)}><Save size={15} /> Save draft</button><button type="button" className="btn-primary justify-center" disabled={saving || readOnly || !activeResponse.work.trim() || !activeResponse.selfCheck.every(Boolean)} onClick={() => void saveActivity(active, true)}><Send size={15} /> {saving ? "Saving..." : active.submissions.some((submission) => submission.status === "submitted") ? "Update submission" : "Submit activity"}</button></div>
+                  <div className="grid gap-2"><button type="button" className="btn-secondary justify-center" disabled={saving || readOnly} onClick={() => void saveActivity(active, false)}><Save size={15} /> {active.submissions[0]?.status === 'submitted' ? 'Save revision on this device' : 'Save draft'}</button><button type="button" className="btn-primary justify-center" disabled={saving || readOnly || !activeResponse.work.trim() || !activeResponse.selfCheck.every(Boolean)} onClick={() => void saveActivity(active, true)}><Send size={15} /> {saving ? "Saving..." : active.submissions.some(isSubmissionGraded) ? 'Graded — locked' : active.submissions.some((submission) => submission.status === "submitted") ? "Update submission" : "Submit activity"}</button></div>
                   {activeModuleCheck && active.submissions.some((submission) => ["submitted", "graded"].includes(submission.status)) && <Link to={`/student/courses/${cohortId}/learn/check/${activeModuleCheck.id}`} className="flex items-center justify-between rounded-xl bg-accent-100 px-3 py-3 text-xs font-semibold text-accent-900 hover:bg-accent-200">Continue to module check <ArrowRight size={14} /></Link>}
                   {!activeModuleCheck && nextLearningLesson && active.submissions.some((submission) => ["submitted", "graded"].includes(submission.status)) && <Link to={`/student/courses/${cohortId}/learn/${nextLearningLesson.id}`} className="flex items-center justify-between rounded-xl bg-brand-100 px-3 py-3 text-xs font-semibold text-brand-900 hover:bg-brand-200">Continue to next module <ArrowRight size={14} /></Link>}
                   <Link to={`/student/courses/${cohortId}/learn`} className="flex items-center justify-between rounded-xl border border-ink-200 px-3 py-3 text-xs font-semibold text-brand-700 hover:bg-brand-50">Return to learning path <ArrowRight size={14} /></Link>

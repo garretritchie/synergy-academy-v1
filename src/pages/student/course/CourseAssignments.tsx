@@ -18,6 +18,7 @@ import { EmptyState } from "@/components/ui/Spinner";
 import { useAuth } from "@/context/AuthContext";
 import { formatDateTime } from "@/lib/format";
 import { supabase } from "@/lib/supabase";
+import { isSubmissionGraded, submissionSaveError } from '@/lib/submissionPolicy';
 import type { Assignment, Submission } from "@/types";
 
 type AssignmentRow = Assignment & {
@@ -36,6 +37,7 @@ export function CourseAssignments({ embedded = false, category = 'all' }: { embe
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [saveMessage, setSaveMessage] = useState('');
 
   const load = useCallback(async () => {
     if (!cohortId || !user) return;
@@ -70,20 +72,29 @@ export function CourseAssignments({ embedded = false, category = 'all' }: { embe
   }, [load]);
   const open = (row: AssignmentRow) => {
     setOpenId(row.id);
-    const saved=row.submissions[0];let draft:string|null=null;if(!saved||!["submitted","graded"].includes(saved.status)){try{draft=localStorage.getItem(`academy-assignment-draft:${user?.id}:${cohortId}:${row.id}`);}catch{/* Use the account draft. */}}setContent(draft ?? saved?.content ?? "");
+    setSaveMessage('');
+    const saved=row.submissions[0];let draft:string|null=null;if(!isSubmissionGraded(saved)){try{draft=localStorage.getItem(`academy-assignment-draft:${user?.id}:${cohortId}:${row.id}`);}catch{/* Use the account draft. */}}setContent(draft ?? saved?.content ?? "");
     setFiles([]);
   };
 
   const submit = async (row: AssignmentRow, finalize=true) => {
-    if(row.submissions.some(s=>["submitted","graded"].includes(s.status))){setError("Your submitted work is preserved. Ask your instructor to return it for changes.");return;}
+    if (saving) return;
+    if(row.submissions.some(isSubmissionGraded)){setError("This work has been graded. Ask your instructor to reopen it for changes.");return;}
+    const existing = row.submissions[0];
     if(finalize&&!content.trim()&&!files.length&&!row.submissions[0]?.submission_files.length){setError("Add your work or evidence before submitting.");return;}
     if(files.some(f=>f.size>(row.max_file_size_mb??25)*1024*1024)){setError(`Files must be ${row.max_file_size_mb??25} MB or smaller.`);return;}
     if(files.some(f=>row.allowed_file_types?.length&&!row.allowed_file_types.includes(f.name.split(".").pop()?.toLowerCase()??""))){setError("One of the selected file types is not allowed for this assignment.");return;}
     if (!user) return;
     setSaving(true);
     setError("");
+    setSaveMessage('');
+    if (!finalize && existing?.status === 'submitted') {
+      try { localStorage.setItem(`academy-assignment-draft:${user.id}:${cohortId}:${row.id}`,content); setSaveMessage('Revision saved on this device. Select Update submission to send it to your instructor. Selected files must be uploaded before leaving.'); }
+      catch { setError('Your browser could not save this revision. Keep this page open and select Update submission.'); }
+      setSaving(false); return;
+    }
     const late = Boolean(row.due_date && new Date() > new Date(row.due_date));
-    const { data: submission, error: saveError } = await supabase
+    const { data: submission, error: saveError } = existing?.status === 'submitted' ? { data: existing, error: null } : await supabase
       .from("submissions")
       .upsert(
         {
@@ -100,8 +111,8 @@ export function CourseAssignments({ embedded = false, category = 'all' }: { embe
       )
       .select()
       .single();
-    if (saveError) {
-      setError(saveError.message);
+    if (saveError || !submission) {
+      setError(submissionSaveError(saveError?.message ?? 'Your work could not be saved. Please try again.'));
       setSaving(false);
       return;
     }
@@ -130,8 +141,9 @@ export function CourseAssignments({ embedded = false, category = 'all' }: { embe
       }
       setFiles(current=>current.filter(item=>item!==file));
     }
-    if(finalize){const saved=await supabase.from("submissions").update({status:"submitted",submitted_at:new Date().toISOString()}).eq("id",submission.id).eq("status","draft");if(saved.error){setError(saved.error.message);setSaving(false);return;}}
-    localStorage.removeItem(`academy-assignment-draft:${user?.id}:${cohortId}:${row.id}`);
+    if(finalize){const saved=await supabase.from("submissions").update({content,status:"submitted",submitted_at:new Date().toISOString()}).eq("id",submission.id).select('id').single();if(saved.error){setError(submissionSaveError(saved.error.message));setSaving(false);return;}}
+    try { localStorage.removeItem(`academy-assignment-draft:${user?.id}:${cohortId}:${row.id}`); } catch { /* The account version is already saved. */ }
+    setSaveMessage(finalize ? 'Submitted. You can update your work until it is graded.' : 'Draft saved to your account.');
     setFiles([]);
     await load();
     setSaving(false);
@@ -147,7 +159,7 @@ export function CourseAssignments({ embedded = false, category = 'all' }: { embe
       />}
       {error && (
         <div className="mt-5">
-          <Alert>{error}</Alert>
+          <Alert>{submissionSaveError(error)}</Alert>
         </div>
       )}
       {loading ? (
@@ -168,6 +180,7 @@ export function CourseAssignments({ embedded = false, category = 'all' }: { embe
             const submission = row.submissions[0];
             const submitted =
               submission && ["submitted", "graded"].includes(submission.status);
+            const graded = isSubmissionGraded(submission);
             const structured = parseStructuredInstructions(row.description);
             const expanded = openId === row.id;
             const isHomework = row.assignment_type === "homework";
@@ -262,7 +275,7 @@ export function CourseAssignments({ embedded = false, category = 'all' }: { embe
                         </label>
                         <textarea
                           id={`response-${row.id}`}
-                          disabled={saving || submitted}
+                          disabled={saving || graded}
                           className="input min-h-32"
                           value={content}
                           onChange={(event) => {setContent(event.target.value);try{localStorage.setItem(`academy-assignment-draft:${user?.id}:${cohortId}:${row.id}`,event.target.value);}catch{/* Account saving remains available. */}}}
@@ -272,7 +285,7 @@ export function CourseAssignments({ embedded = false, category = 'all' }: { embe
                           <FileUp size={16} /> Add files
                           <input
                             type="file"
-                            disabled={saving || submitted || !row.allow_file_upload}
+                            disabled={saving || graded || !row.allow_file_upload}
                             accept={row.allowed_file_types?.map(t=>`.${t}`).join(",")}
                             multiple
                             className="sr-only"
@@ -291,21 +304,21 @@ export function CourseAssignments({ embedded = false, category = 'all' }: { embe
                           </ul>
                         )}
                         {submission?.submission_files.map(file=><button className="btn-secondary mt-2 w-full" key={file.id} onClick={async()=>{const result=await supabase.storage.from("assignment-submissions").createSignedUrl(file.file_path,300);if(result.error)setError(result.error.message);else window.open(result.data.signedUrl,"_blank","noopener,noreferrer");}}>{file.file_name}</button>)}
-                        <p className="mt-3 text-xs text-ink-600">{submitted ? "Submitted work is preserved. Your instructor can return it for changes." : submission?.status==="draft" ? "Draft saved to your account." : "Save a draft as you work. Submit when all files have uploaded."}</p>
-                        <button type="button" className="btn-secondary mt-3 w-full" disabled={saving||submitted} onClick={()=>void submit(row,false)}>Save draft</button>
+                        <p role="status" className="mt-3 text-xs text-ink-600">{graded ? "This work has been graded and is locked. Ask your instructor to reopen it for changes." : saveMessage || (submitted ? "You can update this work until it is graded. Your previous submission stays available until you send the update." : "Save a draft as you work. Submit when all files have uploaded.")}</p>
+                        <button type="button" className="btn-secondary mt-3 w-full" disabled={saving||graded} onClick={()=>void submit(row,false)}>{submitted ? 'Save revision on this device' : 'Save draft'}</button>
                         <button
                           type="button"
                           className="btn-primary mt-4 w-full"
                           disabled={
-                            saving || submitted || (!content.trim() && files.length === 0 && !submission?.submission_files.length)
+                            saving || graded || (!content.trim() && files.length === 0 && !submission?.submission_files.length)
                           }
                           onClick={() => void submit(row)}
                         >
                           <Send size={16} />{" "}
                           {saving
                             ? "Submitting..."
-                            : submitted
-                              ? "Submitted"
+                            : graded ? 'Graded — locked' : submitted
+                              ? "Update submission"
                               : "Submit assignment"}
                         </button>
                         {submission?.feedback && (

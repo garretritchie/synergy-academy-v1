@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import ts from 'typescript';
+const source=ts.transpileModule(fs.readFileSync('src/lib/submissionPolicy.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.ESNext}}).outputText;
+const {isSubmissionGraded,submissionSaveError}=await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
+assert.equal(isSubmissionGraded(null),false);
+for(const status of ['draft','submitted','returned'])assert.equal(isSubmissionGraded({status,grade:null,graded_at:null}),false);
+assert.equal(isSubmissionGraded({status:'graded',grade:null,graded_at:null}),true);
+assert.equal(isSubmissionGraded({status:'submitted',grade:0,graded_at:null}),true);
+assert.equal(isSubmissionGraded({status:'submitted',grade:null,graded_at:'2026-09-06'}),true);
+assert.match(submissionSaveError('Maximum submission attempts reached'),/pending submission migrations through 028/);
+assert.equal(submissionSaveError('Unrelated error'),'Unrelated error');
+console.log('PASS shared submission UI policy: ungraded edits, zero-grade lock, graded timestamp lock, actionable legacy database error.');
