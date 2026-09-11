@@ -53,7 +53,7 @@
 .storyboard-cards > article { background: #edf5ff; border-color: #ccdef3; }
 .storyboard-cards > article:nth-child(3n + 2) { background: #edf7f4; border-color: #cce5dc; }
 .storyboard-cards > article:nth-child(3n) { background: #fff7e6; border-color: #eedfbc; }
-.lesson-player-header { background: #e9f2fc; }
+.lesson-player-header { background: var(--academy-sidebar); }
 .learning-player > div > footer { background: #e9f2fc; }
 .storyboard-cards, .storyboard-comparison, .storyboard-welcome, .storyboard-list { display: grid; gap: 10px; }
 .storyboard-list li { padding: 10px 12px; }
@@ -446,3 +446,47 @@ progress { appearance: none; border: 0; border-radius: 999px; overflow: hidden; 
 progress::-webkit-progress-bar { background: #e2e8f0; border-radius: 999px; }
 progress::-webkit-progress-value { background: #126bbe; border-radius: 999px; }
 progress::-moz-progress-bar { background: #126bbe; border-radius: 999px; }
+
+/* Dark navigation chrome keeps the reading surface in focus. */
+.pathway-theme, .course-topbar, .lesson-player-header {
+  --nav-surface: var(--academy-sidebar);
+  --nav-raised: #1c3652;
+  --nav-text: #f0f7ff;
+  --nav-muted: #bdd0e4;
+  --nav-line: #36516d;
+  --nav-focus: #8bc5ff;
+}
+.pathway-theme { background: var(--nav-surface); color: var(--nav-text); color-scheme: dark; }
+.pathway-theme nav { scrollbar-color: var(--nav-line) var(--nav-surface); }
+.pathway-progress { border-bottom: 1px solid var(--nav-line); }
+.pathway-muted { color: var(--nav-muted); }
+.pathway-module[open] { background: var(--nav-raised); padding-bottom: 6px; }
+.pathway-module > summary:hover { background: var(--nav-raised); }
+.pathway-module-locked { color: var(--nav-muted); }
+.pathway-module-locked > summary { background: #142b43; }
+.pathway-step { min-height: 44px; transition: background-color 150ms; }
+.pathway-step-learn { color: #bddcff; }
+.pathway-step-do { color: #ddd6fe; }
+.pathway-step-assess { color: #fde68a; }
+a.pathway-step:hover { background: #294663; }
+.pathway-step-current, a.pathway-step-current:hover { background: #115ba5; color: #fff; box-shadow: inset 0 0 0 1px #55a9f6; }
+.pathway-step-locked { color: var(--nav-muted); }
+.pathway-theme :is(a, summary):focus-visible { outline: 2px solid var(--nav-focus); outline-offset: -2px; }
+.pathway-theme progress, .pathway-theme progress::-webkit-progress-bar { background: var(--nav-line); }
+.pathway-theme progress::-webkit-progress-value { background: var(--nav-focus); }
+.pathway-theme progress::-moz-progress-bar { background: var(--nav-focus); }
+.course-shell .course-topbar { background: var(--nav-surface); border-color: var(--nav-line); }
+.course-heading-title { color: var(--nav-text); }
+.course-heading-subtitle { color: var(--nav-muted); }
+.course-heading-icon { background: var(--nav-raised); color: var(--nav-focus); }
+.course-topbar > div > button, .course-topbar .account-trigger {
+  color: var(--nav-text); background: var(--nav-raised); border-color: var(--nav-line); box-shadow: none;
+}
+.course-topbar > div > button:hover, .course-topbar .account-trigger:hover { background: #294663; border-color: var(--nav-focus); }
+.course-topbar button:focus-visible { outline: 2px solid var(--nav-focus); outline-offset: 2px; }
+.lesson-player-header { border-color: var(--nav-line); }
+.lesson-player-header h1 { color: var(--nav-text); }
+.lesson-player-header p { color: var(--nav-muted); }
+.lesson-player-header > div > p, .lesson-player-header > p { color: var(--nav-focus); }
+.lesson-player-header [role="progressbar"] { background: var(--nav-line); }
+.lesson-player-header [role="progressbar"] > div { background: var(--nav-focus); }

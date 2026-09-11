@@ -116,14 +116,14 @@ export function CourseLayout({ children }: { children: ReactNode }) {
           >
             <ArrowLeft size={18} />
           </button>
-          <div className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-100/70 text-brand-800 sm:flex">
+          <div className="course-heading-icon hidden h-10 w-10 shrink-0 items-center justify-center rounded-xl sm:flex">
             <BookOpen size={20} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-ink-950">
+            <p className="course-heading-title truncate text-sm font-semibold">
               {course?.title ?? "Course"}
             </p>
-            <p className="truncate text-xs text-ink-500">{cohort.name}</p>
+            <p className="course-heading-subtitle truncate text-xs">{cohort.name}</p>
           </div>
           <CourseSwitcher cohortId={cohortId ?? ''}/>
           {account}
