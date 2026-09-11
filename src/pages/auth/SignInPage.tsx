@@ -77,10 +77,7 @@ export function SignInPage() {
                 </div>
               </div>
               <div>
-                <div className="mb-1.5 flex items-center justify-between gap-3">
-                  <label htmlFor="password" className="text-xs font-semibold text-slate-700">Password</label>
-                  <Link to="/forgot-password" className="signin-text-link">Forgot password?</Link>
-                </div>
+                <label htmlFor="password" className="label">Password</label>
                 <div className="relative">
                   <Lock size={17} aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input id="password" name="password" type={showPassword ? "text" : "password"} required autoComplete="current-password" value={password} onChange={event => setPassword(event.target.value)} placeholder="Enter your password" className="input signin-input pl-11 pr-12" aria-describedby={error ? "signin-error" : undefined} disabled={loading} />
@@ -92,6 +89,9 @@ export function SignInPage() {
               <button type="submit" disabled={loading} className="btn-primary signin-submit w-full">
                 {loading ? <><LoaderCircle size={17} className="motion-safe:animate-spin" aria-hidden="true" />Signing in…</> : <>Sign in to your academy<ArrowRight size={17} aria-hidden="true" /></>}
               </button>
+              <div className="text-center">
+                <Link to="/forgot-password" className="signin-text-link">Forgot password?</Link>
+              </div>
             </form>
             <p className="mt-5 text-center text-xs leading-5 text-slate-600">New to Synergy Academy? <Link to="/signup" className="signin-text-link">Create an account</Link></p>
             <div className="signin-help">
