@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Mail, Lock, AlertCircle, ArrowUpRight, ArrowRight, KeyRound, Eye, EyeOff, LoaderCircle, BookOpen, PencilLine, CircleCheck } from "lucide-react";
+import { Mail, Lock, AlertCircle, ArrowUpRight, ArrowRight, Eye, EyeOff, LoaderCircle, BookOpen, PencilLine, CircleCheck } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { AcademyBrandMark } from "@/components/brand/AcademyBrandMark";
 import "./sign-in.css";
@@ -20,12 +20,6 @@ export function SignInPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
-  const demoAccounts = [
-    { role: "Demo student", email: import.meta.env.VITE_DEMO_STUDENT_EMAIL, password: import.meta.env.VITE_DEMO_STUDENT_PASSWORD },
-    { role: "Demo admin", email: import.meta.env.VITE_DEMO_ADMIN_EMAIL, password: import.meta.env.VITE_DEMO_ADMIN_PASSWORD },
-  ].filter((account): account is { role: string; email: string; password: string } => Boolean(account.email && account.password));
-  const demoMode = import.meta.env.VITE_DEMO_MVP_MODE === "true" && demoAccounts.length > 0;
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -100,13 +94,6 @@ export function SignInPage() {
               </button>
             </form>
             <p className="mt-5 text-center text-xs leading-5 text-slate-600">New to Synergy Academy? <Link to="/signup" className="signin-text-link">Create an account</Link></p>
-            {demoMode && <details className="signin-demo mt-6">
-              <summary><span className="inline-flex items-center gap-2"><KeyRound size={15} aria-hidden="true" />Explore demo access</span></summary>
-              <div className="px-3.5 pb-3.5">
-                <p className="mb-3 text-xs leading-5 text-slate-600">Choose a workspace to fill in the form, then sign in.</p>
-                <div className="flex flex-wrap gap-2">{demoAccounts.map(account => <button key={account.role} type="button" disabled={loading} onClick={() => { setEmail(account.email); setPassword(account.password); setShowPassword(false); setError(null); }} className="signin-demo-button">{account.role}<ArrowUpRight size={14} aria-hidden="true" /></button>)}</div>
-              </div>
-            </details>}
             <div className="signin-help">
               <p>Need a hand getting started?</p>
               <a href="mailto:info@synergybahamas.com" className="signin-text-link">Contact the Academy team <ArrowUpRight size={13} className="inline" aria-hidden="true" /></a>

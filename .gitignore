@@ -27,6 +27,9 @@ dist-ssr
 # Internal-only project prompts
 Prompts/
 
+# Local account credentials; never publish
+private/
+
 # Local Supabase CLI state
 supabase/.temp/
 

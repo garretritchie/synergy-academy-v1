@@ -56,12 +56,6 @@
 .signin-submit.btn-primary { min-height: 48px; justify-content: center; gap: 12px; border-radius: 9px; font-size: 13px; }
 .signin-text-link { font-size: 12px; font-weight: 600; color: #1b5c99; }
 .signin-text-link:hover { color: #113c65; text-decoration: underline; text-underline-offset: 3px; }
-.signin-demo { border: 1px solid #dce5ef; border-radius: 10px; background: #f2f6fb; }
-.signin-demo summary { min-height: 44px; cursor: pointer; padding: 12px 14px; font-size: 12px; font-weight: 600; color: #375675; }
-.signin-demo summary::marker { color: #6a84a0; }
-.signin-demo-button { display: inline-flex; flex: 1; justify-content: center; align-items: center; gap: 8px; min-height: 44px; border: 1px solid #d3dfec; border-radius: 7px; background: #fff; padding: 8px 12px; font-size: 12px; font-weight: 600; color: #1b5c99; }
-.signin-demo-button:hover:not(:disabled) { border-color: #91b1d0; background: #e9f1fa; }
-.signin-demo-button:disabled { cursor: wait; opacity: .6; }
 .signin-help { margin-top: 25px; border-top: 1px solid #e3eaf2; padding-top: 18px; font-size: 11px; line-height: 1.8; color: #63758a; }
 .signin-help a[href^="tel:"]:hover { color: #1b5c99; text-decoration: underline; }
 .signin-copyright { margin-top: 26px; text-align: center; font-size: 10px; line-height: 1.5; color: #65768a; }
