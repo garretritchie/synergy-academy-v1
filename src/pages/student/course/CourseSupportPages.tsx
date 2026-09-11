@@ -232,21 +232,14 @@ export function CourseResources() {
   const [error, setError] = useState("");
   useEffect(() => {
     if (!cohortId) return;
+    let current = true;
+    setLoading(true); setError(''); setRows([]); setUpcoming([]);
     void (async () => {
-      const { data: cohort, error: cohortError } = await supabase
-        .from("cohorts")
-        .select("course_id")
-        .eq("id", cohortId)
-        .single();
-      if (cohortError) {
-        setError(cohortError.message);
-        setLoading(false);
-        return;
-      }
       const [resourceResult, upcomingResult] = await Promise.all([
-        supabase.from("resources").select("*").eq("course_id", cohort.course_id).order("display_order"),
+        supabase.rpc("get_available_course_resources", { cohort_uuid: cohortId }),
         supabase.rpc("get_upcoming_course_resources", { cohort_uuid: cohortId }),
       ]);
+      if (!current) return;
       const { data, error: queryError } = resourceResult;
       if (queryError) setError(queryError.message);
       else {
@@ -255,13 +248,14 @@ export function CourseResources() {
       }
       setLoading(false);
     })();
+    return () => { current = false; };
   }, [cohortId]);
   const openResource=async(resource:Resource)=>{if(!resource.url)return;const win=window.open('about:blank','_blank');if(win)win.opener=null;let url=resource.url;if(url.startsWith('storage:')){const result=await supabase.storage.from('course-assets').createSignedUrl(url.slice(8),300);if(result.error){win?.close();setError(result.error.message);return;}url=result.data.signedUrl;}if(!/^https?:\/\//i.test(url)){win?.close();setError('This resource needs a valid web address.');return;}if(win)win.location.href=url;else setError('Allow pop-ups to open this resource.');};
   return (
     <CourseLayout>
       <PageHeader
         title="Resources"
-        subtitle="Course files, references, and supporting links."
+        subtitle="Helpful files and links from your instructors, including the shared program library and resources for your cohort."
       />
       <SupportList
         loading={loading}
@@ -279,6 +273,7 @@ export function CourseResources() {
               <span className="badge-neutral capitalize">{row.resource_type.replace(/_/g, ' ')}</span>
             </div>
             <div className="mb-5 min-w-0 flex-1">
+              <p className={`mb-2 text-xs font-medium ${row.cohort_id ? 'text-brand-700' : 'text-success-700'}`}>{row.cohort_id ? 'Your cohort' : 'Program library'}</p>
               <h2 className="font-semibold text-ink-900">{row.title}</h2>
               <p className="mt-2 text-sm leading-6 text-ink-600">
                 {row.description || row.resource_type}

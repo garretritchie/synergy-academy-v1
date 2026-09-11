@@ -1,6 +1,6 @@
 /* The course resource loader is reused after mutations. */
 /* eslint-disable react-hooks/exhaustive-deps */
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Clock3, ExternalLink, FolderOpen, LockKeyhole, Trash2 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -31,6 +31,7 @@ export function AdminResources() {
   const [open, setOpen] = useState(false);
   const [editingId,setEditingId]=useState("");
   const [resourceStep, setResourceStep] = useState(0);
+  const [audience, setAudience] = useState<'' | 'cohort' | 'program'>('');
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -51,19 +52,26 @@ export function AdminResources() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const loadGeneration = useRef(0);
   useEffect(() => {
+    let current = true;
     void (async () => {
-      const { data } = isInstructorWorkspace && user
+      const { data, error: courseError } = isInstructorWorkspace && user
         ? await supabase.from("cohort_instructors").select("cohort:cohorts(course:courses(*))").eq("instructor_id", user.id)
         : await supabase.from("courses").select("*").order("title");
+      if (!current) return;
+      if (courseError) { setError(courseError.message); setLoading(false); return; }
       const list = isInstructorWorkspace
         ? Array.from(new Map(((data ?? []) as unknown as Array<{ cohort: { course: Course } }>).map((item) => [item.cohort.course.id, item.cohort.course])).values()).sort((a, b) => a.title.localeCompare(b.title))
         : (data ?? []) as Course[];
       setCourses(list);
-      setCourseId((current) => current || list[0]?.id || "");
+      setCourseId((current) => list.some(course => course.id === current) ? current : list[0]?.id || "");
     })();
+    return () => { current = false; };
   }, [isInstructorWorkspace, user]);
   const load = async () => {
+    const generation = ++loadGeneration.current;
+    setRows([]); setModules([]); setCohorts([]); setCheckpoints([]);
     if (!courseId) {
       setLoading(false);
       return;
@@ -80,7 +88,9 @@ export function AdminResources() {
         .select("*,lessons(*)")
         .eq("course_id", courseId)
         .order("display_order"),
-      supabase.from("cohorts").select("id,name").eq("course_id", courseId).order("start_date", { ascending: false }),
+      isInstructorWorkspace && user
+        ? supabase.from("cohorts").select("id,name,cohort_instructors!inner(instructor_id)").eq("course_id", courseId).eq("cohort_instructors.instructor_id", user.id).order("start_date", { ascending: false })
+        : supabase.from("cohorts").select("id,name").eq("course_id", courseId).order("start_date", { ascending: false }),
     ]);
     const cohortIds = (cohortResult.data ?? []).map((item) => item.id);
     const [assessmentResult, activityResult] = cohortIds.length
@@ -90,9 +100,10 @@ export function AdminResources() {
         ])
       : [{ data: [], error: null }, { data: [], error: null }];
     const queryError = resourceResult.error || moduleResult.error || cohortResult.error || assessmentResult.error || activityResult.error;
+    if (generation !== loadGeneration.current) return;
     if (queryError) setError(queryError.message);
     else {
-      setRows((resourceResult.data ?? []) as Resource[]);
+      setRows(((resourceResult.data ?? []) as Resource[]).filter(row => !isInstructorWorkspace || !row.cohort_id || cohortIds.includes(row.cohort_id)));
       setModules((moduleResult.data ?? []) as unknown as ModuleWithLessons[]);
       setCohorts((cohortResult.data ?? []) as CohortOption[]);
       setCheckpoints([
@@ -104,11 +115,27 @@ export function AdminResources() {
   };
   useEffect(() => {
     void load();
-  }, [courseId]);
+    return () => { loadGeneration.current++; };
+  }, [courseId, isInstructorWorkspace, user?.id]);
   const save = async (event: FormEvent) => {
     event.preventDefault();
+    if (saving) return;
     setSaving(true);
     setError("");
+    if (!audience || (audience === 'cohort' && !cohorts.some(cohort => cohort.id === form.cohort_id))) {
+      setError('Choose who can use this resource. For a cohort-only resource, select a cohort you teach.');
+      setSaving(false); return;
+    }
+    if (!form.title.trim() || !courses.some(course => course.id === courseId)) {
+      setError('Choose a program and enter a resource title.'); setSaving(false); return;
+    }
+    if (audience === 'program' && form.release_mode === 'checkpoint' && form.release_checkpoint_type !== 'lesson') {
+      setError('Program resources can use a shared learning checkpoint. For an activity or assessment checkpoint, choose This cohort only.');
+      setSaving(false); return;
+    }
+    if (form.resource_type === 'link' && !/^https?:\/\//i.test(form.url.trim())) {
+      setError('Use a full web link starting with https:// or http://.'); setSaving(false); return;
+    }
     if (!file && !form.url) {
       setError("Choose a private file or enter an external URL.");
       setSaving(false);
@@ -130,7 +157,7 @@ export function AdminResources() {
       return;
     }
     const resourceId = editingId || crypto.randomUUID();
-    let resourceUrl = form.url;
+    let resourceUrl = form.url.trim();
     if (file) {
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
       const path = `${courseId}/${resourceId}/${Date.now()}-${safeName}`;
@@ -159,7 +186,7 @@ export function AdminResources() {
         course_id: courseId,
         module_id: form.module_id || null,
         lesson_id: form.lesson_id || null,
-        cohort_id: form.cohort_id || null,
+        cohort_id: audience === 'cohort' ? form.cohort_id : null,
         release_mode: form.release_mode,
         release_at: form.release_mode === "scheduled" ? new Date(form.release_at).toISOString() : null,
         release_checkpoint_type: form.release_mode === "checkpoint" ? form.release_checkpoint_type : null,
@@ -172,6 +199,7 @@ export function AdminResources() {
     else {
       setOpen(false);
       setEditingId("");
+      setAudience('');
       setForm({
         title: "",
         description: "",
@@ -194,7 +222,7 @@ export function AdminResources() {
     }
     setSaving(false);
   };
-  const editResource=(row:Resource)=>{setEditingId(row.id);setForm({title:row.title,description:row.description??"",resource_type:row.resource_type,url:row.url??"",is_downloadable:row.is_downloadable,module_id:row.module_id??"",lesson_id:row.lesson_id??"",cohort_id:row.cohort_id??"",release_mode:row.release_mode??"immediate",release_at:row.release_at?new Date(new Date(row.release_at).getTime()-new Date(row.release_at).getTimezoneOffset()*60000).toISOString().slice(0,16):"",release_checkpoint_type:row.release_checkpoint_type??"lesson",release_checkpoint_id:row.release_checkpoint_id??"",checkpoint_requires_pass:row.checkpoint_requires_pass??true,show_before_release:row.show_before_release??true});setFile(null);setResourceStep(0);setOpen(true);};
+  const editResource=(row:Resource)=>{setEditingId(row.id);setAudience(row.cohort_id ? 'cohort' : 'program');setForm({title:row.title,description:row.description??"",resource_type:row.resource_type,url:row.url??"",is_downloadable:row.is_downloadable,module_id:row.module_id??"",lesson_id:row.lesson_id??"",cohort_id:row.cohort_id??"",release_mode:row.release_mode??"immediate",release_at:row.release_at?new Date(new Date(row.release_at).getTime()-new Date(row.release_at).getTimezoneOffset()*60000).toISOString().slice(0,16):"",release_checkpoint_type:row.release_checkpoint_type??"lesson",release_checkpoint_id:row.release_checkpoint_id??"",checkpoint_requires_pass:row.checkpoint_requires_pass??true,show_before_release:row.show_before_release??true});setFile(null);setResourceStep(0);setOpen(true);};
   const remove = async (id: string) => {
     if(!window.confirm("Remove this resource and its file? This may not be recoverable."))return;
     const row = rows.find((item) => item.id === id);
@@ -211,18 +239,20 @@ export function AdminResources() {
     <AppLayout>
       <PageHeader
         title={isInstructorWorkspace ? "Teaching resources" : "Course resources"}
-        subtitle="Stage slides, class files, links, and downloads, then control exactly when students receive them."
+        subtitle="Share helpful files and links with one cohort or every current and future cohort in a program. Choose when each resource becomes available."
       />
       <div className="mt-6 space-y-5">
         {error && <Alert>{error}</Alert>}
         <section className="rounded-xl bg-white p-5 shadow-soft">
-          <Field label="Course">
+          <Field label="Program / course">
             <select
               className="input max-w-2xl"
               value={courseId}
+              disabled={saving}
               onChange={(event) => {
                 const nextCourseId = event.target.value;
                 setCourseId(nextCourseId);
+                setOpen(false); setEditingId(''); setAudience(''); setFile(null); setError('');
                 setSearchParams(nextCourseId ? { course: nextCourseId } : {});
               }}
             >
@@ -236,18 +266,21 @@ export function AdminResources() {
         </section>
         <FormPanel
           title={editingId ? "Edit resource" : "Add resource"}
-          description="Upload a private course file or publish a trusted external URL."
+          description="Upload slides, guides, templates, or class files—or add a helpful web link."
           open={open}
-          onToggle={() => {if(!open){setEditingId("");setForm({title:"",description:"",resource_type:"file",url:"",is_downloadable:false,module_id:"",lesson_id:"",cohort_id:"",release_mode:"immediate",release_at:"",release_checkpoint_type:"lesson",release_checkpoint_id:"",checkpoint_requires_pass:true,show_before_release:true});setFile(null);setResourceStep(0);}setOpen(!open);}}
+          onToggle={() => {if(saving)return;if(!open){setEditingId("");setAudience('');setForm({title:"",description:"",resource_type:"file",url:"",is_downloadable:false,module_id:"",lesson_id:"",cohort_id:"",release_mode:"immediate",release_at:"",release_checkpoint_type:"lesson",release_checkpoint_id:"",checkpoint_requires_pass:true,show_before_release:true});setFile(null);setResourceStep(0);}setOpen(!open);}}
           actionLabel="New resource"
         >
           <form onSubmit={save}>
+            <fieldset disabled={saving || loading}>
             <CreationWizard
-              steps={["Describe", "Placement", "Release", "File"]}
+              steps={["Describe", "Audience", "Release", "File or link"]}
               currentStep={resourceStep}
               canContinue={
                 resourceStep === 0
                   ? Boolean(form.title.trim())
+                  : resourceStep === 1
+                    ? audience === 'program' || (audience === 'cohort' && cohorts.some(cohort => cohort.id === form.cohort_id))
                   : resourceStep === 2
                     ? form.release_mode === "scheduled"
                       ? Boolean(form.release_at)
@@ -304,7 +337,26 @@ export function AdminResources() {
               </div>
             ) : resourceStep === 1 ? (
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Module" hint="Optional - leave blank for a course-wide resource">
+              <fieldset className="sm:col-span-2">
+                <legend className="mb-3 text-sm font-semibold text-ink-900">Who can use this resource?</legend>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {([
+                    ['cohort', 'This cohort only', 'Only students enrolled in the selected cohort. It will not carry over to other cohorts.'],
+                    ['program', 'All program participants', 'All current and future cohorts of this program. Upload once; no need to add it again.'],
+                  ] as const).map(([value, title, help]) => <label key={value} className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand-500 ${audience === value ? 'border-brand-400 bg-brand-50' : 'border-ink-200 bg-white hover:border-brand-300'}`}>
+                    <input className="mt-1" type="radio" name="resource-audience" value={value} checked={audience === value} onChange={() => { setAudience(value); setForm(current => ({ ...current, cohort_id: '', release_checkpoint_type: 'lesson', release_checkpoint_id: '' })); }} />
+                    <span><span className="block text-sm font-semibold text-ink-900">{title}</span><span className="mt-1 block text-xs leading-5 text-ink-600">{help}</span></span>
+                  </label>)}
+                </div>
+                <p className="mt-2 text-xs text-ink-600">Resources are available to enrolled participants, not the public course catalog.</p>
+              </fieldset>
+              {audience === 'cohort' && <div className="sm:col-span-2"><Field label="Select cohort" hint={isInstructorWorkspace ? 'Only cohorts assigned to you are listed.' : 'Choose the cohort that should receive this resource.'}>
+                <select className="input" value={form.cohort_id} onChange={event => setForm(current => ({ ...current, cohort_id: event.target.value, release_checkpoint_id: '' }))}>
+                  <option value="">Choose a cohort</option>
+                  {cohorts.map(cohort => <option key={cohort.id} value={cohort.id}>{cohort.name}</option>)}
+                </select>
+              </Field>{!cohorts.length && <p className="mt-2 text-xs text-ink-600">No cohorts are available for this program. Choose another program or add a cohort first.</p>}</div>}
+              <Field label="Module" hint="Optional placement within the selected audience">
                 <select
                   className="input"
                   value={form.module_id}
@@ -316,7 +368,7 @@ export function AdminResources() {
                     }))
                   }
                 >
-                  <option value="">Course-wide</option>
+                  <option value="">General resource — no module</option>
                   {modules.map((module) => (
                     <option key={module.id} value={module.id}>
                       {module.title}
@@ -366,12 +418,7 @@ export function AdminResources() {
                     </button>
                   ))}
                 </div>
-                <Field label="Cohort" hint="Optional for immediate or scheduled course-wide resources; required for assessment and activity checkpoints.">
-                  <select className="input" value={form.cohort_id} onChange={(event) => setForm((current) => ({ ...current, cohort_id: event.target.value, release_checkpoint_id: "" }))}>
-                    <option value="">Every cohort in this course</option>
-                    {cohorts.map((cohort) => <option key={cohort.id} value={cohort.id}>{cohort.name}</option>)}
-                  </select>
-                </Field>
+                <p className="rounded-lg bg-brand-50 px-3 py-2 text-xs text-brand-800">Audience: {audience === 'program' ? 'All current and future program participants' : cohorts.find(cohort => cohort.id === form.cohort_id)?.name || 'Choose a cohort in the Audience step'}</p>
                 {form.release_mode === "scheduled" && (
                   <Field label="Release date and time">
                     <input type="datetime-local" className="input" value={form.release_at} onChange={(event) => setForm((current) => ({ ...current, release_at: event.target.value }))} />
@@ -382,8 +429,8 @@ export function AdminResources() {
                     <Field label="Checkpoint type">
                       <select className="input" value={form.release_checkpoint_type} onChange={(event) => setForm((current) => ({ ...current, release_checkpoint_type: event.target.value as "lesson" | "assessment" | "activity", release_checkpoint_id: "" }))}>
                         <option value="lesson">Learning completion</option>
-                        <option value="activity">Activity completion</option>
-                        <option value="assessment">Assessment completion</option>
+                        <option value="activity" disabled={audience === 'program'}>Activity completion — cohort only</option>
+                        <option value="assessment" disabled={audience === 'program'}>Assessment completion — cohort only</option>
                       </select>
                     </Field>
                     <Field label="Required checkpoint">
@@ -399,6 +446,7 @@ export function AdminResources() {
                 {form.release_mode === "checkpoint" && form.release_checkpoint_type === "assessment" && (
                   <label className="flex items-center gap-2 text-xs text-ink-700"><input type="checkbox" checked={form.checkpoint_requires_pass} onChange={(event) => setForm((current) => ({ ...current, checkpoint_requires_pass: event.target.checked }))} /> Require a passing score, not only a completed attempt</label>
                 )}
+                {form.release_mode === 'checkpoint' && audience === 'program' && <p className="text-xs leading-5 text-ink-600">A shared learning checkpoint works for future cohorts. Activities and assessments belong to a specific cohort; choose a cohort-only audience to use those checkpoints.</p>}
                 {form.release_mode !== "immediate" && (
                   <label className="flex items-center gap-2 text-xs text-ink-700"><input type="checkbox" checked={form.show_before_release} onChange={(event) => setForm((current) => ({ ...current, show_before_release: event.target.checked }))} /> Show a locked preview so students know this resource is coming</label>
                 )}
@@ -424,7 +472,7 @@ export function AdminResources() {
               <Field label="Private file" hint="Stored in the private course-assets bucket. Maximum 250 MB.">
                 <input
                   type="file"
-                  required
+                  required={!editingId || !form.url}
                   className="input file:mr-3 file:rounded-md file:border-0 file:bg-brand-50 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-brand-700"
                   onChange={(event) => setFile(event.target.files?.[0] ?? null)}
                 />
@@ -432,6 +480,7 @@ export function AdminResources() {
               )}
               <div className="rounded-lg bg-ink-50 p-4 text-xs leading-5 text-ink-600">
                 <p className="font-semibold text-ink-900">{form.title}</p>
+                <p className="mt-1 font-medium text-brand-800">{audience === 'program' ? 'Shared program resource · includes all future cohorts' : `Cohort only · ${cohorts.find(cohort => cohort.id === form.cohort_id)?.name ?? ''}`}</p>
                 <p className="mt-1">{form.release_mode === "immediate" ? "Available immediately" : form.release_mode === "scheduled" ? `Scheduled for ${form.release_at || "a selected time"}` : "Released after the selected checkpoint"}</p>
               </div>
             <label className="flex gap-2 text-xs text-ink-700">
@@ -450,6 +499,7 @@ export function AdminResources() {
               </div>
             )}
             </CreationWizard>
+            </fieldset>
           </form>
         </FormPanel>
         <section className="overflow-hidden rounded-xl bg-white shadow-soft">
@@ -465,11 +515,12 @@ export function AdminResources() {
               {rows.map((row) => (
                 <article
                   key={row.id}
-                  className="flex items-center gap-4 px-5 py-4"
+                  className="flex flex-wrap items-center gap-3 px-5 py-4"
                 >
                   <FolderOpen size={18} className="text-brand-600" />
                   <div className="min-w-0 flex-1">
                     <h2 className="font-medium text-ink-900">{row.title}</h2>
+                    <p className={`mt-1 text-xs font-medium ${row.cohort_id ? 'text-brand-700' : 'text-success-700'}`}>{row.cohort_id ? `Cohort only · ${cohorts.find(cohort => cohort.id === row.cohort_id)?.name ?? 'Selected cohort'}` : 'Program library · all current and future cohorts'}</p>
                     <p className="text-xs text-ink-500">
                       {row.description || row.resource_type}
                     </p>
