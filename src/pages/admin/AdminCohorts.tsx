@@ -6,6 +6,7 @@ import {
   type FormEvent,
 } from "react";
 import { CalendarDays, Layers, Pencil, UserPlus } from "lucide-react";
+import { DeleteRecordButton } from "@/components/ui/DeleteRecordButton";
 import { useSearchParams } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -352,7 +353,7 @@ export function AdminCohorts() {
                           : "Not assigned"}
                       </p>
                     </div>
-                    <div className="flex gap-1">
+                    <div className="flex flex-wrap gap-1">
                       <button
                         className="btn-ghost !p-2"
                         aria-label={`Assign instructor to ${row.name}`}
@@ -369,6 +370,7 @@ export function AdminCohorts() {
                       >
                         <Pencil size={16} />
                       </button>
+                      <DeleteRecordButton table="cohorts" id={row.id} title={row.name} onDeleted={async () => { if (editingId === row.id) reset(); setAssigning(null); await load(); }} />
                     </div>
                   </div>
                   {assigning === row.id && (

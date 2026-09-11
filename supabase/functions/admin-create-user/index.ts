@@ -12,6 +12,8 @@ Deno.serve(async (request) => {
     const serviceClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const { data: callerData } = await serviceClient.auth.getUser(authorization.replace("Bearer ", ""));
     if (!callerData.user) throw new Error("Authentication required");
+    const { data: callerProfile } = await serviceClient.from("profiles").select("is_active").eq("id", callerData.user.id).maybeSingle();
+    if (!callerProfile?.is_active) throw new Error("An active administrator account is required");
     const { count: adminCount } = await serviceClient
       .from("user_roles")
       .select("id,role:roles!inner(name)", { count: "exact", head: true })

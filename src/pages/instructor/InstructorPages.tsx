@@ -1,4 +1,6 @@
 import { DiscussionReports } from '@/components/communication/DiscussionReports';
+import { DeleteRecordButton } from '@/components/ui/DeleteRecordButton';
+import { AssessmentRecords } from '@/components/communication/AssessmentRecords';
 import { CourseQuestionsPanel } from '@/components/communication/CourseQuestionsPanel';
 import { Rubric } from '@/components/ui/Rubric';
 import { AttemptAuthorization } from "@/components/communication/AttemptAuthorization";
@@ -336,7 +338,7 @@ export function InstructorLiveSessions() {
             {rows.map((row) => (
               <article
                 key={row.id}
-                className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center"
+                className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:flex-wrap sm:items-center"
               >
                 <Video size={19} className="text-brand-600" />
                 <div className="min-w-0 flex-1">
@@ -387,15 +389,17 @@ export function InstructorLiveSessions() {
                     row.is_cancelled ? "badge-danger" : "badge-success"
                   }
                   onClick={async () => {
-                    await supabase
+                    const { error: cancelError } = await supabase
                       .from("live_sessions")
                       .update({ is_cancelled: !row.is_cancelled })
                       .eq("id", row.id);
+                    if (cancelError) { setError(cancelError.message); return; }
                     await load();
                   }}
                 >
-                  {row.is_cancelled ? "Cancelled" : "Scheduled"}
+                  {row.is_cancelled ? "Restore session" : "Cancel session"}
                 </button>
+                <DeleteRecordButton table="live_sessions" id={row.id} title={row.title} onDeleted={load} />
               </article>
             ))}
           </div>
@@ -409,6 +413,7 @@ export function InstructorAssignments() {
   const { user } = useAuth();
   const { cohorts, loading: cohortLoading } = useInstructorCohorts();
   const [rows, setRows] = useState<Assignment[]>([]);
+  const [assessmentRevision, setAssessmentRevision] = useState(0);
   const [open, setOpen] = useState(false);
   const [assignmentStep, setAssignmentStep] = useState(0);
   const [form, setForm] = useState({
@@ -684,7 +689,8 @@ export function InstructorAssignments() {
             </CreationWizard>
           </form>
         </FormPanel>
-        <QuizBuilder />
+        <QuizBuilder onCreated={() => setAssessmentRevision(current => current + 1)} />
+        <AssessmentRecords cohorts={cohorts} revision={assessmentRevision} />
         <PageState
           loading={loading}
           error={error}
@@ -695,7 +701,7 @@ export function InstructorAssignments() {
             {rows.map((row) => (
               <article
                 key={row.id}
-                className="flex items-center gap-4 px-5 py-4"
+                className="flex flex-wrap items-center gap-3 px-5 py-4"
               >
                 <ClipboardList size={18} className="text-brand-600" />
                 <div className="min-w-0 flex-1">
@@ -729,6 +735,7 @@ export function InstructorAssignments() {
                 >
                   {row.is_published ? "Published" : "Draft"}
                 </button>
+                <DeleteRecordButton table="assignments" id={row.id} title={row.title} onDeleted={load} />
               </article>
             ))}
           </div>
@@ -738,7 +745,7 @@ export function InstructorAssignments() {
   );
 }
 
-function QuizBuilder() {
+function QuizBuilder({ onCreated }: { onCreated: () => void }) {
   type DraftQuestion = {
     type:
       | "multiple_choice"
@@ -850,6 +857,7 @@ function QuizBuilder() {
         setOpen(false);
         setTitle("");
         setQuestions([blankQuestion()]);
+        onCreated();
       }
     }
     setSaving(false);
@@ -2411,10 +2419,11 @@ export function InstructorCommunications() {
               {rows.map((row) => (
                 <article key={row.id} className="px-5 py-4">
                   <div className="flex items-center gap-2">
-                    <h2 className="font-medium text-ink-900">{row.title}</h2>
+                    <h2 className="min-w-0 flex-1 break-words font-medium text-ink-900">{row.title}</h2>
                     {row.is_pinned && (
                       <span className="badge-warning">Pinned</span>
                     )}
+                    <DeleteRecordButton table="announcements" id={row.id} title={row.title} onDeleted={load} />
                   </div>
                   <p className="mt-2 text-sm leading-6 text-ink-600">
                     {row.body}

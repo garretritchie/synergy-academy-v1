@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { FolderTree, Pencil } from "lucide-react";
+import { DeleteRecordButton } from "@/components/ui/DeleteRecordButton";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Alert, SubmitButton, TableSkeleton } from "@/components/ui/Feedback";
@@ -178,7 +179,7 @@ export function AdminCategories() {
               {items.map((item) => (
                 <div
                   key={item.id}
-                  className="flex items-center gap-4 px-5 py-4"
+                  className="flex flex-wrap items-center gap-3 px-5 py-4"
                 >
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
                     <FolderTree size={19} />
@@ -208,6 +209,7 @@ export function AdminCategories() {
                   >
                     <Pencil size={16} />
                   </button>
+                  <DeleteRecordButton table="course_categories" id={item.id} title={item.name} onDeleted={async () => { if (editingId === item.id) reset(); await load(); }} />
                 </div>
               ))}
             </div>

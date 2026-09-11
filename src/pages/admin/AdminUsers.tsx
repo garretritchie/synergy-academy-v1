@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { Check, Copy, KeyRound, RefreshCw, Search, ShieldCheck, UserPlus, UserRound } from "lucide-react";
+import { Check, Copy, KeyRound, RefreshCw, Search, ShieldCheck, UserPlus, UserRound, UserRoundCheck, UserRoundX } from "lucide-react";
+import { UserAccessDialog } from "@/components/ui/UserAccessDialog";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Alert, SubmitButton, TableSkeleton } from "@/components/ui/Feedback";
@@ -27,6 +28,10 @@ export function AdminUsers() {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState("");
+  const [accessTarget, setAccessTarget] = useState<UserRow | null>(null);
+  const [accessError, setAccessError] = useState("");
+  const [accessMessage, setAccessMessage] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [inviteOpen, setInviteOpen] = useState(false);
   const [creationMode, setCreationMode] = useState<"manual" | "invite">("manual");
   const [inviteSaving, setInviteSaving] = useState(false);
@@ -90,18 +95,31 @@ export function AdminUsers() {
     setSaving("");
   };
   const toggleActive = async (user: UserRow) => {
+    if (saving) return;
     if (user.id === currentUser?.id && user.is_active) {
       setError("You cannot deactivate your own account.");
       return;
     }
     setSaving(user.id);
-    const { error: updateError } = await supabase
-      .from("profiles")
-      .update({ is_active: !user.is_active })
-      .eq("id", user.id);
-    if (updateError) setError(updateError.message);
-    else await load();
-    setSaving("");
+    setAccessError("");
+    try {
+      const { data, error: updateError } = await supabase
+        .from("profiles")
+        .update({ is_active: !user.is_active })
+        .eq("id", user.id)
+        .eq("is_active", user.is_active)
+        .select("id")
+        .maybeSingle();
+      if (updateError) throw updateError;
+      if (!data) throw new Error("This account changed or is no longer available. Close this dialog and refresh the list.");
+      setUsers(current => current.map(row => row.id === user.id ? { ...row, is_active: !user.is_active } : row));
+      setAccessMessage(`${fullName(user)} ${user.is_active ? "has been disabled. Their learning records are preserved." : "has been enabled."}`);
+      setAccessTarget(null);
+    } catch (err) {
+      setAccessError(getErrorMessage(err));
+    } finally {
+      setSaving("");
+    }
   };
   const toggleInviteRole = (role: UserRole) => {
     setInvite((current) => ({
@@ -203,7 +221,7 @@ export function AdminUsers() {
     window.setTimeout(() => setCopied(false), 1800);
   };
   const filtered = users.filter((user) =>
-    `${fullName(user)} ${user.email}`
+    (statusFilter === "all" || (statusFilter === "active" ? user.is_active : !user.is_active)) && `${fullName(user)} ${user.email}`
       .toLowerCase()
       .includes(search.toLowerCase()),
   );
@@ -377,7 +395,8 @@ export function AdminUsers() {
           </form>
         </FormPanel>
         <div className="rounded-xl bg-white p-4 shadow-soft">
-          <div className="relative">
+          <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="relative flex-1">
             <Search
               className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400"
               size={17}
@@ -385,20 +404,30 @@ export function AdminUsers() {
             <input
               className="input pl-10"
               placeholder="Search by name or email"
+              aria-label="Search users by name or email"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />
           </div>
+          <select className="input sm:!w-auto" aria-label="Filter users by account status" value={statusFilter} onChange={event => setStatusFilter(event.target.value)}>
+            <option value="all">All accounts</option>
+            <option value="active">Active accounts</option>
+            <option value="disabled">Disabled accounts</option>
+          </select>
+          <button type="button" className="btn-secondary" disabled={loading || Boolean(saving)} onClick={() => void load()}><RefreshCw size={16} /> Refresh</button>
+          </div>
           <p className="mt-3 text-xs text-ink-500">
-            Existing accounts appear below. Manual creation is the default; invitation links remain available when self-registration is preferred.
+            Disable access without deleting enrolments, submissions, or grades. You can enable the account again later.
           </p>
         </div>
         {error && <Alert>{error}</Alert>}
+        {accessMessage && <p role="status" className="rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{accessMessage}</p>}
         <section className="overflow-hidden rounded-xl bg-white shadow-soft">
           {loading ? (
             <TableSkeleton />
           ) : (
             <div className="divide-y divide-ink-100">
+              {!filtered.length && <p className="px-5 py-8 text-sm text-ink-600">No users match your search or account filter.</p>}
               {filtered.map((user) => (
                 <article key={user.id} className="px-5 py-4">
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
@@ -410,6 +439,7 @@ export function AdminUsers() {
                         <p className="truncate font-medium text-ink-900">
                           {fullName(user)}
                         </p>
+                        <span className={user.is_active ? "badge-success" : "badge-neutral"}>{user.is_active ? "Active" : "Disabled"}</span>
                         <p className="truncate text-sm text-ink-500">
                           {user.email}
                         </p>
@@ -420,12 +450,11 @@ export function AdminUsers() {
                         const active = user.user_roles.some(
                           (item) => item.role_id === role.id,
                         );
-                        const key = `${user.id}:${role.id}`;
                         return (
                           <button
                             key={role.id}
                             type="button"
-                            disabled={saving === key}
+                            disabled={Boolean(saving)}
                             onClick={() => void toggleRole(user, role)}
                             className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 ${active ? "bg-brand-100 text-brand-800" : "bg-ink-50 text-ink-600 hover:bg-ink-100"}`}
                           >
@@ -437,15 +466,14 @@ export function AdminUsers() {
                     </div>
                     <button
                       type="button"
-                      disabled={saving === user.id}
-                      onClick={() => void toggleActive(user)}
-                      className={
-                        user.is_active
-                          ? "badge-success justify-center py-2"
-                          : "badge-danger justify-center py-2"
-                      }
+                      disabled={Boolean(saving) || user.id === currentUser?.id}
+                      aria-label={`${user.is_active ? "Disable" : "Enable"} ${fullName(user)}`}
+                      title={user.id === currentUser?.id ? "You cannot disable your own account" : undefined}
+                      onClick={() => { setAccessTarget(user); setAccessError(""); setAccessMessage(""); }}
+                      className={`btn-secondary shrink-0 ${user.is_active ? "!text-red-700" : "!text-brand-700"}`}
                     >
-                      {user.is_active ? "Active" : "Disabled"}
+                      {user.is_active ? <UserRoundX size={16} /> : <UserRoundCheck size={16} />}
+                      {user.id === currentUser?.id ? "Your account" : user.is_active ? "Disable user" : "Enable user"}
                     </button>
                   </div>
                 </article>
@@ -454,6 +482,8 @@ export function AdminUsers() {
           )}
         </section>
       </div>
+      {accessTarget && <UserAccessDialog name={fullName(accessTarget)} email={accessTarget.email} active={accessTarget.is_active} saving={Boolean(saving)} error={accessError}
+        onClose={() => setAccessTarget(null)} onConfirm={() => void toggleActive(accessTarget)} />}
     </AppLayout>
   );
 }

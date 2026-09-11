@@ -1,4 +1,5 @@
 import { DiscussionReports } from '@/components/communication/DiscussionReports';
+import { DeleteRecordButton } from "@/components/ui/DeleteRecordButton";
 import { CourseQuestionsPanel } from '@/components/communication/CourseQuestionsPanel';
 import {
   useCallback,
@@ -261,7 +262,7 @@ export function AdminCommunications() {
               {rows.map((row) => (
                 <article key={row.id} className="px-5 py-4">
                   <div className="flex items-center gap-2">
-                    <h3 className="font-medium text-ink-900">{row.title}</h3>
+                    <h3 className="min-w-0 flex-1 break-words font-medium text-ink-900">{row.title}</h3>
                     {row.is_pinned && (
                       <span className="badge-warning">Pinned</span>
                     )}
@@ -272,6 +273,7 @@ export function AdminCommunications() {
                     >
                       {row.is_published ? "Published" : "Draft"}
                     </span>
+                    <DeleteRecordButton table="announcements" id={row.id} title={row.title} onDeleted={load} />
                   </div>
                   <p className="mt-1 text-sm text-ink-600">{row.body}</p>
                   <p className="mt-2 text-xs text-ink-500">

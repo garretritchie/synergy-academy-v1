@@ -92,6 +92,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error?.message ?? null };
   }, []);
 
+  // Refresh permissions when returning to the app, including staff deactivation.
+  useEffect(() => {
+    if (!user) return;
+    const refreshAccess = () => {
+      if (document.visibilityState === "visible") void loadProfileAndRoles(user.id);
+    };
+    window.addEventListener("focus", refreshAccess);
+    document.addEventListener("visibilitychange", refreshAccess);
+    const timer = window.setInterval(refreshAccess, 60_000);
+    return () => {
+      window.removeEventListener("focus", refreshAccess);
+      document.removeEventListener("visibilitychange", refreshAccess);
+      window.clearInterval(timer);
+    };
+  }, [user, loadProfileAndRoles]);
+
   const signUp = useCallback(async (
     email: string,
     password: string,
