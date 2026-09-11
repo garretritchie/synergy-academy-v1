@@ -6,11 +6,14 @@ import {
   LogOut,
   ChevronDown,
   ChevronRight,
-  RefreshCw,
+  Check,
   Building2,
   UserRound,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useRoleView } from "@/context/RoleViewContext";
+import { RoleViewSwitcher } from "./RoleViewSwitcher";
+import { roleViewLabels, roleViewOrder } from "@/lib/roleView";
 import {
   getNavForRole,
   getHomePathForRole,
@@ -29,6 +32,8 @@ interface AppLayoutProps {
 
 export function AppLayout({ children, courseNav, courseContent }: AppLayoutProps) {
   const { profile, roles, signOut } = useAuth();
+  const { activeRole: selectedRole, switchRole: changeRole } = useRoleView();
+  const activeRole = selectedRole ?? "student";
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
@@ -62,23 +67,6 @@ export function AppLayout({ children, courseNav, courseContent }: AppLayoutProps
     };
   }, [mobileOpen]);
 
-  const defaultRole: UserRole = roles.includes("administrator")
-    ? "administrator"
-    : roles.includes("instructor")
-      ? "instructor"
-      : "student";
-
-  const [activeRole, setActiveRole] = useState<UserRole>(() => {
-    const saved = window.localStorage.getItem(
-      "synergy-active-role",
-    ) as UserRole | null;
-    return saved ?? defaultRole;
-  });
-
-  useEffect(() => {
-    if (!roles.includes(activeRole)) setActiveRole(defaultRole);
-  }, [activeRole, defaultRole, roles]);
-
   useEffect(() => {
     if (!profile?.id) return;
     let cancelled = false;
@@ -109,10 +97,9 @@ export function AppLayout({ children, courseNav, courseContent }: AppLayoutProps
   };
 
   const switchRole = (role: UserRole) => {
-    window.localStorage.setItem("synergy-active-role", role);
-    setActiveRole(role);
     setUserMenuOpen(false);
-    navigate(getHomePathForRole(role));
+    setMobileOpen(false);
+    changeRole(role);
   };
 
   const isCourseContext = !!courseNav;
@@ -224,17 +211,19 @@ export function AppLayout({ children, courseNav, courseContent }: AppLayoutProps
           {roles.length > 1 && (
             <div className="border-t border-ink-100 px-1.5 py-1">
               <p className="px-2 py-1 text-xs font-semibold uppercase tracking-[0.1em] text-ink-400">
-                Switch workspace
+                Switch view
               </p>
-              {roles.map((role) => (
+              {roleViewOrder.filter(role => roles.includes(role)).map((role) => (
                 <button
                   type="button"
                   role="menuitem"
                   key={role}
                   onClick={() => switchRole(role)}
+                  aria-current={role === activeRole ? "true" : undefined}
+                  aria-label={`Switch to ${roleViewLabels[role]} view`}
                   className={`flex min-h-10 w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm capitalize transition-colors ${role === activeRole ? "bg-brand-50 font-semibold text-brand-700" : "text-ink-700 hover:bg-brand-50 hover:text-brand-800"}`}
                 >
-                  <RefreshCw size={14} /> {role}
+                  <span className="w-4">{role === activeRole && <Check size={14} />}</span> {roleViewLabels[role]}
                 </button>
               ))}
             </div>
@@ -251,6 +240,11 @@ export function AppLayout({ children, courseNav, courseContent }: AppLayoutProps
       )}
     </div>
   );
+
+  const accountControls = (compact = false) => <div className="flex shrink-0 items-center gap-2">
+    <RoleViewSwitcher roles={roles} activeRole={selectedRole} onChange={switchRole} />
+    {accountMenu(compact)}
+  </div>;
 
   const navigationToggle = <button ref={navigationTrigger} type="button"
     onClick={() => setMobileOpen(open => !open)}
@@ -347,7 +341,7 @@ export function AppLayout({ children, courseNav, courseContent }: AppLayoutProps
 
       {/* Main content area */}
       <div className="relative flex min-w-0 flex-1 flex-col" {...(mobileOpen ? { inert: '' } : {})}>
-        {courseContent ? courseContent(navigationToggle, accountMenu(true)) : <>
+        {courseContent ? courseContent(navigationToggle, accountControls(true)) : <>
         {/* Mobile top bar */}
         <header className="app-topbar flex h-16 shrink-0 items-center justify-between px-4 lg:hidden">
           <button
@@ -359,14 +353,14 @@ export function AppLayout({ children, courseNav, courseContent }: AppLayoutProps
           >
             {mobileOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
-          <AcademyBrandMark compact />
-          {accountMenu(true)}
+          {roles.length < 2 && <AcademyBrandMark compact />}
+          {accountControls(true)}
         </header>
 
         {/* Desktop top bar */}
         <header className="app-topbar hidden h-16 shrink-0 items-center justify-between px-7 lg:flex">
           <AcademyBrandMark />
-          {accountMenu()}
+          {accountControls()}
         </header>
 
         {/* Page content */}

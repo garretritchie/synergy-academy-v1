@@ -1,0 +1,31 @@
+import fs from 'node:fs';
+import ts from 'typescript';
+import assert from 'node:assert/strict';
+const output = ts.transpileModule(fs.readFileSync('src/lib/roleView.ts','utf8'), {
+  compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 },
+}).outputText;
+const { resolveRoleView, roleFromPath, readRoleView, saveRoleView } = await import(`data:text/javascript;base64,${Buffer.from(output).toString('base64')}`);
+const all = ['student','instructor','administrator'];
+assert.equal(resolveRoleView(all, '/', null), 'administrator');
+assert.equal(resolveRoleView(all, '/', 'student'), 'student');
+assert.equal(resolveRoleView(all, '/account/profile', 'instructor'), 'instructor');
+assert.equal(resolveRoleView(all, '/student/courses/example/learn', 'administrator'), 'student');
+assert.equal(resolveRoleView(all, '/instructor/courses', 'administrator'), 'instructor');
+assert.equal(resolveRoleView(all, '/admin/users', 'student'), 'administrator');
+assert.equal(resolveRoleView(['student'], '/admin/users', 'administrator'), 'student');
+assert.equal(resolveRoleView(['instructor'], '/', 'student'), 'instructor');
+assert.equal(resolveRoleView([], '/student', 'student'), null);
+assert.equal(resolveRoleView(all, '/', 'made-up-role'), 'administrator');
+assert.equal(roleFromPath('/administrator'), null);
+assert.equal(roleFromPath('/student-fake'), null);
+const storage=new Map();
+globalThis.localStorage={getItem:key=>storage.get(key)??null,setItem:(key,value)=>storage.set(key,value)};
+saveRoleView('one','student'); saveRoleView('two','instructor');
+assert.equal(readRoleView('one'),'student');
+assert.equal(readRoleView('two'),'instructor');
+assert.equal(readRoleView('three'),null);
+assert.equal(resolveRoleView(['instructor'], '/', readRoleView('one')), 'instructor');
+globalThis.localStorage={getItem:()=>{throw Error('Blocked');},setItem:()=>{throw Error('Full');}};
+assert.equal(readRoleView('one'),null);
+assert.doesNotThrow(()=>saveRoleView('one','student'));
+console.log('PASS role views: assigned roles only, route/deep-link/back consistency, remembered home, removed role fallback, per-user isolation, invalid data and blocked storage.');

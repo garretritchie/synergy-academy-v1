@@ -10,6 +10,7 @@ import { CreationWizard } from "@/components/ui/CreationWizard";
 import { Field, FormPanel } from "@/components/ui/FormPanel";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
+import { useRoleView } from "@/context/RoleViewContext";
 import type { Course, Lesson, Module, Resource } from "@/types";
 
 type ModuleWithLessons = Module & { lessons: Lesson[] };
@@ -17,8 +18,9 @@ type CohortOption = { id: string; name: string };
 type CheckpointOption = { id: string; title: string; cohort_id: string; kind: "assessment" | "activity" };
 
 export function AdminResources() {
-  const { user, roles } = useAuth();
-  const isInstructorWorkspace = roles.includes("instructor") && !roles.includes("administrator");
+  const { user } = useAuth();
+  const { activeRole } = useRoleView();
+  const isInstructorWorkspace = activeRole === "instructor";
   const [searchParams, setSearchParams] = useSearchParams();
   const [courses, setCourses] = useState<Course[]>([]);
   const [courseId, setCourseId] = useState(

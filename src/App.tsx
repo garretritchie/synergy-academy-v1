@@ -5,6 +5,7 @@ import { AcademyBrandMark } from "@/components/brand/AcademyBrandMark";
 import { FullPageSpinner } from "@/components/ui/Spinner";
 import { getHomePathForRole } from "@/config/navigation";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { RoleViewProvider, useRoleView } from "@/context/RoleViewContext";
 import type { UserRole } from "@/types";
 
 const lazyNamed = <T extends Record<string, unknown>, K extends keyof T>(
@@ -336,18 +337,14 @@ function CourseActivitiesRedirect() {
 
 function RoleRedirect() {
   const { user, profile, roles, loading } = useAuth();
+  const { activeRole } = useRoleView();
   if (loading) return <FullPageSpinner />;
   if (!user) return <Navigate to="/signin" replace />;
   if (user.user_metadata?.must_change_password)
     return <Navigate to="/reset-password?temporary=1" replace />;
   if (profile && !profile.is_active) return <Navigate to="/pending" replace />;
   if (!roles.length) return <Navigate to="/pending" replace />;
-  const role = roles.includes("administrator")
-    ? "administrator"
-    : roles.includes("instructor")
-      ? "instructor"
-      : "student";
-  return <Navigate to={getHomePathForRole(role)} replace />;
+  return <Navigate to={activeRole ? getHomePathForRole(activeRole) : "/pending"} replace />;
 }
 
 function PendingAccess() {
@@ -420,7 +417,7 @@ function App() {
       <BrowserRouter
         future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
       >
-        <AppRoutes />
+        <RoleViewProvider><AppRoutes /></RoleViewProvider>
       </BrowserRouter>
     </AuthProvider>
   );

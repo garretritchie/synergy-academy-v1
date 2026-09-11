@@ -1,6 +1,8 @@
 import { Navigate } from "react-router-dom";
 import type { ReactNode } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { useRoleView } from "@/context/RoleViewContext";
+import { getHomePathForRole } from "@/config/navigation";
 import { FullPageSpinner } from "@/components/ui/Spinner";
 import type { UserRole } from "@/types";
 
@@ -14,6 +16,7 @@ export function ProtectedRoute({
   allowedRoles,
 }: ProtectedRouteProps) {
   const { user, profile, roles, loading } = useAuth();
+  const { activeRole } = useRoleView();
 
   if (loading) return <FullPageSpinner message="Loading your workspace..." />;
 
@@ -28,11 +31,7 @@ export function ProtectedRoute({
   if (!roles.length) return <Navigate to="/pending" replace />;
 
   if (allowedRoles && !allowedRoles.some((r) => roles.includes(r))) {
-    const homePath = roles.includes("administrator")
-      ? "/admin"
-      : roles.includes("instructor")
-        ? "/instructor"
-        : "/student";
+    const homePath = activeRole ? getHomePathForRole(activeRole) : "/pending";
     return <Navigate to={homePath} replace />;
   }
 
