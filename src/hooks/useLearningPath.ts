@@ -2,21 +2,23 @@ import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { buildLearningPath, pathProgress, type PathModule, type PathActivity, type PathAssessment, type PathStep } from '@/lib/learningPath';
-type Snapshot={modules:PathModule[];steps:PathStep[];error:string;loading:boolean};
-const empty:Snapshot={modules:[],steps:[],error:'',loading:true};
+import {mergeBookmarks,readBookmarks,type LessonBookmark} from '@/lib/lessonBookmarks';
+type Snapshot={modules:PathModule[];steps:PathStep[];bookmarks:LessonBookmark[];error:string;loading:boolean};
+const empty:Snapshot={modules:[],steps:[],bookmarks:[],error:'',loading:true};
 const cache=new Map<string,{at:number;promise:Promise<Snapshot>}>();
 const listeners=new Map<string,Set<()=>void>>();
 async function fetchPath(cohortId:string,studentId:string):Promise<Snapshot>{
  const enrolment=await supabase.from('enrolments').select('id,cohort:cohorts(course_id,start_date)').eq('cohort_id',cohortId).eq('student_id',studentId).eq('status','active').single();
  if(enrolment.error)return {...empty,loading:false,error:enrolment.error.message};
  const courseId=(enrolment.data.cohort as unknown as {course_id:string}).course_id;
- const [m,a,c,p,r,rules]=await Promise.all([
+ const [m,a,c,p,r,rules,bookmarks]=await Promise.all([
   supabase.from('modules').select('id,title,display_order,lessons(id,title,display_order,is_published)').eq('course_id',courseId).eq('is_published',true).order('display_order'),
   supabase.from('assignments').select('id,title,module_id,submissions(status)').eq('cohort_id',cohortId).eq('assignment_type','activity').eq('is_published',true).eq('submissions.enrolment_id',enrolment.data.id),
   supabase.from('assessments').select('id,title,module_id,passing_score,assessment_attempts(status,percentage)').eq('cohort_id',cohortId).eq('assessment_type','practice').eq('is_published',true).eq('assessment_attempts.enrolment_id',enrolment.data.id),
   supabase.from('progress_records').select('lesson_id,status').eq('enrolment_id',enrolment.data.id),
   supabase.rpc('get_released_lesson_ids',{cohort_uuid:cohortId}),
   supabase.from('content_release_rules').select('module_id,lesson_id,release_type,release_date,days_offset').eq('cohort_id',cohortId),
+  supabase.from('lesson_bookmarks').select('lesson_id,screen_index,updated_at').eq('cohort_id',cohortId).eq('student_id',studentId),
  ]);
  const failure=m.error||a.error||c.error||p.error||r.error;
  if(failure)return {...empty,loading:false,error:failure.message};
@@ -30,7 +32,7 @@ async function fetchPath(cohortId:string,studentId:string):Promise<Snapshot>{
   if (date && rule.release_type === 'days_from_start') date.setUTCDate(date.getUTCDate() + rule.days_offset);
   if (date && !Number.isNaN(date.getTime())) releaseReasons.set(lesson.id, `Unlocks ${new Intl.DateTimeFormat(undefined,{dateStyle:'medium',timeStyle:'short',timeZoneName:undefined}).format(date)} (your local time).`);
  }
- return {modules,steps:buildLearningPath(cohortId,modules,a.data as unknown as PathActivity[],c.data as unknown as PathAssessment[],new Set(p.data.filter(x=>x.status==='completed').map(x=>x.lesson_id)),new Set(r.data as string[]),releaseReasons),error:'',loading:false};
+ return {modules,steps:buildLearningPath(cohortId,modules,a.data as unknown as PathActivity[],c.data as unknown as PathAssessment[],new Set(p.data.filter(x=>x.status==='completed').map(x=>x.lesson_id)),new Set(r.data as string[]),releaseReasons),bookmarks:bookmarks.data??[],error:'',loading:false};
 }
 function request(key:string,cohort:string,student:string){
  let entry=cache.get(key);
@@ -48,5 +50,11 @@ export function useLearningPath(cohortId?:string){
  },[key,cohortId,studentId]);
  const refresh=useCallback(async()=>{if(!studentId||!cohortId)return;cache.delete(key);const pending=request(key,cohortId,studentId);listeners.get(key)?.forEach(update=>update());await pending;},[key,cohortId,studentId]);
  const data=state.key===key?state.data:empty;
- return {...data,...pathProgress(data.steps),refresh};
+ const bookmarks=mergeBookmarks(studentId&&cohortId?readBookmarks(studentId,cohortId):[],data.bookmarks);
+ const resumeBookmark=bookmarks.find(b=>data.steps.some(s=>s.id===b.lesson_id&&s.available&&!s.done&&s.kind==='learn'));
+ const resume=resumeBookmark?data.steps.find(s=>s.id===resumeBookmark.lesson_id):undefined;
+ const lastBookmark=bookmarks.find(b=>data.steps.some(s=>s.id===b.lesson_id&&s.available&&s.kind==='learn'));
+ const lastLesson=lastBookmark?data.steps.find(s=>s.id===lastBookmark.lesson_id):undefined;
+ const progress=pathProgress(data.steps);
+ return {...data,...progress,next:resume??progress.next,resume,resumeScreen:resumeBookmark?resumeBookmark.screen_index+1:undefined,lastLesson,lastScreen:lastBookmark?lastBookmark.screen_index+1:undefined,refresh};
 }

@@ -1,0 +1,14 @@
+import fs from 'node:fs';import ts from 'typescript';import assert from 'node:assert/strict';
+const output=ts.transpileModule(fs.readFileSync('src/lib/lessonBookmarks.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2020}}).outputText;
+const {readBookmarks,writeBookmark,mergeBookmarks,clampScreen,legacyScreen}=await import(`data:text/javascript;base64,${Buffer.from(output).toString('base64')}`);
+const values=new Map();globalThis.localStorage={getItem:k=>values.get(k)??null,setItem:(k,v)=>values.set(k,v)};
+const row={lesson_id:'l1',screen_index:8,updated_at:'2026-09-11T12:00:00Z'};
+assert.equal(writeBookmark('s1','c1',row),true);assert.equal(readBookmarks('s1','c1')[0].screen_index,8);
+assert.deepEqual(readBookmarks('s2','c1'),[]);assert.deepEqual(readBookmarks('s1','c2'),[]);
+assert.equal(mergeBookmarks([row],[{...row,screen_index:3,updated_at:'2026-09-11T13:00:00Z'}])[0].screen_index,3);
+assert.equal(clampScreen(90,34),33);assert.equal(clampScreen(-1,3),0);assert.equal(clampScreen(NaN,3),0);
+values.set('academy-position:s1:c1:l2','4');assert.equal(legacyScreen('s1','c1','l2'),4);
+values.set('academy-bookmarks:v1:s1:c1','broken');assert.deepEqual(readBookmarks('s1','c1'),[]);
+globalThis.localStorage={getItem:()=>{throw Error('blocked');},setItem:()=>{throw Error('full');}};
+assert.deepEqual(readBookmarks('s1','c1'),[]);assert.equal(writeBookmark('s1','c1',row),false);
+console.log('PASS bookmarks: saved screen, newer cross-device copy, student/cohort isolation, legacy position, clamping, corrupt storage and storage failure.');

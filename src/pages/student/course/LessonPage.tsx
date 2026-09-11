@@ -17,6 +17,7 @@ import {
 import { CourseLayout } from "./CourseLayout";
 import { StudyNotes } from "./StudyNotes";
 import { useLearningPath } from "@/hooks/useLearningPath";
+import { useLessonBookmark } from "@/hooks/useLessonBookmark";
 import { PathNavigation } from "./PathNavigation";
 import { LearningFlow } from "./LearningFlow";
 import { StoryboardScreen, type StoryboardContent } from "./StoryboardScreen";
@@ -78,8 +79,11 @@ export function LessonPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [activeNugget, setActiveNugget] = useState(0);
+  const lessonWorkspace = useMemo(() => buildLessonWorkspace(lesson?.lesson_blocks ?? []), [lesson?.lesson_blocks]);
+  const bookmark = useLessonBookmark(user?.id, cohortId, lessonId, lessonWorkspace.nuggets.length, !loading && lesson?.id===lessonId);
+  const activeNugget=bookmark.screen, setActiveNugget=bookmark.setScreen;
   const [outlineOpen, setOutlineOpen] = useState(false);
+  const [nextChoicesOpen,setNextChoicesOpen]=useState(false);
   const [, setCompletedLessonIds] = useState<string[]>([]);
   const [, setReleasedLessonIds] = useState<string[]>([]);
   const [moduleCheckId, setModuleCheckId] = useState("");
@@ -90,8 +94,9 @@ export function LessonPage() {
     if (!cohortId || !lessonId || !user) return;
     setError("");
     setLoading(true);
-    setActiveNugget(Number(localStorage.getItem(`academy-position:${user.id}:${cohortId}:${lessonId}`) ?? 0));
     setOutlineOpen(false);
+    setNextChoicesOpen(false);
+    let live=true;
     void (async () => {
       const [lessonResult, enrolmentResult] = await Promise.all([
         supabase
@@ -109,6 +114,7 @@ export function LessonPage() {
           .eq("status", "active")
           .single(),
       ]);
+      if(!live)return;
       const queryError = lessonResult.error || enrolmentResult.error;
       if (queryError) setError(queryError.message);
       else {
@@ -133,6 +139,7 @@ export function LessonPage() {
             },
           }));
         }
+        if(!live)return;
         setLesson(lessonRow);
         setEnrolmentId(enrolmentResult.data.id);
         const { data: progress } = await supabase
@@ -142,6 +149,7 @@ export function LessonPage() {
           .eq("lesson_id", lessonId)
           .eq("student_id", user.id)
           .maybeSingle();
+        if(!live)return;
         setComplete(progress?.status === "completed");
         const [
           navigationResult,
@@ -181,6 +189,7 @@ export function LessonPage() {
             .eq("is_published", true)
             .eq("submissions.student_id", user.id),
         ]);
+        if(!live)return;
         if (!navigationResult.error && navigationResult.data) {
           const ordered = [...navigationResult.data].sort((left, right) => {
             const leftModule = left.module as unknown as {
@@ -258,6 +267,7 @@ export function LessonPage() {
       }
       setLoading(false);
     })();
+    return ()=>{live=false;};
   }, [cohortId, lessonId, user]);
   const markComplete = async (destination?: string) => {
     if (!lessonId || !cohortId || !user) return;
@@ -286,24 +296,28 @@ export function LessonPage() {
         current.includes(lessonId) ? current : [...current, lessonId],
       );
       if (destination) navigate(destination);
+      else setNextChoicesOpen(true);
     } catch (caught) {
       setError(getErrorMessage(caught));
     } finally {
       setSaving(false);
     }
   };
-  const lessonWorkspace = useMemo(
-    () => buildLessonWorkspace(lesson?.lesson_blocks ?? []),
-    [lesson?.lesson_blocks],
-  );
-  useEffect(()=>{if(user&&cohortId&&lessonId&&lesson?.id===lessonId&&!loading)localStorage.setItem(`academy-position:${user.id}:${cohortId}:${lessonId}`,String(activeNugget));},[activeNugget,user,cohortId,lessonId,lesson?.id,loading]);
-  useEffect(()=>{if(!loading)setActiveNugget(n=>Number.isFinite(n)?Math.max(0,Math.min(n,Math.max(0,lessonWorkspace.nuggets.length-1))):0);},[loading,lessonWorkspace.nuggets.length]);
+  const saveAndExit=async()=>{
+    if(saving)return;
+    setSaving(true);
+    if(await bookmark.save())navigate(`/student/courses/${cohortId}/learn`);
+    else setError('Your place could not be saved. Please try again before leaving.');
+    setSaving(false);
+  };
   const activeBlocks = lessonWorkspace.nuggets[activeNugget] ?? [];
   const isLastNugget =
     activeNugget === Math.max(0, lessonWorkspace.nuggets.length - 1);
   const lessonPartCount = Math.max(1, lessonWorkspace.nuggets.length);
   const completedCourseStepCount=path.completed, totalCourseSteps=path.total;
   const isIntroduction = lesson?.module.display_order === 0;
+  const moduleSteps=path.steps.filter(s=>s.moduleId===lesson?.module.id);
+  const canChooseNext=moduleSteps.filter(s=>s.kind==='learn').slice(-1)[0]?.id===lessonId && moduleSteps.some(s=>s.kind!=='learn');
   const completionDestination =
     path.steps.find(s=>s.id===lessonId) && path.steps[path.steps.findIndex(s=>s.id===lessonId)+1]
       ? path.steps[path.steps.findIndex(s=>s.id===lessonId)+1].href
@@ -333,7 +347,7 @@ export function LessonPage() {
   );
   return (
     <CourseLayout>
-      {loading ? (
+      {loading || (lesson && !bookmark.ready) ? (
         <div className="rounded-xl bg-white shadow-soft">
           <TableSkeleton />
         </div>
@@ -355,10 +369,12 @@ export function LessonPage() {
                 </span>
               </button>
               <StudyNotes cohortId={cohortId ?? ""} lessonId={lessonId ?? ""} screen={activeNugget}/>
+              <button type="button" className="btn-secondary" disabled={saving} onClick={()=>void saveAndExit()}><ArrowLeft size={15}/>{saving?'Saving…':'Save & exit'}</button>
             </div>
             {!isIntroduction && <div className="min-w-0 flex-1"><LearningFlow active="learn" hasActivity={Boolean(activityId)} hasAssessment={Boolean(moduleCheckId)} /></div>}
           </div>
           {error && <Alert>{error}</Alert>}
+          <p role="status" className="text-xs text-ink-600">Screen {activeNugget+1} of {lessonWorkspace.nuggets.length || 1} · {bookmark.status}. Return here to pick up where you stopped.</p>
           <div className="learning-player grid overflow-hidden rounded-2xl bg-white shadow-elevated lg:grid-cols-[15rem_minmax(0,1fr)]">
             <PathNavigation cohortId={cohortId ?? ""} />
             <div className="flex min-h-0 min-w-0 flex-col">
@@ -493,11 +509,13 @@ export function LessonPage() {
                         type="button"
                         disabled={saving}
                         className="btn-primary w-full !bg-success-600 hover:!bg-success-700 sm:w-auto"
-                        onClick={() => void markComplete(completionDestination)}
+                        onClick={() => void markComplete(canChooseNext ? undefined : completionDestination)}
                       >
-                        {saving ? "Saving..." : completionLabel}
+                        {saving ? "Saving..." : canChooseNext ? "Complete Learn it" : completionLabel}
                         {!saving && <ArrowRight size={16} />}
                       </button>
+                    ) : canChooseNext ? (
+                      <button type="button" className="btn-primary w-full sm:w-auto" onClick={()=>setNextChoicesOpen(true)}>Choose next step <ArrowRight size={16}/></button>
                     ) : (
                       <Link
                         className="btn-primary w-full sm:w-auto"
@@ -515,6 +533,7 @@ export function LessonPage() {
           {outlineOpen && (
             <Modal title="Course outline" onClose={()=>setOutlineOpen(false)}><PathNavigation cohortId={cohortId??""} contentOnly onNavigate={()=>setOutlineOpen(false)}/></Modal>
           )}
+          {nextChoicesOpen && <Modal title="Learning complete — choose what’s next" onClose={()=>setNextChoicesOpen(false)}><p className="text-sm text-ink-600">Do it and Assess it are available after Learn it. When both are included, you can complete them in either order.</p><div className="mt-4 grid gap-3 sm:grid-cols-2">{moduleSteps.filter(s=>s.kind!=='learn'&&s.available).map(step=><Link key={step.id} to={step.href} className={`rounded-xl border p-4 ${step.kind==='do'?'border-violet-200 bg-violet-50':'border-amber-200 bg-amber-50'}`}><span className="block text-sm font-semibold">{step.kind==='do'?'Do it':'Assess it'} {step.done?'· Complete':''}</span><span className="mt-1 block text-xs">{step.title}</span></Link>)}</div><Link className="btn-secondary mt-4" to={`/student/courses/${cohortId}/learn`}>Return to Learning</Link></Modal>}
 
         </article>
       )}

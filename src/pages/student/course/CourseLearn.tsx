@@ -32,6 +32,8 @@ export function CourseLearn() {
   const { cohortId } = useParams<{ cohortId: string }>();
   const { user } = useAuth();
   const path=useLearningPath(cohortId);
+  const resumeLesson=path.resume??path.lastLesson;
+  const resumeScreen=path.resume?path.resumeScreen:path.lastScreen;
   const [modules, setModules] = useState<ModuleRow[]>([]);
   const [progress, setProgress] = useState<ProgressRecord[]>([]);
   const [, setReleased] = useState<string[]>([]);
@@ -180,6 +182,7 @@ export function CourseLearn() {
           </div>
         ) : (
           <>
+            {resumeLesson && <section className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand-200 bg-brand-50 p-4" aria-label="Resume lesson"><div><p className="text-xs font-semibold text-brand-700">PICK UP WHERE YOU LEFT OFF</p><h2 className="mt-1 text-sm font-semibold">{resumeLesson.title}</h2><p className="mt-1 text-xs text-ink-600">Saved at screen {resumeScreen}. Your completed work is kept.</p></div><Link className="btn-primary" to={resumeLesson.href}>{resumeLesson.done?'Resume review':'Resume lesson'} <ArrowRight size={15}/></Link></section>}
             <section
               className="grid divide-y divide-ink-200 rounded-xl border border-ink-200 bg-white sm:grid-cols-3 sm:divide-x sm:divide-y-0"
               aria-label="Learning progress summary"
@@ -212,7 +215,7 @@ export function CourseLearn() {
             <div className={view === 'grid' ? 'mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3' : 'module-list mt-5 grid gap-3'}>
               {modules.map((module) => {
                 const moduleSteps=path.steps.filter(s=>s.moduleId===module.id);
-                const destination=moduleSteps.find(s=>s.available&&!s.done) ?? moduleSteps.find(s=>s.available);
+                const destination=(path.resume?.moduleId===module.id ? path.resume : undefined) ?? moduleSteps.find(s=>s.available&&!s.done) ?? moduleSteps.find(s=>s.available);
                 const lesson = module.lessons.find((item) => item.is_published);
                 if (!lesson) return null;
                 const available =

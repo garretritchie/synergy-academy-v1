@@ -1,0 +1,35 @@
+import assert from 'node:assert/strict';
+export async function testLessonResume(db,f){
+ const one=async(sql,args=[])=>(await db.query(sql,args)).rows[0];
+ await db.exec('RESET ROLE');
+ await db.query(`SELECT set_config('request.jwt.claim.sub',$1,false)`,[f.admin]);
+ const course=await one(`INSERT INTO courses(title,slug,is_published) VALUES('Resume QA','resume-qa',true) RETURNING id`);
+ const cohort=await one(`INSERT INTO cohorts(course_id,name,slug) VALUES($1,'Resume QA','resume-qa') RETURNING id`,[course.id]);
+ const enrol=await one(`INSERT INTO enrolments(cohort_id,student_id) VALUES($1,$2) RETURNING id`,[cohort.id,f.student]);
+ const module=await one(`INSERT INTO modules(course_id,title,display_order,is_published) VALUES($1,'Module',1,true) RETURNING id`,[course.id]);
+ const lesson=await one(`INSERT INTO lessons(module_id,title,display_order,is_published) VALUES($1,'Learn',1,true) RETURNING id`,[module.id]);
+ await db.query(`INSERT INTO assignments(cohort_id,module_id,lesson_id,title,assignment_type,is_published) VALUES($1,$2,$3,'Unsubmitted activity','activity',true)`,[cohort.id,module.id,lesson.id]);
+ const check=await one(`INSERT INTO assessments(cohort_id,module_id,lesson_id,title,assessment_type,is_published) VALUES($1,$2,$3,'Practice one','practice',true) RETURNING id`,[cohort.id,module.id,lesson.id]);
+ const second=await one(`INSERT INTO assessments(cohort_id,module_id,lesson_id,title,assessment_type,is_published) VALUES($1,$2,$3,'Practice two','practice',true) RETURNING id`,[cohort.id,module.id,lesson.id]);
+ const exam=await one(`INSERT INTO assessments(cohort_id,module_id,lesson_id,title,assessment_type,is_published) VALUES($1,$2,$3,'Exam','exam',true) RETURNING id`,[cohort.id,module.id,lesson.id]);
+ await db.query(`SELECT set_config('request.jwt.claim.sub',$1,false)`,[f.student]);await db.exec('SET ROLE authenticated');
+ assert.equal((await one(`SELECT assessment_ready($1) AS ready`,[check.id])).ready,false);
+ await assert.rejects(()=>db.query(`SELECT begin_assessment_session($1,$2)`,[check.id,enrol.id]),/required learning/);
+ await db.query(`INSERT INTO progress_records(enrolment_id,student_id,cohort_id,lesson_id,status,progress_percent) VALUES($1,$2,$3,$4,'completed',100)`,[enrol.id,f.student,cohort.id,lesson.id]);
+ assert.equal((await one(`SELECT assessment_ready($1) AS ready`,[check.id])).ready,true);
+ assert.equal((await one(`SELECT assessment_ready($1) AS ready`,[second.id])).ready,true);
+ assert.equal((await one(`SELECT assessment_ready($1) AS ready`,[exam.id])).ready,false);
+ await db.query(`SELECT begin_assessment_session($1,$2)`,[second.id,enrol.id]);
+ await db.query(`INSERT INTO lesson_bookmarks(student_id,cohort_id,lesson_id,screen_index) VALUES($1,$2,$3,8)`,[f.student,cohort.id,lesson.id]);
+ assert.equal((await one(`SELECT screen_index FROM lesson_bookmarks WHERE lesson_id=$1`,[lesson.id])).screen_index,8);
+ await db.query(`UPDATE lesson_bookmarks SET screen_index=3 WHERE lesson_id=$1`,[lesson.id]);
+ assert.equal((await one(`SELECT screen_index FROM lesson_bookmarks WHERE lesson_id=$1`,[lesson.id])).screen_index,3);
+ await assert.rejects(()=>db.query(`UPDATE lesson_bookmarks SET screen_index=-1 WHERE lesson_id=$1`,[lesson.id]),/check constraint/);
+ await assert.rejects(()=>db.query(`UPDATE lesson_bookmarks SET student_id=$1 WHERE lesson_id=$2`,[f.admin,lesson.id]),/row-level security/);
+ await assert.rejects(()=>db.query(`INSERT INTO lesson_bookmarks(student_id,cohort_id,lesson_id,screen_index) VALUES($1,$2,$3,1)`,[f.student,cohort.id,f.lessons['module-01']]),/row-level security/);
+ await db.query(`SELECT set_config('request.jwt.claim.sub',$1,false)`,[f.admin]);
+ assert.equal((await db.query(`SELECT * FROM lesson_bookmarks WHERE lesson_id=$1`,[lesson.id])).rows.length,0);
+ await db.exec('RESET ROLE; SET ROLE anon');await assert.rejects(()=>db.query('SELECT * FROM lesson_bookmarks'),/permission denied/);
+ await db.exec('RESET ROLE');
+ console.log('PASS Learn-only prerequisites unlock both practice checks without activity submissions; graded exam remains gated; bookmarks persist, stay private and reject cross-course/invalid writes.');
+}

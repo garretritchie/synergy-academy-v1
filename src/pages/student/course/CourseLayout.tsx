@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { useParams, NavLink, Link, useLocation, useNavigate } from "react-router-dom";
+import { useParams, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, BookOpen, ChevronDown, MoreHorizontal } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
@@ -7,6 +7,7 @@ import { studentCourseNav } from "@/config/navigation";
 import { FullPageSpinner } from "@/components/ui/Spinner";
 import type { Cohort, Course } from "@/types";
 import { CourseSwitcher } from './CourseSwitcher';
+import { AppLayout } from '@/components/layout/AppLayout';
 
 const COURSE_PRIMARY_PATHS = new Set([
   "home",
@@ -102,19 +103,20 @@ export function CourseLayout({ children }: { children: ReactNode }) {
   }
 
   return (
+    <AppLayout courseContent={(navigationToggle, account) => (
     <div className="course-shell">
-      <a href="#course-content" className="skip-link">Skip to course content</a>
       {/* Course header */}
       <div className="course-topbar">
-        <div className="mx-auto flex max-w-7xl items-center gap-3">
+        <div className="mx-auto flex max-w-7xl items-center gap-2 sm:gap-3">
+          {navigationToggle}
           <button
             onClick={() => navigate("/student/courses")}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-ink-500 outline-none transition-colors hover:bg-ink-100 hover:text-ink-900 focus-visible:ring-2 focus-visible:ring-brand-500"
+            className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-lg text-ink-500 outline-none transition-colors hover:bg-ink-100 hover:text-ink-900 focus-visible:ring-2 focus-visible:ring-brand-500 lg:flex"
             aria-label="Back to My Courses"
           >
             <ArrowLeft size={18} />
           </button>
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-100/70 text-brand-800">
+          <div className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-100/70 text-brand-800 sm:flex">
             <BookOpen size={20} />
           </div>
           <div className="min-w-0 flex-1">
@@ -124,7 +126,7 @@ export function CourseLayout({ children }: { children: ReactNode }) {
             <p className="truncate text-xs text-ink-500">{cohort.name}</p>
           </div>
           <CourseSwitcher cohortId={cohortId ?? ''}/>
-          <Link to="/student" className="hidden shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-ink-600 hover:bg-ink-50 hover:text-brand-800 lg:flex">Academy dashboard</Link>
+          {account}
         </div>
       </div>
 
@@ -226,5 +228,6 @@ export function CourseLayout({ children }: { children: ReactNode }) {
         </div>
       </main>
     </div>
+    )}/>
   );
 }

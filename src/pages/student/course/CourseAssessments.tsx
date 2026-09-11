@@ -204,7 +204,7 @@ export function CourseAssessments({ embedded = false, onWorkspaceChange }: { emb
 
   const start = async (assessment: AssessmentRow, review = false) => {
     if (!available(assessment) && !review) {
-      setError(isModuleCheck(assessment) ? "Complete and submit the matching activity before starting this module check." : "Complete the required course steps before starting this assessment.");
+      setError(isModuleCheck(assessment) ? "Complete Learn it in this module to unlock the knowledge check. You can do the activity before or after the check." : "Complete the required course steps before starting this assessment.");
       return;
     }
     setSaving(true);

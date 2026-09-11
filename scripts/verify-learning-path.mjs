@@ -8,7 +8,15 @@ for(const [activities,checks,kinds] of [[[],[],['learn','learn','learn']],[[acti
  const path=buildLearningPath('cohort',modules,activities,checks,new Set(),released);assert.deepEqual(path.map(s=>s.kind),kinds);assert.equal(path.filter(s=>s.available).length,1);assert.equal(pathProgress(path).next.id,'l1');
 }
 let path=buildLearningPath('cohort',modules,[activity],[check],new Set(['l1','l2']),released);assert.equal(pathProgress(path).next.id,'d1');assert.equal(pathProgress(path).percentage,40);
-path=buildLearningPath('cohort',modules,[{...activity,submissions:[{status:'draft'}]}],[check],new Set(['l1','l2']),released);assert.equal(path.find(s=>s.id==='q1').available,false);
+path=buildLearningPath('cohort',modules,[{...activity,submissions:[{status:'draft'}]}],[check],new Set(['l1','l2']),released);assert.equal(path.find(s=>s.id==='q1').available,true);
+assert.equal(path.find(s=>s.id==='d1').available,true);
+assert.equal(path.find(s=>s.id==='l3').available,false);
+const incomplete=buildLearningPath('cohort',modules,[activity],[check],new Set(['l1']),released);
+assert.equal(incomplete.find(s=>s.id==='d1').available,false);assert.equal(incomplete.find(s=>s.id==='q1').available,false);
+const checkFirst=buildLearningPath('cohort',modules,[activity],[{...check,assessment_attempts:[{status:'completed',percentage:80}]}],new Set(['l1','l2']),released);
+assert.equal(checkFirst.find(s=>s.id==='d1').available,true);assert.equal(checkFirst.find(s=>s.id==='l3').available,false);
+const parallel=buildLearningPath('cohort',modules,[activity,{...activity,id:'d2'}],[check,{...check,id:'q2'}],new Set(['l1','l2']),released);
+assert.equal(parallel.filter(s=>s.kind!=='learn'&&s.available).length,4);
 path=buildLearningPath('cohort',modules,[{...activity,submissions:[{status:'submitted'}]}],[check],new Set(['l1','l2']),released);assert.equal(pathProgress(path).next.id,'q1');
 path=buildLearningPath('cohort',modules,[],[{...check,passing_score:0,assessment_attempts:[{status:'completed',percentage:null}]}],new Set(['l1','l2']),released);assert.equal(path.find(s=>s.id==='q1').done,false);
 path=buildLearningPath('cohort',modules,[],[{...check,assessment_attempts:[{status:'completed',percentage:80}]}],new Set(['l1','l2']),released);assert.equal(pathProgress(path).next.id,'l3');
@@ -19,5 +27,5 @@ assert.equal(scheduled[0].reason,'Unlocks September 20.');
 assert.match(scheduled[1].reason,/Complete the learning: l1/);
 assert.equal(scheduled[0].available,false);
 const dependent=buildLearningPath('cohort',modules,[activity],[check],new Set(['l1','l2']),released);
-assert.equal(dependent.find(s=>s.id==='q1').reason,'Complete the activity: Practice');
+assert.equal(dependent.find(s=>s.id==='q1').reason,'');
 console.log('PASS release explanations and named prerequisites do not alter access gates.');

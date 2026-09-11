@@ -22,11 +22,12 @@ import { AcademyBrandMark } from "@/components/brand/AcademyBrandMark";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 
 interface AppLayoutProps {
-  children: ReactNode;
+  children?: ReactNode;
   courseNav?: NavSection[];
+  courseContent?: (navigationToggle: ReactNode, account: ReactNode) => ReactNode;
 }
 
-export function AppLayout({ children, courseNav }: AppLayoutProps) {
+export function AppLayout({ children, courseNav, courseContent }: AppLayoutProps) {
   const { profile, roles, signOut } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -251,12 +252,19 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
     </div>
   );
 
+  const navigationToggle = <button ref={navigationTrigger} type="button"
+    onClick={() => setMobileOpen(open => !open)}
+    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-ink-600 hover:bg-brand-50 focus-visible:ring-2 focus-visible:ring-brand-500 lg:hidden"
+    aria-expanded={mobileOpen} aria-controls="workspace-navigation" aria-label="Open Academy navigation"
+  ><Menu size={20}/></button>;
+
   return (
-    <div className="flex h-[100dvh] min-h-[100dvh] overflow-hidden bg-canvas">
-      <a href="#main-content" className="skip-link">Skip to content</a>
+    <div className={`academy-layout flex h-[100dvh] min-h-[100dvh] overflow-hidden bg-canvas ${courseContent ? 'academy-course-layout' : ''}`}>
+      <a href={courseContent ? '#course-content' : '#main-content'} className="skip-link">Skip to content</a>
       {/* Desktop Sidebar */}
       <aside
         ref={sidebarRef}
+        id="workspace-navigation"
         aria-label="Workspace navigation"
         className={`app-sidebar fixed inset-y-0 left-0 z-[60] w-60 shrink-0 transform text-white transition-transform duration-200 lg:visible lg:static lg:translate-x-0 ${
           mobileOpen ? "visible translate-x-0" : "invisible -translate-x-full"
@@ -264,7 +272,7 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
       >
         <div className="flex h-full flex-col">
           {/* Logo */}
-          <div className="relative flex h-16 shrink-0 items-center justify-between border-b border-white/10 px-6">
+          <div className="sidebar-brand relative flex h-16 shrink-0 items-center justify-between border-b border-white/10 px-6">
             <img
               src="/brand/synergy-bahamas-logo-white.png"
               alt="Synergy Bahamas"
@@ -286,19 +294,21 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
                       current === section.label ? null : section.label,
                     )
                   }
-                  className="mb-1 flex min-h-9 w-full items-center justify-between rounded-lg px-3 text-left text-xs font-semibold uppercase tracking-[0.08em] text-white/65 transition-colors hover:bg-white/[0.06] hover:text-white"
+                  className="sidebar-section-toggle mb-1 flex min-h-9 w-full items-center justify-between rounded-lg px-3 text-left text-xs font-semibold uppercase tracking-[0.08em] text-white/65 transition-colors hover:bg-white/[0.06] hover:text-white"
                   aria-expanded={expandedSection === section.label}
                 >
                   {section.label}
                   {expandedSection === section.label ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
                 </button>
-                <div className={`space-y-0.5 overflow-hidden ${expandedSection === section.label ? "block" : "hidden"}`}>
+                <div className={`sidebar-section-items space-y-0.5 overflow-hidden ${expandedSection === section.label ? "block" : "hidden"}`}>
                   {section.items.map((item) => {
                     const Icon = item.icon;
                     const to = isCourseContext ? item.path : item.path;
                     return (
                       <NavLink
                         key={item.path}
+                        title={item.label}
+                        aria-label={item.label}
                         to={to}
                         end={
                           item.path === homePath ||
@@ -318,7 +328,7 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
               </div>
             ))}
           </nav>
-          <div className="border-t border-white/10 px-6 py-5">
+          <div className="sidebar-footer border-t border-white/10 px-6 py-5">
             <p className="text-xs font-semibold text-white/90">Synergy Academy</p>
             <p className="mt-1 text-xs text-white/65">Skills for What’s Next.</p>
           </div>
@@ -337,6 +347,7 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
 
       {/* Main content area */}
       <div className="relative flex min-w-0 flex-1 flex-col" {...(mobileOpen ? { inert: '' } : {})}>
+        {courseContent ? courseContent(navigationToggle, accountMenu(true)) : <>
         {/* Mobile top bar */}
         <header className="app-topbar flex h-16 shrink-0 items-center justify-between px-4 lg:hidden">
           <button
@@ -364,6 +375,7 @@ export function AppLayout({ children, courseNav }: AppLayoutProps) {
             {children}
           </div>
         </main>
+        </>}
       </div>
     </div>
   );

@@ -26,7 +26,7 @@ export function PathNavigation({ cohortId,contentOnly=false,onNavigate }: { coho
         const steps = path.steps.filter(step => step.moduleId === module.id);
         const current = steps.some(step => step.href === location.pathname);
         const locked = !steps.some(step => step.available);
-        return <details key={module.id} name={groupId} open={current || undefined} className={`group mb-1 rounded-xl ${locked ? 'bg-ink-100 text-ink-500' : 'open:bg-white'}`}>
+        return <details key={module.id} name={open ? undefined : groupId} open={current || undefined} className={`group mb-1 rounded-xl ${locked ? 'bg-ink-100 text-ink-500' : 'open:bg-white'}`}>
           <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-lg p-3 focus-visible:ring-2">
             {locked && <LockKeyhole size={14} className="shrink-0" aria-label="Locked"/>}
             <span className="min-w-0 flex-1"><span className="block text-xs font-semibold">{module.display_order === 0 ? 'Introduction' : `Module ${module.display_order}`}</span><span className="block truncate text-xs text-ink-600" title={module.title}>{module.title.replace(/^Module \d+: /,'')}</span></span>
@@ -38,5 +38,5 @@ export function PathNavigation({ cohortId,contentOnly=false,onNavigate }: { coho
     </nav>
   </>;
   if(contentOnly)return <div className="flex max-h-[65dvh] flex-col">{outline}</div>;
-  return <><button type="button" onClick={()=>setOpen(true)} className="btn-secondary m-2 lg:hidden"><ListTree size={16}/> Course outline · {path.percentage}%</button>{!open&&<aside className="hidden min-h-0 flex-col border-r border-ink-200 bg-ink-50 lg:flex" aria-label="Course outline">{outline}</aside>}{open&&<Modal title="Course outline" onClose={()=>setOpen(false)}><div className="flex max-h-[65dvh] flex-col">{outline}</div></Modal>}</>;
+  return <><button type="button" onClick={()=>setOpen(true)} className="pathway-toggle btn-secondary m-2 lg:hidden"><ListTree size={16}/> Course outline · {path.percentage}%</button><aside className="pathway-sidebar hidden min-h-0 flex-col border-r border-ink-200 bg-ink-50 lg:flex" aria-label="Course outline">{outline}</aside>{open&&<Modal title="Course outline" onClose={()=>setOpen(false)}><div className="flex max-h-[65dvh] flex-col">{outline}</div></Modal>}</>;
 }

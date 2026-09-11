@@ -2,6 +2,48 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Keep Academy navigation in the course without spending the lesson's viewport twice. */
+.academy-course-layout .course-shell { height: 100%; min-height: 0; min-width: 0; }
+.academy-course-layout .course-topbar { position: relative; z-index: 50; }
+.academy-layout { padding-top: env(safe-area-inset-top); padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+.academy-layout .app-main { overscroll-behavior-y: contain; }
+.academy-layout .app-main > div { padding-bottom: max(1.25rem, env(safe-area-inset-bottom)); }
+.academy-layout .sidebar-link { min-height: 44px; }
+.academy-layout .app-sidebar { padding-bottom: env(safe-area-inset-bottom); }
+.course-content-inner { min-width: 0; overflow-wrap: anywhere; }
+.learning-player { min-width: 0; }
+.learning-player > * { min-width: 0; }
+@media (min-width: 1280px) {
+  .academy-course-layout .app-sidebar { width: 12rem; }
+}
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .academy-course-layout .app-sidebar { width: 4.5rem; }
+  .academy-course-layout .sidebar-brand { padding: 12px 8px; }
+  .academy-course-layout .sidebar-brand img { width: 100%; }
+  .academy-course-layout .sidebar-section-toggle, .academy-course-layout .sidebar-footer,
+  .academy-course-layout .sidebar-link span { display: none; }
+  .academy-course-layout .sidebar-section-items { display: block; }
+  .academy-course-layout .sidebar-link { justify-content: center; padding: 10px; }
+  .academy-course-layout .app-sidebar nav { padding: 16px 10px; }
+  .academy-course-layout .sidebar-link svg { width: 20px; height: 20px; flex-shrink: 0; }
+  .course-shell .grid:has(> .pathway-sidebar) { grid-template-columns: minmax(0, 1fr); }
+  .course-shell .pathway-sidebar { display: none; }
+  .course-shell .pathway-toggle { display: inline-flex; justify-self: start; }
+  .course-shell .lesson-workspace .pathway-toggle { display: none; }
+}
+@media (max-width: 639px) {
+  .course-shell .course-topbar { padding: 8px; }
+  .course-shell .course-content-inner { padding: 12px; }
+  .course-shell .lesson-reading-pane { padding: 16px; }
+  .course-shell .lesson-player-header { padding-left: 16px; padding-right: 16px; }
+  .course-shell [aria-label="Module workflow"] { padding-left: 4px; padding-right: 4px; }
+  .course-shell [aria-label="Module workflow"] a { min-height: 44px; gap: 4px; padding-left: 6px; padding-right: 6px; }
+}
+@media (max-width: 1023px), (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]), textarea, select { font-size: 16px !important; }
+  .menu-item, .account-trigger, .pathway-sidebar a { min-height: 44px; }
+}
+
 /* A shared viewport budget keeps reading, practice and checks in one player. */
 .learning-player { height: calc(100dvh - 21rem); min-height: 32rem; max-height: 44rem; }
 .storyboard-screen { container-type: inline-size; display: grid; align-content: start; gap: 12px; }
