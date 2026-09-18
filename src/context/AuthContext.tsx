@@ -16,6 +16,7 @@ interface AuthContextValue {
   user: User | null;
   profile: Profile | null;
   roles: UserRole[];
+  loginSequence: number;
   loading: boolean;
   signIn: (
     email: string,
@@ -38,6 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [roles, setRoles] = useState<UserRole[]>([]);
+  const [loginSequence, setLoginSequence] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const loadProfileAndRoles = useCallback(async (userId: string) => {
@@ -89,6 +91,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email,
       password,
     });
+    // Only an explicit successful sign-in starts a new role-view session.
+    // Auth token refresh and restoring an existing session must not reset it.
+    if (!error) setLoginSequence(current => current + 1);
     return { error: error?.message ?? null };
   }, []);
 
@@ -138,13 +143,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       profile,
       roles,
+      loginSequence,
       loading,
       signIn,
       signUp,
       signOut,
       refreshProfile,
     }),
-    [loading, profile, refreshProfile, roles, session, signIn, signOut, signUp, user],
+    [loading, loginSequence, profile, refreshProfile, roles, session, signIn, signOut, signUp, user],
   );
 
   return (
