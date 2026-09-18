@@ -1100,6 +1100,7 @@ export function InstructorAttendance() {
   const [sessionId, setSessionId] = useState("");
   const [students, setStudents] = useState<AttendanceStudent[]>([]);
   const [loading, setLoading] = useState(false);
+  const [refresh, setRefresh] = useState(0);
   const [error, setError] = useState("");
   useEffect(() => {
     if (!cohortId) {
@@ -1134,7 +1135,7 @@ export function InstructorAttendance() {
       else setStudents((data ?? []) as unknown as AttendanceStudent[]);
       setLoading(false);
     })();
-  }, [cohortId, sessionId]);
+  }, [cohortId, sessionId, refresh]);
   const mark = async (row: AttendanceStudent, status: string) => {
     const { error: upsertError } = await supabase
       .from("attendance_records")
@@ -1211,6 +1212,7 @@ export function InstructorAttendance() {
             </select>
           </Field>
         </section>
+        {sessionId && <button className="btn-primary" disabled={loading || sessions.find(s=>s.id===sessionId)?.is_cancelled} onClick={async()=>{setLoading(true);setError('');const r=await supabase.rpc('companion_mark_present',{session_uuid:sessionId});if(r.error){setError(r.error.message);setLoading(false);}else setRefresh(v=>v+1);}}>Mark all unrecorded students present</button>}
         <PageState
           loading={loading}
           error={error}

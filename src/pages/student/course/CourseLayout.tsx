@@ -3,7 +3,7 @@ import { useParams, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, BookOpen, ChevronDown, MoreHorizontal } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
-import { studentCourseNav } from "@/config/navigation";
+import { studentCourseNav as companionCourseNav, legacyStudentCourseNav } from "@/config/navigation";
 import { FullPageSpinner } from "@/components/ui/Spinner";
 import type { Cohort, Course } from "@/types";
 import { CourseSwitcher } from './CourseSwitcher';
@@ -11,6 +11,9 @@ import { AppLayout } from '@/components/layout/AppLayout';
 
 const COURSE_PRIMARY_PATHS = new Set([
   "home",
+  "modules",
+  "live",
+  "legacy-home",
   "learn",
   "coursework",
 ]);
@@ -26,6 +29,7 @@ export function CourseLayout({ children }: { children: ReactNode }) {
   const [course, setCourse] = useState<Course | null>(null);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
 
+  const studentCourseNav = cohort?.metadata?.companion_v2 ? companionCourseNav : legacyStudentCourseNav;
   const primaryNavItems = studentCourseNav.filter((item) =>
     COURSE_PRIMARY_PATHS.has(item.path),
   );
@@ -35,7 +39,7 @@ export function CourseLayout({ children }: { children: ReactNode }) {
   const moreMenuActive = overflowNavItems.some((item) =>
     location.pathname.includes(`/${item.path}`),
   );
-  const mobileOverflowItems = studentCourseNav.filter(item => !['home', 'learn'].includes(item.path));
+  const mobileOverflowItems = studentCourseNav.filter(item => !['home', 'modules', 'legacy-home', 'learn'].includes(item.path));
   const mobileMoreActive = mobileOverflowItems.some(item => location.pathname.includes(`/${item.path}`));
 
   useEffect(() => {
@@ -160,7 +164,7 @@ export function CourseLayout({ children }: { children: ReactNode }) {
                   key={item.path}
                   to={`/student/courses/${cohortId}/${item.path}`}
                   end={item.path === "home"}
-                  className={`course-tab !px-2.5 !text-xs sm:!text-sm ${['home', 'learn'].includes(item.path) ? '' : '!hidden sm:!flex'}`}
+                  className={`course-tab !px-2.5 !text-xs sm:!text-sm ${['home', 'modules', 'legacy-home', 'learn'].includes(item.path) ? '' : '!hidden sm:!flex'}`}
                 >
                   <Icon size={16} />
                   <span className="whitespace-nowrap">{item.label}</span>

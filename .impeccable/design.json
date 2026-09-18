@@ -1,17 +1,17 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-08-18T20:39:14.6945441-04:00",
+  "generatedAt": "2026-09-18T14:42:54.684Z",
   "title": "Design System: Synergy Academy",
   "extensions": {
     "colorMeta": {
       "synergy-navy": {
         "role": "primary",
         "displayName": "Synergy Navy",
-        "canonical": "#0a1628",
+        "canonical": "#10263f",
         "tonalRamp": [
           "#02050a",
           "#07101e",
-          "#0a1628",
+          "#10263f",
           "#18304f",
           "#3d5875",
           "#7890a7",
@@ -22,16 +22,16 @@
       "academy-blue": {
         "role": "primary",
         "displayName": "Academy Blue",
-        "canonical": "#1c7bf5",
+        "canonical": "#115ba5",
         "tonalRamp": [
-          "#061a33",
-          "#0b376c",
-          "#1056aa",
-          "#1c7bf5",
-          "#59a2fa",
-          "#91c2fc",
-          "#c5defe",
-          "#eff7ff"
+          "#0b2847",
+          "#143f6a",
+          "#124d84",
+          "#115ba5",
+          "#176fc4",
+          "#55a9f6",
+          "#bddcff",
+          "#f0f7ff"
         ]
       },
       "warm-gold": {
@@ -63,6 +63,21 @@
           "#e8edf1",
           "#f8fafc"
         ]
+      },
+      "companion-canvas": {
+        "role": "neutral",
+        "displayName": "Companion Canvas",
+        "canonical": "#f4f7fb",
+        "tonalRamp": [
+          "#020617",
+          "#0f172a",
+          "#334155",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#e2e8f0",
+          "#f4f7fb"
+        ]
       }
     },
     "typographyMeta": {
@@ -77,17 +92,30 @@
       "body": {
         "displayName": "Interface Body",
         "purpose": "Instructions, records, and learning content."
+      },
+      "companion-headline": {
+        "displayName": "Companion Headline",
+        "purpose": "Responsive page orientation using the approved native family."
+      },
+      "companion-title": {
+        "displayName": "Companion Section Title",
+        "purpose": "White panel and checklist section headings."
       }
     },
     "shadows": [
       {
+        "name": "academy-surface",
+        "value": "0 3px 12px -6px rgb(8 23 43 / 0.12)",
+        "purpose": "Shared operational cards; companion reading panels remain flat."
+      },
+      {
         "name": "soft",
-        "value": "0 2px 8px -2px rgba(0,0,0,.08), 0 1px 3px -1px rgba(0,0,0,.06)",
-        "purpose": "Default grouped surfaces."
+        "value": "0 1px 2px rgba(8, 23, 43, 0.035), 0 10px 28px -22px rgba(17, 91, 165, 0.26)",
+        "purpose": "Lightly elevated platform surfaces."
       },
       {
         "name": "elevated",
-        "value": "0 8px 32px -8px rgba(0,0,0,.12), 0 4px 12px -4px rgba(0,0,0,.06)",
+        "value": "0 18px 52px -26px rgba(8, 23, 43, 0.34), 0 3px 12px rgba(8, 23, 43, 0.07)",
         "purpose": "Menus and temporary layers."
       }
     ],
@@ -95,13 +123,26 @@
       {
         "name": "state-transition",
         "value": "200ms ease-out",
-        "purpose": "Hover, focus, drawer, and menu state changes."
+        "purpose": "Shared control hover and focus transitions; reduced-motion preference suppresses transitions and animations."
       }
     ],
     "breakpoints": [
-      { "name": "sm", "value": "640px" },
-      { "name": "lg", "value": "1024px" },
-      { "name": "xl", "value": "1280px" }
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "companion-stack",
+        "value": "700px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      },
+      {
+        "name": "xl",
+        "value": "1280px"
+      }
     ]
   },
   "components": [
@@ -111,7 +152,7 @@
       "refersTo": "button-primary",
       "description": "The main action within a form or operational panel.",
       "html": "<button class=\"ds-btn-primary\">Save changes</button>",
-      "css": ".ds-btn-primary{background:#1c7bf5;color:#fff;border:0;border-radius:8px;padding:10px 16px;font:600 14px 'Open Sans',sans-serif;transition:background .2s ease-out,box-shadow .2s ease-out}.ds-btn-primary:hover{background:#1463e0}.ds-btn-primary:focus-visible{outline:2px solid #1c7bf5;outline-offset:2px}"
+      "css": ".ds-btn-primary{background:#115ba5;color:#fff;border:1px solid #115ba5;border-radius:8px;min-height:44px;padding:8px 16px;font:600 13px/20px -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;box-shadow:0 2px 3px rgb(8 23 43 / .08);transition:background .2s ease-out}.ds-btn-primary:hover{background:#124d84;border-color:#124d84}.ds-btn-primary:focus-visible{outline:2px solid #126bbe;outline-offset:3px}.ds-btn-primary:active{transform:translateY(1px)}.ds-btn-primary:disabled{opacity:.5;cursor:not-allowed;transform:none}"
     },
     {
       "name": "Secondary Button",
@@ -119,7 +160,7 @@
       "refersTo": "button-secondary",
       "description": "A supporting action that does not compete with the primary task.",
       "html": "<button class=\"ds-btn-secondary\">Cancel</button>",
-      "css": ".ds-btn-secondary{background:#fff;color:#334155;border:1px solid #e2e8f0;border-radius:8px;padding:10px 16px;font:600 14px 'Open Sans',sans-serif;transition:background .2s ease-out}.ds-btn-secondary:hover{background:#f8fafc}.ds-btn-secondary:focus-visible{outline:2px solid #64748b;outline-offset:2px}"
+      "css": ".ds-btn-secondary{background:#fff;color:#334155;border:1px solid #cbd5e1;border-radius:8px;min-height:44px;padding:8px 16px;font:600 13px/20px -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;transition:background .2s ease-out}.ds-btn-secondary:hover{background:#f0f7ff;border-color:#8bc5ff;color:#124d84}.ds-btn-secondary:focus-visible{outline:2px solid #126bbe;outline-offset:3px}.ds-btn-secondary:active{transform:translateY(1px)}.ds-btn-secondary:disabled{opacity:.5;cursor:not-allowed;transform:none}"
     },
     {
       "name": "Text Field",
@@ -127,14 +168,14 @@
       "refersTo": "input",
       "description": "A persistent-label academic or administrative field.",
       "html": "<label class=\"ds-field\">Course title<input value=\"AI Business Essentials\"></label>",
-      "css": ".ds-field{display:grid;gap:6px;color:#334155;font:600 14px 'Open Sans',sans-serif}.ds-field input{background:#fff;color:#0f172a;border:1px solid #e2e8f0;border-radius:8px;padding:10px 14px;font:400 14px 'Open Sans',sans-serif}.ds-field input:focus-visible{outline:2px solid rgba(28,123,245,.3);border-color:#1c7bf5}"
+      "css": ".ds-field{display:grid;gap:6px;color:#334155;font:600 13px/20px -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}.ds-field input{background:#fff;color:#0f172a;border:1px solid #cbd5e1;border-radius:8px;min-height:44px;padding:8px 14px;font:400 13px/20px -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}.ds-field input:hover{border-color:#94a3b8}.ds-field input:focus-visible{outline:2px solid rgb(45 138 228 / .15);border-color:#176fc4}@media(max-width:767px){.ds-field input{font-size:16px}}"
     },
     {
       "name": "Status Chip",
       "kind": "chip",
       "description": "Compact semantic state for records and workflow status.",
       "html": "<span class=\"ds-chip\">Published</span>",
-      "css": ".ds-chip{display:inline-flex;align-items:center;border-radius:999px;background:#dcfce7;color:#15803d;padding:2px 10px;font:600 12px 'Open Sans',sans-serif}"
+      "css": ".ds-chip{display:inline-flex;align-items:center;border:1px solid rgb(187 247 208 / .8);border-radius:999px;background:#f0fdf4;color:#15803d;padding:2px 10px;font:600 12px -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}"
     },
     {
       "name": "Operational Card",
@@ -142,12 +183,42 @@
       "refersTo": "card",
       "description": "The standard white grouped surface on cool paper.",
       "html": "<section class=\"ds-card\"><h2>Course progress</h2><p>Released work and completion records appear here.</p></section>",
-      "css": ".ds-card{background:#fff;color:#0f172a;border-radius:12px;padding:20px;box-shadow:0 2px 8px -2px rgba(0,0,0,.08),0 1px 3px -1px rgba(0,0,0,.06);font-family:'Open Sans',sans-serif}.ds-card h2{margin:0;font:600 16px Montserrat,sans-serif}.ds-card p{margin:8px 0 0;color:#64748b;font-size:14px;line-height:1.5}"
+      "css": ".ds-card{background:#fff;color:#0f172a;border:1px solid #e2e8f0;border-radius:12px;padding:20px;box-shadow:0 3px 12px -6px rgb(8 23 43 / .12);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}.ds-card h2{margin:0;font-size:16px;font-weight:600}.ds-card p{margin:8px 0 0;color:#64748b;font-size:13px;line-height:1.5}"
+    },
+    {
+      "name": "Companion Course Navigation",
+      "kind": "nav",
+      "description": "Four labeled course sections, with the current destination visible.",
+      "html": "<nav class=\"ds-tabs\" aria-label=\"Course sections\"><a href=\"#overview\" aria-current=\"page\">Overview</a><a href=\"#modules\">Modules</a><a href=\"#live\">Live Classes</a><a href=\"#resources\">Resources</a></nav>",
+      "css": ".ds-tabs{display:flex;gap:4px;overflow-x:auto;border-bottom:1px solid #dce4ee;padding-bottom:8px;font:600 13px -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}.ds-tabs a{display:flex;align-items:center;min-height:44px;flex-shrink:0;padding:0 12px;border-radius:8px;color:#475569;text-decoration:none}.ds-tabs a:hover{background:#f1f5f9;color:#0f172a}.ds-tabs a[aria-current]{background:rgb(220 236 255 / .6);color:#124d84}.ds-tabs a:focus-visible{outline:2px solid #126bbe;outline-offset:3px}"
+    },
+    {
+      "name": "Companion Continue Panel",
+      "kind": "custom",
+      "refersTo": "companion-continue",
+      "description": "The next released module and its dominant continuation action.",
+      "html": "<section class=\"ds-continue\"><div><h2>AI Foundations</h2><p>2 of 7 required items complete</p></div><a href=\"#module\">Continue Module</a></section>",
+      "css": ".ds-continue{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px;align-items:center;background:#10263f;color:#fff;border-radius:12px;padding:32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}.ds-continue h2{font-size:1.6rem;font-weight:650;line-height:1.4;max-width:32ch;margin:0}.ds-continue p{color:#d0dfef;margin:12px 0 0;font-size:13px}.ds-continue a{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 16px;background:#115ba5;border:1px solid #115ba5;border-radius:8px;color:#fff;text-decoration:none;font-size:13px;font-weight:600}.ds-continue a:hover{background:#124d84}.ds-continue a:focus-visible{outline:2px solid #126bbe;outline-offset:3px}@media(max-width:700px){.ds-continue{grid-template-columns:1fr;padding:24px}}"
+    },
+    {
+      "name": "Companion Reading Panel",
+      "kind": "card",
+      "refersTo": "companion-panel",
+      "description": "Flat white recap surface with source attribution after the reading content.",
+      "html": "<article class=\"ds-reading\"><h2>Review the key ideas</h2><p>Use the recap to revisit the ideas in your eBook before applying them.</p><footer>Source: Module 1 eBook</footer></article>",
+      "css": ".ds-reading{background:#fff;border:1px solid #dce4ee;border-radius:12px;padding:clamp(20px,5vw,48px);color:#0f172a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}.ds-reading h2{font-size:1.2rem;font-weight:650;line-height:1.4;margin:0}.ds-reading p{max-width:65ch;line-height:1.75}.ds-reading footer{color:#64748b;font-size:13px;margin-top:24px}"
+    },
+    {
+      "name": "Named Course Progress",
+      "kind": "custom",
+      "description": "Native progress paired with visible completion counts and an accessible name.",
+      "html": "<div class=\"ds-progress\"><p><strong>29% Complete</strong><span>2 / 7 required components</span></p><progress aria-label=\"Overall course progress\" value=\"2\" max=\"7\"></progress></div>",
+      "css": ".ds-progress{color:#0f172a;font:13px -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}.ds-progress p{display:flex;justify-content:space-between;gap:12px}.ds-progress span{color:#475569}.ds-progress progress{appearance:none;border:0;border-radius:999px;overflow:hidden;width:100%;height:10px;background:#e2e8f0;accent-color:#126bbe}.ds-progress progress::-webkit-progress-bar{background:#e2e8f0;border-radius:999px}.ds-progress progress::-webkit-progress-value{background:#126bbe;border-radius:999px}.ds-progress progress::-moz-progress-bar{background:#126bbe;border-radius:999px}"
     }
   ],
   "narrative": {
     "northStar": "The Guided Academy",
-    "overview": "Synergy Academy is a calm, structured adult-learning workspace. The visual world is polished and direct rather than decorative.",
+    "overview": "Synergy Academy is a calm, structured adult-learning workspace. It uses Synergy Bahamas navy as the institutional anchor, blue for action and orientation, and warm gold sparingly as a brand signal. The interface is information-dense enough for academic operations while keeping each task legible and approachable.\n\nThe visual world is polished and direct rather than decorative. Real Synergy Bahamas logo assets establish identity; Lucide icons support scanning; generous white surfaces keep curriculum and academic records easy to read.\n\nThe Course Delivery Companion extends the approved September refinement. It retains the native system sans and navy, blue, white, and warm-gold identity, with a plain cool canvas and white reading panels. Its strongest visual emphasis is the next module action; component content has a dedicated destination rather than expanding inside the module checklist.",
     "keyCharacteristics": [
       "Strong navy-and-white brand framing",
       "Blue reserved for navigation, focus, and primary action",
@@ -162,8 +233,8 @@
         "section": "colors"
       },
       {
-        "name": "The Two-Family Rule",
-        "body": "Montserrat carries identity and hierarchy; Open Sans carries instructions, data, and extended reading.",
+        "name": "The One-Family Hierarchy Rule",
+        "body": "Use size, weight, and spacing for hierarchy. Mobile form controls remain at least 16px to avoid automatic input zoom. The native system family is an explicitly approved incumbent identity decision.",
         "section": "typography"
       },
       {

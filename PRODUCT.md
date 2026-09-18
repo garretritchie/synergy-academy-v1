@@ -28,18 +28,18 @@ Administrators prepare courses and cohorts before a delivery begins. Instructors
 - One authenticated account may have administrator, instructor, and student roles simultaneously.
 - Course content is reusable; cohorts own delivery dates, instructors, enrolments, sessions, release rules, and academic outcomes.
 - Payments, CRM synchronization, and public course commerce are post-beta work and must not delay the first course.
-- Production publishing is manual. Local development and verification run against the Bolt Supabase backend.
+- Production publishing is manual. Isolated local verification uses fixtures; hosted checks run separately against the configured backend.
 
 ## Brand Commitments
 
-The product name is Synergy Academy by Synergy Bahamas. Use the supplied Synergy Bahamas logos, the established navy, blue, white, and warm-gold identity, Montserrat for interface headings, and Open Sans for supporting text. The experience should feel professional, clear, structured, and suitable for adult and continuing education.
+The product name is Synergy Academy by Synergy Bahamas. Use the supplied Synergy Bahamas logos, the established navy, blue, white, and warm-gold identity, the native sans-serif typography approved in the September refinement for both headings and supporting text. The experience should feel professional, clear, structured, and suitable for adult and continuing education.
 
 ## Evidence on Hand
 
 - Synergy Bahamas brand guide and supplied full-color and white logo assets.
 - A comprehensive Supabase schema and RLS migration set in `supabase/migrations`.
-- A detailed 23-sprint build plan supplied with this project.
-- The authoritative AI Business Essentials learner package is present in `src/content/ai-business-essentials.json`, generated from the approved storyboard sources and verified against the 286-screen curriculum map.
+- The approved Course Delivery Companion v2 plan in `docs/MVP_V2_PLAN.md`, which supersedes the earlier broad LMS roadmap.
+- Legacy curriculum remains in `src/content/ai-business-essentials.json`. The supplied Module 1 eBook v4.4 is authoritative for its new companion package; original private media stays outside Git.
 
 ## Product Principles
 

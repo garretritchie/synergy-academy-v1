@@ -1,3 +1,5 @@
+import {testCompanionOperations} from './fixtures/companion-operations.mjs';
+import {testCompanion} from './fixtures/companion.mjs';
 import {PGlite} from '@electric-sql/pglite';
 import fs from 'node:fs';
 import {seed,tests} from './fixtures/assessment-sessions.mjs';
@@ -20,6 +22,6 @@ GRANT USAGE ON SCHEMA public,auth,storage TO authenticated,anon;GRANT SELECT ON 
 const files=fs.readdirSync('supabase/migrations').filter(f=>f.endsWith('.sql')&&!f.endsWith('.sql.sql')&&!f.includes('_016_')).sort();
 let fixture, repairId;
 for(const file of files){try{if(file.includes('_024_'))fixture=await seed(db);if(file.includes('_027_'))repairId=await seedSubmissionRepair(db,fixture);await db.exec(fs.readFileSync(`supabase/migrations/${file}`,'utf8'));if(file.includes('_027_'))await testSubmissionRepair(db,fixture,repairId);console.log(`PASS ${file}`);}catch(e){console.error(`FAIL ${file}: ${e.message}`);process.exitCode=1;await db.close();process.exit();}}
-try{await tests(db,fixture);await testUngradedRevisions(db,fixture);await testResourceAudiences(db,fixture);await testLessonResume(db,fixture);await testRecordManagement(db,fixture);}catch(e){console.error(e);process.exitCode=1;}
+try{await tests(db,fixture);await testUngradedRevisions(db,fixture);await testResourceAudiences(db,fixture);await testLessonResume(db,fixture);await testRecordManagement(db,fixture);await testCompanion(db,fixture);await testCompanionOperations(db,fixture);}catch(e){console.error(e);process.exitCode=1;}
 console.log('Isolated PostgreSQL checks finished. Auth/storage are stubs; extension-only migration 016 is excluded. No remote database changed.');
 await db.close();

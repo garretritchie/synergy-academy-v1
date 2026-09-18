@@ -1,0 +1,226 @@
+.companion-page {
+  max-width: 1120px;
+  margin: 0 auto;
+  color: #0f172a;
+}
+.companion-heading {
+  margin-bottom: 24px;
+}
+.companion-heading h1 {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+.companion-page h2 {
+  font-size: 1.2rem;
+  font-weight: 650;
+  line-height: 1.4;
+}
+.companion-tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  border-bottom: 1px solid #dce4ee;
+  margin-bottom: 28px;
+  padding-bottom: 8px;
+}
+.companion-surface {
+  background: white;
+  border: 1px solid #dce4ee;
+  border-radius: 12px;
+  padding: 24px;
+}
+.companion-continue {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 24px;
+  background: #10263f;
+  color: white;
+  padding: 32px;
+  border-radius: 12px;
+}
+.companion-continue h2 {
+  font-size: 1.6rem;
+  max-width: 32ch;
+}
+.companion-continue p {
+  color: #d0dfef;
+}
+.companion-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(260px, 1fr);
+  gap: 24px;
+  margin-top: 24px;
+}
+.companion-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+.companion-row:last-child {
+  border-bottom: 0;
+}
+.companion-row a:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.companion-empty {
+  padding: 40px 24px;
+  background: white;
+  border-radius: 12px;
+  text-align: center;
+}
+.companion-empty p {
+  margin-top: 12px;
+  color: #64748b;
+}
+.companion-recap {
+  min-height: 340px;
+  padding: clamp(20px, 5vw, 48px);
+  background: white;
+  border: 1px solid #dce4ee;
+  border-radius: 12px;
+}
+.companion-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 24px;
+}
+.companion-media {
+  width: 100%;
+  background: #10263f;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.companion-media video,
+.companion-media iframe {
+  width: 100%;
+  aspect-ratio: 16/9;
+}
+.companion-media audio {
+  width: 100%;
+  padding: 24px;
+  background: #f8fafc;
+}
+.companion-page button,
+.companion-page input,
+.companion-page select {
+  min-height: 44px;
+}
+.companion-page a:focus-visible,
+.companion-page button:focus-visible {
+  outline: 2px solid #126bbe;
+  outline-offset: 3px;
+}
+.companion-page ::selection {
+  background: #cce3ff;
+  color: #10263f;
+}
+.companion-progress {
+  accent-color: #126bbe;
+  width: 100%;
+  height: 10px;
+}
+.companion-caption {
+  font-size: 0.875rem;
+  color: #64748b;
+  margin-top: 12px;
+}
+.companion-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.companion-table th,
+.companion-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 0.875rem;
+}
+.companion-question {
+  display: block;
+  padding: 16px;
+  border: 1px solid #dce4ee;
+  border-radius: 8px;
+  margin-top: 12px;
+  cursor: pointer;
+}
+.companion-question:has(input:checked) {
+  border-color: #126bbe;
+  background: #eff6ff;
+}
+.companion-question input {
+  min-height: initial;
+  margin-right: 12px;
+}
+.companion-staff-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.companion-staff-grid label {
+  font-size: 0.875rem;
+}
+.companion-staff-grid .input {
+  margin-top: 6px;
+}
+@media (max-width: 700px) {
+  .companion-grid,
+  .companion-continue,
+  .companion-staff-grid {
+    grid-template-columns: 1fr;
+  }
+  .companion-continue {
+    padding: 24px;
+  }
+  .companion-surface {
+    padding: 18px;
+  }
+  .companion-actions {
+    position: sticky;
+    bottom: 0;
+    background: #f8fafc;
+    padding: 12px 0;
+    z-index: 10;
+  }
+  .companion-row {
+    align-items: flex-start;
+  }
+  .companion-heading {
+    margin-bottom: 20px;
+  }
+  .companion-continue .btn-primary {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Companion views use the established plain reading canvas. */
+.app-main:has(.companion-page) {
+  background: #f4f7fb;
+}
+.app-main:has(.companion-page)::before {
+  display: none;
+}
+.companion-recap .storyboard-header > p:first-child {
+  display: none;
+}
+
+.companion-media:has(audio) {
+  padding: 16px;
+  background: #f8fafc;
+}
+.companion-media audio {
+  display: block;
+  padding: 0;
+  min-height: 54px;
+}

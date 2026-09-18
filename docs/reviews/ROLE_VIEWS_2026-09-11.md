@@ -8,8 +8,11 @@ The chosen role controls workspace navigation and the destination dashboard.
 Selection is saved per user on the current browser, rather than using the former
 shared `synergy-active-role` key. Deep links and browser Back/Forward determine
 the view for role-specific routes; shared profile pages retain the selected view.
-Login/home redirects respect the saved valid preference. Removed or invalid roles
-fall back to an assigned role. Disabled, pending and temporary-password gates remain.
+Each successful fresh sign-in starts in Student view when the account has that role,
+ignoring the previous login's saved view. Accounts without Student access fall back
+to an assigned staff role. Manual switching, shared pages, page refreshes and session
+renewals retain the chosen valid view. Removed or invalid roles fall back to an
+assigned role. Disabled, pending and temporary-password gates remain.
 
 Instructor view scopes cohort and resource management to the user's instructor
 assignments even when the account also has an administrator role. Student pages
@@ -27,7 +30,8 @@ No migration or backend deployment is needed. Changes remain local until pushed.
 
 - TypeScript, ESLint, production build and `node scripts/verify-role-view.mjs` passed.
 - Pure role resolution tests cover all roles, deep links, saved preference,
-  unassigned/removed roles, empty roles, per-user storage and storage failure.
+  unassigned/removed roles, empty roles, per-user storage and storage failure, plus
+  student-first fresh login, in-session switching and existing-session restoration.
 - The actual selector component was exercised in an isolated browser harness at
   desktop, 393px and 360px phone widths: all three choices work, control height is
   44px, and the course-header fixture has no horizontal overflow.

@@ -4,9 +4,9 @@ import assert from 'node:assert/strict';
 const output = ts.transpileModule(fs.readFileSync('src/lib/roleView.ts','utf8'), {
   compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 },
 }).outputText;
-const { resolveRoleView, roleFromPath, readRoleView, saveRoleView } = await import(`data:text/javascript;base64,${Buffer.from(output).toString('base64')}`);
+const { resolveRolePreference, resolveRoleView, roleFromPath, readRoleView, saveRoleView } = await import(`data:text/javascript;base64,${Buffer.from(output).toString('base64')}`);
 const all = ['student','instructor','administrator'];
-assert.equal(resolveRoleView(all, '/', null), 'administrator');
+assert.equal(resolveRoleView(all, '/', null), 'student');
 assert.equal(resolveRoleView(all, '/', 'student'), 'student');
 assert.equal(resolveRoleView(all, '/account/profile', 'instructor'), 'instructor');
 assert.equal(resolveRoleView(all, '/student/courses/example/learn', 'administrator'), 'student');
@@ -15,7 +15,14 @@ assert.equal(resolveRoleView(all, '/admin/users', 'student'), 'administrator');
 assert.equal(resolveRoleView(['student'], '/admin/users', 'administrator'), 'student');
 assert.equal(resolveRoleView(['instructor'], '/', 'student'), 'instructor');
 assert.equal(resolveRoleView([], '/student', 'student'), null);
-assert.equal(resolveRoleView(all, '/', 'made-up-role'), 'administrator');
+assert.equal(resolveRoleView(all, '/', 'made-up-role'), 'student');
+const lastSession = { userId: 'one', loginSequence: 1, role: 'administrator' };
+assert.equal(resolveRoleView(all, '/', resolveRolePreference('one', 2, lastSession, 'administrator')), 'student');
+assert.equal(resolveRoleView(['student','instructor'], '/', resolveRolePreference('one', 2, lastSession, 'instructor')), 'student');
+assert.equal(resolveRoleView(['instructor','administrator'], '/', resolveRolePreference('one', 2, lastSession, 'student')), 'administrator');
+assert.equal(resolveRolePreference('one', 2, { ...lastSession, loginSequence: 2 }, 'student'), 'administrator');
+assert.equal(resolveRolePreference('one', 0, null, 'instructor'), 'instructor');
+assert.equal(resolveRolePreference('two', 2, lastSession, 'administrator'), null);
 assert.equal(roleFromPath('/administrator'), null);
 assert.equal(roleFromPath('/student-fake'), null);
 const storage=new Map();
