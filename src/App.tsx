@@ -13,6 +13,21 @@ const lazyNamed = <T extends Record<string, unknown>, K extends keyof T>(
   name: K,
 ) => lazy(async () => ({ default: (await loader())[name] as ComponentType }));
 
+const loadCompanion = () => import('@/features/companion/StudentCompanion');
+const StudentCompanion = lazyNamed(loadCompanion, 'StudentCompanion');
+const CompanionWelcome = lazyNamed(loadCompanion, 'CompanionWelcome');
+const CompanionModules = lazyNamed(loadCompanion, 'CompanionModules');
+const CompanionGrades = lazyNamed(loadCompanion, 'CompanionGrades');
+const CompanionAttendance = lazyNamed(loadCompanion, 'CompanionAttendance');
+const CompanionResources = lazyNamed(loadCompanion, 'CompanionResources');
+const CompanionLive = lazyNamed(loadCompanion, 'CompanionLive');
+const ComponentPage = lazyNamed(() => import('@/features/companion/ComponentPage'), 'ComponentPage');
+const CompanionStudio = lazyNamed(() => import('@/features/companion/CompanionStudio'), 'CompanionStudio');
+const loadTeaching = () => import('@/features/companion/CompanionTeaching');
+const CompanionTeaching = lazyNamed(loadTeaching, 'CompanionTeaching');
+const CompanionGradeGrid = lazyNamed(loadTeaching, 'CompanionGradeGrid');
+const CompanionSubmissions = lazyNamed(loadTeaching, 'CompanionSubmissions');
+
 const SignInPage = lazyNamed(
   () => import("@/pages/auth/SignInPage"),
   "SignInPage",
@@ -237,7 +252,18 @@ function LegacyCoursework() {
 }
 
 const studentRoutes: AppRoute[] = [
-  { path: "/student", Component: StudentDashboard },
+  { path: "/student", Component: StudentCompanion },
+  { path: "/student/legacy", Component: StudentDashboard },
+  { path: "/student/my-course", Component: CompanionModules },
+  { path: "/student/grades", Component: CompanionGrades },
+  { path: "/student/attendance", Component: CompanionAttendance },
+  { path: "/student/resources", Component: CompanionResources },
+  { path: "/student/courses/:cohortId/modules", Component: CompanionModules },
+  { path: "/student/courses/:cohortId/modules/:moduleId", Component: CompanionModules },
+  { path: "/student/courses/:cohortId/modules/:moduleId/components/:componentId", Component: ComponentPage },
+  { path: "/student/courses/:cohortId/legacy-home", Component: CourseHome },
+  { path: "/student/courses/:cohortId/legacy-live", Component: CourseLive },
+  { path: "/student/courses/:cohortId/legacy-resources", Component: CourseResources },
   { path: "/student/courses", Component: StudentCourses },
   { path: "/student/messages", Component: StudentMessages },
   { path: "/student/certificates", Component: StudentCertificates },
@@ -246,7 +272,7 @@ const studentRoutes: AppRoute[] = [
     Component: StudentCertificateDetail,
   },
   { path: "/student/profile", Component: StudentProfile },
-  { path: "/student/courses/:cohortId/home", Component: CourseHome },
+  { path: "/student/courses/:cohortId/home", Component: CompanionWelcome },
   { path: "/student/courses/:cohortId/coursework", Component: Coursework },
   { path: "/student/courses/:cohortId/learn", Component: CourseLearn },
   { path: "/student/courses/:cohortId/learn/:lessonId", Component: LessonPage },
@@ -263,7 +289,7 @@ const studentRoutes: AppRoute[] = [
     path: "/student/courses/:cohortId/activities",
     Component: CourseActivitiesRedirect,
   },
-  { path: "/student/courses/:cohortId/live", Component: CourseLive },
+  { path: "/student/courses/:cohortId/live", Component: CompanionLive },
   {
     path: "/student/courses/:cohortId/assignments",
     Component: LegacyCoursework,
@@ -273,7 +299,7 @@ const studentRoutes: AppRoute[] = [
     path: "/student/courses/:cohortId/performance",
     Component: CoursePerformance,
   },
-  { path: "/student/courses/:cohortId/resources", Component: CourseResources },
+  { path: "/student/courses/:cohortId/resources", Component: CompanionResources },
   {
     path: "/student/courses/:cohortId/discussions",
     Component: CourseDiscussions,
@@ -290,13 +316,17 @@ const studentRoutes: AppRoute[] = [
 ].map((route) => ({ ...route, allowedRoles: ["student"] }));
 
 const instructorRoutes: AppRoute[] = [
-  { path: "/instructor", Component: InstructorDashboard },
+  { path: "/instructor", Component: CompanionTeaching },
+  { path: "/instructor/legacy", Component: InstructorDashboard },
   { path: "/instructor/courses", Component: InstructorCourses },
   { path: "/instructor/live-sessions", Component: InstructorLiveSessions },
   { path: "/instructor/assignments", Component: InstructorAssignments },
   { path: "/instructor/resources", Component: AdminResources },
   { path: "/instructor/attendance", Component: InstructorAttendance },
-  { path: "/instructor/gradebook", Component: InstructorGradebook },
+  { path: "/instructor/gradebook", Component: CompanionGradeGrid },
+  { path: "/instructor/grading-tools", Component: InstructorGradebook },
+  { path: "/instructor/modules", Component: CompanionStudio },
+  { path: "/instructor/submissions", Component: CompanionSubmissions },
   { path: "/instructor/students", Component: InstructorStudents },
   { path: "/instructor/communications", Component: InstructorCommunications },
 ].map((route) => ({ ...route, allowedRoles: ["instructor"] }));
@@ -304,13 +334,17 @@ const instructorRoutes: AppRoute[] = [
 const adminRoutes: AppRoute[] = [
   { path: "/admin", Component: AdminDashboard },
   { path: "/admin/course-studio", Component: AdminCourseStudio },
+  { path: "/admin/assignments", Component: InstructorAssignments },
   { path: "/admin/courses", Component: AdminCourses },
   { path: "/admin/categories", Component: AdminCategories },
   { path: "/admin/cohorts", Component: AdminCohorts },
   { path: "/admin/enrolments", Component: AdminEnrolments },
   { path: "/admin/live-sessions", Component: InstructorLiveSessions },
   { path: "/admin/attendance", Component: InstructorAttendance },
-  { path: "/admin/gradebook", Component: InstructorGradebook },
+  { path: "/admin/gradebook", Component: CompanionGradeGrid },
+  { path: "/admin/grading-tools", Component: InstructorGradebook },
+  { path: "/admin/modules", Component: CompanionStudio },
+  { path: "/admin/submissions", Component: CompanionSubmissions },
   { path: "/admin/students", Component: InstructorStudents },
   { path: "/admin/access", Component: AdminAccess },
   { path: "/admin/users", Component: AdminUsers },

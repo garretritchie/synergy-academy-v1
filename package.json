@@ -16,7 +16,9 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "verify:path": "node scripts/verify-learning-path.mjs",
-    "verify:sessions": "node scripts/verify-assessment-sessions.mjs"
+    "verify:sessions": "node scripts/verify-assessment-sessions.mjs",
+    "content:module1": "node scripts/prepare-companion-module-one.mjs",
+    "verify:companion-ui": "node scripts/verify-companion-browser.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",

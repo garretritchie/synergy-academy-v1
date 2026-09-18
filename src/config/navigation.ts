@@ -2,172 +2,109 @@ import type { UserRole } from "@/types";
 import {
   LayoutDashboard,
   BookOpen,
-  Mail,
-  Award,
   User,
   Video,
   ClipboardList,
   BarChart3,
   FolderOpen,
-  MessageSquare,
-  Megaphone,
   Users,
-  GraduationCap,
   Settings,
-  FolderTree,
   ScrollText,
-  Layers,
   ClipboardCheck,
-  Clock3,
-  Building2,
-  WandSparkles,
 } from "lucide-react";
-
 export interface NavItem {
   label: string;
   path: string;
   icon: typeof LayoutDashboard;
 }
-
 export interface NavSection {
   label: string;
   items: NavItem[];
 }
-
 export const studentNav: NavSection[] = [
   {
-    label: "Main",
+    label: "Learning",
     items: [
       { label: "Dashboard", path: "/student", icon: LayoutDashboard },
-      { label: "My Courses", path: "/student/courses", icon: BookOpen },
-      { label: "Messages", path: "/student/messages", icon: Mail },
-      { label: "Certificates", path: "/student/certificates", icon: Award },
+      { label: "My Course", path: "/student/my-course", icon: BookOpen },
+      { label: "Grades", path: "/student/grades", icon: BarChart3 },
+      {
+        label: "Attendance",
+        path: "/student/attendance",
+        icon: ClipboardCheck,
+      },
+      { label: "Resources", path: "/student/resources", icon: FolderOpen },
       { label: "Profile", path: "/student/profile", icon: User },
     ],
   },
 ];
-
 export const studentCourseNav: NavItem[] = [
-  { label: "Home", path: "home", icon: LayoutDashboard },
-  { label: "Learning", path: "learn", icon: BookOpen },
-  { label: "Coursework", path: "coursework", icon: ClipboardList },
-  { label: "Discussion Board", path: "discussions", icon: MessageSquare },
+  { label: "Overview", path: "home", icon: LayoutDashboard },
+  { label: "Modules", path: "modules", icon: BookOpen },
+  { label: "Live Classes", path: "live", icon: Video },
   { label: "Resources", path: "resources", icon: FolderOpen },
-  { label: "Live Meetings", path: "live", icon: Video },
 ];
-
+export const legacyStudentCourseNav: NavItem[] = [
+  { label: "Home", path: "legacy-home", icon: LayoutDashboard },
+  { label: "Learn", path: "learn", icon: BookOpen },
+  { label: "Coursework", path: "coursework", icon: ClipboardList },
+  { label: "Live Classes", path: "legacy-live", icon: Video },
+  { label: "Performance", path: "performance", icon: BarChart3 },
+  { label: "Resources", path: "legacy-resources", icon: FolderOpen },
+];
 export const instructorNav: NavSection[] = [
   {
     label: "Teaching",
     items: [
       { label: "Dashboard", path: "/instructor", icon: LayoutDashboard },
-      { label: "My Cohorts", path: "/instructor/courses", icon: BookOpen },
+      { label: "Courses", path: "/instructor/courses", icon: BookOpen },
+      { label: "Modules", path: "/instructor/modules", icon: BookOpen },
+      { label: "Live Classes", path: "/instructor/live-sessions", icon: Video },
       {
-        label: "Live Sessions",
-        path: "/instructor/live-sessions",
-        icon: Video,
-      },
-      {
-        label: "Assignments",
-        path: "/instructor/assignments",
+        label: "Submissions",
+        path: "/instructor/submissions",
         icon: ClipboardList,
       },
-      { label: "Course Resources", path: "/instructor/resources", icon: FolderOpen },
+      { label: "Gradebook", path: "/instructor/gradebook", icon: BarChart3 },
       {
         label: "Attendance",
         path: "/instructor/attendance",
         icon: ClipboardCheck,
       },
-      { label: "Gradebook", path: "/instructor/gradebook", icon: BarChart3 },
       { label: "Students", path: "/instructor/students", icon: Users },
-      {
-        label: "Communications",
-        path: "/instructor/communications",
-        icon: Megaphone,
-      },
+      { label: "Profile", path: "/account/profile", icon: User },
     ],
   },
 ];
-
 export const adminNav: NavSection[] = [
   {
-    label: "Overview",
-    items: [{ label: "Dashboard", path: "/admin", icon: LayoutDashboard }],
-  },
-  {
-    label: "Courses & delivery",
+    label: "Academy",
     items: [
-      {
-        label: "Course Studio",
-        path: "/admin/course-studio",
-        icon: WandSparkles,
-      },
-      { label: "Course Catalog", path: "/admin/courses", icon: BookOpen },
-      { label: "Categories", path: "/admin/categories", icon: FolderTree },
-      { label: "Cohorts", path: "/admin/cohorts", icon: Layers },
-      { label: "Enrolments", path: "/admin/enrolments", icon: ScrollText },
-      { label: "Organizations", path: "/admin/access", icon: Building2 },
-    ],
-  },
-  {
-    label: "Live delivery",
-    items: [
+      { label: "Dashboard", path: "/admin", icon: LayoutDashboard },
+      { label: "Courses", path: "/admin/courses", icon: BookOpen },
+      { label: "Cohorts", path: "/admin/cohorts", icon: Users },
       { label: "Live Classes", path: "/admin/live-sessions", icon: Video },
+      { label: "Modules", path: "/admin/modules", icon: BookOpen },
+      { label: "Students & instructors", path: "/admin/users", icon: Users },
+      { label: "Enrolments", path: "/admin/enrolments", icon: ScrollText },
+      { label: "Submissions", path: "/admin/submissions", icon: ClipboardList },
+      { label: "Grades", path: "/admin/gradebook", icon: BarChart3 },
       { label: "Attendance", path: "/admin/attendance", icon: ClipboardCheck },
-      { label: "Gradebook", path: "/admin/gradebook", icon: BarChart3 },
-      { label: "Student Records", path: "/admin/students", icon: Users },
-    ],
-  },
-  {
-    label: "Advanced course tools",
-    items: [
-      {
-        label: "Curriculum Builder",
-        path: "/admin/academic",
-        icon: GraduationCap,
-      },
-      { label: "Content Release", path: "/admin/release-rules", icon: Clock3 },
-      { label: "Course Resources", path: "/admin/resources", icon: FolderOpen },
-    ],
-  },
-  {
-    label: "Administration",
-    items: [
-      { label: "Users", path: "/admin/users", icon: Users },
-      {
-        label: "Communications",
-        path: "/admin/communications",
-        icon: Megaphone,
-      },
-      { label: "Reporting", path: "/admin/reporting", icon: BarChart3 },
-      { label: "Certificates", path: "/admin/certificates", icon: Award },
       { label: "Settings", path: "/admin/settings", icon: Settings },
     ],
   },
 ];
-
 export function getNavForRole(role: UserRole): NavSection[] {
-  switch (role) {
-    case "administrator":
-      return adminNav;
-    case "instructor":
-      return instructorNav;
-    case "student":
-      return studentNav;
-    default:
-      return studentNav;
-  }
+  return role === "administrator"
+    ? adminNav
+    : role === "instructor"
+      ? instructorNav
+      : studentNav;
 }
-
-export function getHomePathForRole(role: UserRole): string {
-  switch (role) {
-    case "administrator":
-      return "/admin";
-    case "instructor":
-      return "/instructor";
-    case "student":
-      return "/student";
-    default:
-      return "/student";
-  }
+export function getHomePathForRole(role: UserRole) {
+  return role === "administrator"
+    ? "/admin"
+    : role === "instructor"
+      ? "/instructor"
+      : "/student";
 }

@@ -1,3 +1,4 @@
+import { InstructorIdentityEditor } from '@/features/companion/InstructorIdentity';
 import { useRef, useState, type ChangeEvent } from "react";
 import { Camera, Mail, Phone, Save, Trash2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -305,6 +306,7 @@ export function StudentProfile() {
           </div>
         </div>
       </div>
+      <InstructorIdentityEditor/>
     </AppLayout>
   );
 }

@@ -1,6 +1,6 @@
 # MVP v2 — Course Delivery Companion
 
-Status: repository audit and proposed implementation plan, 18 September 2026. No application or database changes have been made by this planning pass.
+Status: approved plan, implemented locally on `codex/mvp-v2`, 18 September 2026. See [MVP_V2_IMPLEMENTATION.md](MVP_V2_IMPLEMENTATION.md) for current scope, v1 rollback, verification and remaining hosted/content gates. The audit and baseline below describe the pre-implementation state.
 
 ## Direction and source of truth
 
